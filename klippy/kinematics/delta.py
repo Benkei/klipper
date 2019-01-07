@@ -6,9 +6,6 @@
 import math, logging
 import stepper, homing, mathutil
 
-# Slow moves once the ratio of tower to XY movement exceeds SLOW_RATIO
-SLOW_RATIO = 3.
-
 class DeltaKinematics:
     def __init__(self, toolhead, config):
         # Setup tower rails
@@ -28,12 +25,14 @@ class DeltaKinematics:
         self.max_z_velocity = config.getfloat(
             'max_z_velocity', self.max_velocity,
             above=0., maxval=self.max_velocity)
-        max_halt_velocity = toolhead.get_max_axis_halt() * SLOW_RATIO
-        max_halt_accel = self.max_accel * SLOW_RATIO
+        self.slow_ratio = slow_ratio = config.getfloat('delta_slow_ratio', above=1.)
+        max_halt_velocity = toolhead.get_max_axis_halt() * slow_ratio
+        max_halt_accel = self.max_accel * slow_ratio
         for rail in self.rails:
             rail.set_max_jerk(max_halt_velocity, max_halt_accel)
         # Read radius and arm lengths
         self.radius = radius = config.getfloat('delta_radius', above=0.)
+        self.printable_radius = printable_radius = config.getfloat('delta_printable_radius', above=0.)
         arm_length_a = stepper_configs[0].getfloat('arm_length', above=radius)
         self.arm_lengths = arm_lengths = [
             sconfig.getfloat('arm_length', arm_length_a, above=radius)
@@ -73,10 +72,10 @@ class DeltaKinematics:
             return (ratio * math.sqrt(min_arm_length**2 / (ratio**2 + 1.)
                                       - half_min_step_dist**2)
                     + half_min_step_dist)
-        self.slow_xy2 = (ratio_to_dist(SLOW_RATIO) - radius)**2
-        self.very_slow_xy2 = (ratio_to_dist(2. * SLOW_RATIO) - radius)**2
-        self.max_xy2 = min(radius, min_arm_length - radius,
-                           ratio_to_dist(4. * SLOW_RATIO) - radius)**2
+        self.slow_xy2 = (printable_radius * 0.6)**2
+        self.very_slow_xy2 = (printable_radius * 0.8)**2
+        self.max_xy2 = min(printable_radius, min_arm_length - printable_radius,
+                           ratio_to_dist(4. * slow_ratio) - printable_radius)**2
         logging.info("Delta max build radius %.2fmm (moves slowed past %.2fmm"
                      " and %.2fmm)" % (
                          math.sqrt(self.max_xy2), math.sqrt(self.slow_xy2),
