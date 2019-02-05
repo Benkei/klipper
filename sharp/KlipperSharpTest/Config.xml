@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<klipper>
+
+	<lib_motors mcu="main">
+		<stepper id="">
+			<step pin="" />
+			<direction pin="" />
+			<enable pin="" />
+		</stepper>
+		<stepper id="">
+			<step pin="" />
+			<direction pin="" />
+			<enable pin="" />
+		</stepper>
+	</lib_motors>
+
+	<lib_gpios mcu="main">
+		<gpio id="" pin="" invert="true" pullup="true" />
+		<sensor id="" pin="" type="EPCOS 100K B57560G104F" />		
+	</lib_gpios>
+
+	<mcu id="main">
+		<pin_map type="arduino" />
+		<serial port="/dev/ttyACM0" baud="250000" />
+		<ethernet address="192.168.0.1" port="4455" />
+	</mcu>
+
+	<machine name="" type="3dprinter" mcu="main">
+		<kinematics type="cartesian" />
+		<axis type="x" ref="">
+			<endstop type="min" ref="" />
+		</axis>
+		<axis type="y" ref="">
+			<endstop type="min" ref="" />
+		</axis>
+		<axis type="z" ref="">
+			<endstop type="min" ref="" />
+		</axis>
+	</machine>
+
+</klipper>
