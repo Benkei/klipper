@@ -14,32 +14,30 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="ClockSync.cs" />
-    <Compile Remove="MessageParser.cs" />
     <Compile Remove="MicroController\Mcu.cs" />
     <Compile Remove="MicroController\Mcu_adc.cs" />
     <Compile Remove="MicroController\Mcu_digital_out.cs" />
     <Compile Remove="MicroController\Mcu_endstop.cs" />
     <Compile Remove="MicroController\Mcu_pwm.cs" />
     <Compile Remove="MicroController\Mcu_stepper.cs" />
-    <Compile Remove="SerialReader.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="ClockSync.cs" />
-    <None Include="MessageParser.cs" />
     <None Include="MicroController\Mcu.cs" />
     <None Include="MicroController\Mcu_adc.cs" />
     <None Include="MicroController\Mcu_digital_out.cs" />
     <None Include="MicroController\Mcu_endstop.cs" />
     <None Include="MicroController\Mcu_pwm.cs" />
     <None Include="MicroController\Mcu_stepper.cs" />
-    <None Include="SerialReader.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NLog" Version="4.5.11" />
     <PackageReference Include="System.IO.Ports" Version="4.6.0-preview.19073.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="IO\" />
   </ItemGroup>
 
 </Project>

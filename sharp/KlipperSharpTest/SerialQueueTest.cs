@@ -29,7 +29,7 @@ namespace KlipperSharpTest
 
 			while (true)
 			{
-				queue_message qm;
+				QueueMessage qm;
 				ser.pull(out qm);
 
 				Console.WriteLine($"MSG {qm.sent_time}/{qm.receive_time} {(int)((qm.receive_time - qm.sent_time) * 1000)}");

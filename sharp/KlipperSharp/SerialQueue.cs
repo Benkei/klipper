@@ -54,10 +54,8 @@ namespace KlipperSharp
 		double commandTimer = PR_NEVER;
 
 		MemoryStream sendBuffer = new MemoryStream(
-			new byte[Marshal.SizeOf<queue_message>()],
-			0, Marshal.SizeOf<queue_message>(), true, true);
-		Stopwatch time;
-		double timeTicksToSec;
+			new byte[Marshal.SizeOf<RawMessage>()],
+			0, Marshal.SizeOf<RawMessage>(), true, true);
 
 		// Input reading
 		//struct pollreactor pr;
@@ -82,7 +80,7 @@ namespace KlipperSharp
 		ulong send_seq;
 		ulong receive_seq; // ulong.MaxValue to stop Retransmit
 		ulong ignore_nak_seq, last_ack_seq, retransmit_seq, rtt_sample_seq;
-		Queue<queue_message> send_queue = new Queue<queue_message>();
+		Queue<RawMessage> send_queue = new Queue<RawMessage>();
 		// Smooth round trip time
 		double srtt;
 		// Round trip time
@@ -94,7 +92,7 @@ namespace KlipperSharp
 		int ready_bytes, stalled_bytes, need_ack_bytes, last_ack_bytes;
 		ulong need_kick_clock;
 		// Received messages
-		ConcurrentQueue<queue_message> receive_queue = new ConcurrentQueue<queue_message>();
+		ConcurrentQueue<RawMessage> receive_queue = new ConcurrentQueue<RawMessage>();
 		// Debugging
 		//list_head old_sent, old_receive;
 		// Stats
@@ -103,8 +101,82 @@ namespace KlipperSharp
 		// wait for first message from MCU
 		bool waitFirstPacket = true;
 
-		public SerialQueue(string port, int baud)
+		[StructLayout(LayoutKind.Explicit)]
+		public struct RawMessage
 		{
+			[FieldOffset(0)]
+			public fixed byte msg[MESSAGE_MAX];
+			[FieldOffset(0 + MESSAGE_MAX)]
+			public byte len;
+
+			[FieldOffset(1 + MESSAGE_MAX)]
+			// Filled when on a command queue
+			public ulong min_clock;
+			[FieldOffset(1 + MESSAGE_MAX + 8)]
+			public ulong req_clock;
+
+			// Filled when in sent/receive queues
+			[FieldOffset(1 + MESSAGE_MAX)]
+			public double sent_time;
+			[FieldOffset(1 + MESSAGE_MAX + 8)]
+			public double receive_time;
+
+			public static RawMessage Create(byte[] data, byte len)
+			{
+				RawMessage qm = new RawMessage();
+				fixed (byte* pData = data)
+					Buffer.MemoryCopy(pData, qm.msg, SerialQueue.MESSAGE_MAX, len);
+				qm.len = len;
+				return qm;
+			}
+			public static RawMessage Create(byte* data, byte len)
+			{
+				RawMessage qm = new RawMessage();
+				Buffer.MemoryCopy(data, qm.msg, SerialQueue.MESSAGE_MAX, len);
+				qm.len = len;
+				return qm;
+			}
+			// Allocate a queue_message and fill it with a series of encoded vlq integers
+			public static RawMessage CreateAndEncode(uint[] data, int len)
+			{
+				RawMessage qm = new RawMessage();
+				int i;
+				byte* p = qm.msg;
+				for (i = 0; i < len; i++)
+				{
+					p = Encode_int(p, (int)data[i]);
+					if (p > &qm.msg[SerialQueue.MESSAGE_PAYLOAD_MAX])
+						goto fail;
+				}
+				qm.len = (byte)(p - qm.msg);
+				return qm;
+
+			fail:
+				//errorf("Encode error");
+				qm.len = 0;
+				return qm;
+			}
+
+			// Encode an integer as a variable length quantity (vlq)
+			static byte* Encode_int(byte* p, int v)
+			{
+				int sv = v;
+				if (sv < (3L << 5) && sv >= -(1L << 5)) goto f4;
+				if (sv < (3L << 12) && sv >= -(1L << 12)) goto f3;
+				if (sv < (3L << 19) && sv >= -(1L << 19)) goto f2;
+				if (sv < (3L << 26) && sv >= -(1L << 26)) goto f1;
+				*p++ = (byte)((v >> 28) | 0x80);
+			f1: *p++ = (byte)(((v >> 21) & 0x7f) | 0x80);
+			f2: *p++ = (byte)(((v >> 14) & 0x7f) | 0x80);
+			f3: *p++ = (byte)(((v >> 7) & 0x7f) | 0x80);
+			f4: *p++ = (byte)(v & 0x7f);
+				return p;
+			}
+		}
+
+		public SerialQueue(SerialPort serialPort)
+		{
+			this.serialPort = serialPort;
 			// Retransmit setup
 			send_seq = 1;
 			//if (write_only)
@@ -121,17 +193,22 @@ namespace KlipperSharp
 			// Queues
 			need_kick_clock = MAX_CLOCK;
 
-			serialPort = new SerialPort(port, baud);
-			serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
-			serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
-			serialPort.Encoding = Encoding.ASCII;
-			serialPort.DtrEnable = true;
+			//serialPort = new SerialPort(port, baud);
+			//serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
+			//serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
+			//serialPort.Encoding = Encoding.ASCII;
+			//serialPort.DtrEnable = true;
 			this.background_thread = new Thread(_bg_thread)
 			{
-				Name = "SerialQueue",
+				Name = nameof(SerialQueue),
 				IsBackground = true,
 				Priority = ThreadPriority.AboveNormal
 			};
+		}
+
+		internal string GetStats()
+		{
+			throw new NotImplementedException();
 		}
 
 		public void Start()
@@ -159,7 +236,7 @@ namespace KlipperSharp
 		// given time and priority.
 		public void send(command_queue cq, byte[] msg, int len, ulong min_clock = 0, ulong req_clock = 0)
 		{
-			queue_message qm = queue_message.Create(msg, (byte)len);
+			RawMessage qm = RawMessage.Create(msg, (byte)len);
 			qm.min_clock = min_clock;
 			qm.req_clock = req_clock;
 
@@ -167,7 +244,7 @@ namespace KlipperSharp
 		}
 
 		// Add a batch of messages to the given command_queue
-		public void send_batch(command_queue cq, queue_message[] msgs)
+		public void send_batch(command_queue cq, RawMessage[] msgs)
 		{
 			// Make sure min_clock is set in list and calculate total bytes
 			int len = 0;
@@ -213,7 +290,7 @@ namespace KlipperSharp
 		// Like serialqueue_send() but also builds the message to be sent
 		public void encode_and_send(command_queue cq, uint[] data, int len, ulong min_clock = 0, ulong req_clock = 0)
 		{
-			queue_message qm = queue_message.CreateAndEncode(data, len);
+			RawMessage qm = RawMessage.CreateAndEncode(data, len);
 			qm.min_clock = min_clock;
 			qm.req_clock = req_clock;
 
@@ -222,7 +299,7 @@ namespace KlipperSharp
 
 		// Return a message read from the serial port (or wait for one if none
 		// available)
-		public void pull(out queue_message pqm)
+		public void pull(out QueueMessage pqm)
 		{
 			//pthread_mutex_lock(&sq->lock);
 			lock (_lock)
@@ -240,11 +317,11 @@ namespace KlipperSharp
 				}
 
 				// Remove message from queue
-				queue_message qm;
+				RawMessage qm;
 				receive_queue.TryDequeue(out qm);
 
 				// Copy message
-				pqm = qm;
+				pqm = *(QueueMessage*)&qm;
 				//pqm = new queue_message();
 				//memcpy(pqm->msg, qm->msg, qm->len);
 				//pqm.len = qm.len;
@@ -296,53 +373,51 @@ namespace KlipperSharp
 			//pthread_mutex_unlock(&sq->lock);
 		}
 
-		double GetTime()
-		{
-			return time.ElapsedTicks * timeTicksToSec;
-		}
-
 		void _bg_thread(object obj)
 		{
-			time = Stopwatch.StartNew();
-			timeTicksToSec = 1.0 / Stopwatch.Frequency;
-			while (processRead)
+			try
 			{
-				double eventtime = GetTime();
-
-				Input_event(eventtime);
-
-				if (eventtime >= retransmitTimer)
+				while (processRead)
 				{
-					Retransmit_event(eventtime);
-				}
-				if (eventtime >= commandTimer)
-				{
-					Command_event(eventtime);
-				}
+					double eventtime = HighResolutionTime.Now;
 
-				double diff = retransmitTimer - eventtime;
-				double diff2 = commandTimer - eventtime;
-				diff = diff < diff2 ? diff : diff2;
-				if (diff <= 0.001f)
-					continue;
-				else if (diff < 0.005f || send_queue.Count > 0)
-					Thread.SpinWait(10);
-				else if (diff < 0.015f)
-					Thread.SpinWait(100);
-				else
-					Thread.Sleep(1);
+					Input_event(eventtime);
 
-				if (kick)
-				{
-					kick = false;
-					commandTimer = PR_NOW;
+					if (eventtime >= retransmitTimer)
+					{
+						Retransmit_event(eventtime);
+					}
+					if (eventtime >= commandTimer)
+					{
+						Command_event(eventtime);
+					}
+
+					double diff = retransmitTimer - eventtime;
+					double diff2 = commandTimer - eventtime;
+					diff = diff < diff2 ? diff : diff2;
+					if (diff <= 0.001f)
+						continue;
+					else if (diff < 0.005f || send_queue.Count > 0)
+						Thread.SpinWait(10);
+					else if (diff < 0.015f)
+						Thread.SpinWait(100);
+					else
+						Thread.Sleep(1);
+
+					if (kick)
+					{
+						kick = false;
+						commandTimer = PR_NOW;
+					}
 				}
 			}
-
-			//pthread_mutex_lock(&sq->lock) ;
-			//check_wake_receive(sq);
-			//pthread_mutex_unlock(&sq->lock) ;
-			check_wake_receive();
+			finally
+			{
+				//pthread_mutex_lock(&sq->lock) ;
+				//check_wake_receive(sq);
+				//pthread_mutex_unlock(&sq->lock) ;
+				check_wake_receive();
+			}
 		}
 
 		#region MyRegion
@@ -421,9 +496,9 @@ namespace KlipperSharp
 			if (length > MESSAGE_MIN)
 			{
 				// Add message to receive queue
-				queue_message qm = queue_message.Create(input_buf, (byte)length);
+				RawMessage qm = RawMessage.Create(input_buf, (byte)length);
 				qm.sent_time = (rseq > retransmit_seq ? last_receive_sent_time : 0.0);
-				qm.receive_time = GetTime();//get_monotonic(); // must be time post read()
+				qm.receive_time = HighResolutionTime.Now;//get_monotonic(); // must be time post read()
 				qm.receive_time -= baud_adjust * length;
 				receive_queue.Enqueue(qm);
 				check_wake_receive();
@@ -433,7 +508,7 @@ namespace KlipperSharp
 		// Update internal state when the receive sequence increases
 		void Update_receive_seq(double eventtime, ulong rseq)
 		{
-			queue_message sent;
+			RawMessage sent;
 			// Remove from sent queue
 			ulong sent_seq = receive_seq;
 			while (true)
@@ -624,7 +699,7 @@ namespace KlipperSharp
 
 			foreach (var cq in pending_queues)
 			{
-				queue_message qm;
+				RawMessage qm;
 				// Move messages from the stalled_queue to the ready_queue
 				while (cq.stalled_queue.TryDequeue(out qm))
 				{
@@ -753,10 +828,10 @@ namespace KlipperSharp
 				// Find highest priority message (message with lowest req_clock)
 				ulong min_clock = MAX_CLOCK;
 				command_queue cq = null;
-				queue_message qm = new queue_message();
+				RawMessage qm = new RawMessage();
 				foreach (var q in pending_queues)
 				{
-					queue_message m;
+					RawMessage m;
 					if (q.ready_queue.TryPeek(out m) && m.req_clock < min_clock)
 					{
 						min_clock = m.req_clock;
@@ -792,14 +867,15 @@ namespace KlipperSharp
 			sendBuffer.WriteByte((byte)(crc & 0xff));
 			sendBuffer.WriteByte(MESSAGE_SYNC);
 
-			queue_message output;
-			fixed (byte* p = sendBuffer.GetBuffer())
-			{
-				output = *(queue_message*)p;
-			}
-
 			// Send message
 			serialPort.Write(sendBuffer.GetBuffer(), 0, (int)sendBuffer.Length);
+
+			RawMessage output;
+			fixed (byte* p = sendBuffer.GetBuffer())
+			{
+				output = *(RawMessage*)p;
+			}
+			output.len = (byte)sendBuffer.Length;
 
 			//int ret = write(sq->serial_fd, output->msg, output->len);
 			//if (ret < 0)

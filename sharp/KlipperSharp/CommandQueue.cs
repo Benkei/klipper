@@ -6,7 +6,7 @@ namespace KlipperSharp
 {
 	public class command_queue
 	{
-		public Queue<queue_message> stalled_queue = new Queue<queue_message>();
-		public Queue<queue_message> ready_queue = new Queue<queue_message>();
+		public Queue<SerialQueue.RawMessage> stalled_queue = new Queue<SerialQueue.RawMessage>();
+		public Queue<SerialQueue.RawMessage> ready_queue = new Queue<SerialQueue.RawMessage>();
 	}
 }

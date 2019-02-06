@@ -1,5 +1,4 @@
-﻿using KlipperSharp;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -61,7 +60,6 @@ namespace ConsoleTest
 		static bool processRead = true;
 
 		static byte[] sendBuffer = new byte[Marshal.SizeOf<queue_message>()];
-		static Stopwatch time;
 		static double timeTicksToSec;
 
 		// Input reading
@@ -109,18 +107,19 @@ namespace ConsoleTest
 			Console.WriteLine($"GC: " + System.Runtime.GCSettings.LatencyMode);
 			System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
 
-			//serialPort = new SerialPort("COM5", 250000);
-			//serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
-			//serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
-			//serialPort.Encoding = Encoding.ASCII;
-			//serialPort.DtrEnable = true;
-			//serialPort.Open();
+			serialPort = new SerialPort("COM5", 250000);
+			serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
+			serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
+			serialPort.Encoding = Encoding.ASCII;
+			serialPort.DtrEnable = true;
+			serialPort.Open();
 
-			//ReaderThread();
+			ReaderThread();
 
-			Test();
+			//Test();
 		}
 
+		/*
 		static void Test()
 		{
 			var ser = new SerialQueue("COM5", 250000);
@@ -203,6 +202,7 @@ namespace ConsoleTest
 			}
 			Console.ReadKey();
 		}
+		*/
 
 		// Return a message read from the serial port (or wait for one if none
 		// available)
@@ -269,12 +269,11 @@ namespace ConsoleTest
 
 		static double GetTime()
 		{
-			return time.ElapsedTicks * timeTicksToSec;
+			return Stopwatch.GetTimestamp() * timeTicksToSec;
 		}
 
 		static void ReaderThread()
 		{
-			time = Stopwatch.StartNew();
 			timeTicksToSec = 1.0 / Stopwatch.Frequency;
 			while (processRead)
 			{
@@ -413,6 +412,8 @@ namespace ConsoleTest
 				receive_queue.Enqueue(qm);
 				//check_wake_receive(sq);
 
+
+				Console.WriteLine($"receive time {(qm.receive_time - qm.sent_time) * 1000}ms");
 
 				//{ 0, "identify_response offset=%u data=%.*s" }, uint32, buffer
 				MemoryStream msg = new MemoryStream(length);
