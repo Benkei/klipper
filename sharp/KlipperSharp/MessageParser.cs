@@ -1,11 +1,11 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Linq;
 using System.IO;
 using System.IO.Compression;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Json;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace KlipperSharp
@@ -17,7 +17,7 @@ namespace KlipperSharp
 		public bool signed = false;
 
 		public abstract void encode(BinaryWriter output, object value);
-		public abstract (object v, int position) parse(byte[] text, int position);
+		public abstract object parse(ReadOnlySpan<byte> text, ref int position);
 	}
 	public class PT_uint32 : PT_Type
 	{
@@ -34,7 +34,7 @@ namespace KlipperSharp
 			if (v >= 0x60 || v < -0x20) output.Write((byte)((v >> 7) & 0x7f | 0x80));
 			output.Write((byte)(v & 0x7f));
 		}
-		public override (object v, int position) parse(byte[] text, int position)
+		public override object parse(ReadOnlySpan<byte> text, ref int position)
 		{
 			var c = text[position];
 			position++;
@@ -49,7 +49,7 @@ namespace KlipperSharp
 			}
 			if (!signed)
 				v = (int)(v & 0xffffffff);
-			return (v, position);
+			return v;
 		}
 	}
 	public class PT_int32 : PT_uint32
@@ -86,24 +86,46 @@ namespace KlipperSharp
 		public PT_string()
 		{
 			is_integer = false;
-			max_length = 64;
+			max_length = SerialQueue.MESSAGE_MAX;
 		}
 		public override void encode(BinaryWriter output, object value)
 		{
 			output.Write((byte)((string)value).Length);
 			output.Write((string)value);
 		}
-		public override (object v, int position) parse(byte[] text, int position)
+		public unsafe override object parse(ReadOnlySpan<byte> text, ref int position)
 		{
 			var l = text[position];
-			var txt = Encoding.ASCII.GetString(text, position + 1, position + 1 + l);
-			return (txt, position + l + 1);
+			byte* block = stackalloc byte[l];
+			text[Range.Create(position + 1, position + 1 + l)].CopyTo(new Span<byte>(block, l));
+			var txt = Encoding.ASCII.GetString(block, l);
+			position += l + 1;
+			return txt;
 		}
 	}
-	public class PT_progmem_buffer : PT_string
+	public class PT_progmem_buffer : PT_buffer
 	{ }
-	public class PT_buffer : PT_string
-	{ }
+	public class PT_buffer : PT_Type
+	{
+		public PT_buffer()
+		{
+			is_integer = false;
+			max_length = SerialQueue.MESSAGE_MAX;
+		}
+		public override void encode(BinaryWriter output, object value)
+		{
+			output.Write((byte)((byte[])value).Length);
+			output.Write((byte[])value);
+		}
+		public override object parse(ReadOnlySpan<byte> text, ref int position)
+		{
+			var l = text[position];
+			byte[] block = new byte[l];
+			text[Range.Create(position + 1, position + 1 + l)].CopyTo(new Span<byte>(block));
+			position += l + 1;
+			return block;
+		}
+	}
 
 	public abstract class BaseFormat
 	{
@@ -130,14 +152,11 @@ namespace KlipperSharp
 				Param_names[i].Type.encode(writer, parameters[Param_names[i].Name]);
 			}
 		}
-		public abstract (Dictionary<string, object> msg, int pos) Parse(byte[] s, int pos);
+		public abstract Dictionary<string, object> Parse(ReadOnlySpan<byte> s, ref int pos);
 		public abstract string Format_params(Dictionary<string, string> parameters);
 	}
 	public class MessageFormat : BaseFormat
 	{
-		internal static Regex format = new Regex(@"(^\s*(?<CMD>[\w]+))|(\s*(?<PARAM>[\w]+)=(?<VALUE>[\w\%\.]+)\s*)",
-			RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
-
 		public Dictionary<string, PT_Type> Name_to_type;
 
 		public MessageFormat(int msgid, string msgformat)
@@ -149,7 +168,7 @@ namespace KlipperSharp
 			Param_names = new List<(string, PT_Type)>();
 			Name_to_type = new Dictionary<string, PT_Type>();
 
-			var match = format.Match(msgformat);
+			var match = MessageParser.MessageFormatRegex.Match(msgformat);
 			while (match.Success)
 			{
 				var cmd = match.Groups["CMD"];
@@ -168,32 +187,17 @@ namespace KlipperSharp
 				}
 				match = match.NextMatch();
 			}
-
-			//var parts = msgformat.Split(' ');
-			//Name = parts[0];
-			//List<string> argparts = new List<string>();
-			//for (int i = 1; i < parts.Length; i++)
-			//{
-			//	argparts.AddRange(parts[i].Split('='));
-			//}
-			//for (int i = 0; i < argparts.Count; i += 2)
-			//{
-			//	var handle = MessageParser.MessageTypes[argparts[i + 1]];
-			//	Param_types.Add(handle);
-			//	Param_names.Add((argparts[i], handle));
-			//	Name_to_type.Add(argparts[i], handle);
-			//}
 		}
 
-		public override (Dictionary<string, object> msg, int pos) Parse(byte[] s, int pos)
+		public override Dictionary<string, object> Parse(ReadOnlySpan<byte> s, ref int pos)
 		{
 			pos++;
-			var output = new Dictionary<string, object>();
+			var output = new Dictionary<string, object>(Param_names.Count);
 			for (int i = 0; i < Param_names.Count; i++)
 			{
-				output[Param_names[i].Name] = Param_names[i].Type.parse(s, pos);
+				output[Param_names[i].Name] = Param_names[i].Type.parse(s, ref pos);
 			}
-			return (output, pos);
+			return output;
 		}
 		public override string Format_params(Dictionary<string, string> parameters)
 		{
@@ -215,46 +219,46 @@ namespace KlipperSharp
 		public OutputFormat(int msgid, string msgformat)
 		{
 			Name = "#output";
-			this.Msgid = msgid;
-			this.Msgformat = msgformat;
-			this.Debugformat = MessageParser.Convert_msg_format(msgformat);
-			this.Param_types = new List<PT_Type>();
-			var args = msgformat;
-			while (true)
+			Msgid = msgid;
+			Msgformat = msgformat;
+			Debugformat = MessageParser.Convert_msg_format(msgformat);
+			Param_types = new List<PT_Type>();
+
+			var match = MessageParser.MessageFormatRegex.Match(msgformat);
+			while (match.Success)
 			{
-				var pos = args.IndexOf('%');
-				if (pos < 0)
-					break;
-				if (pos + 1 >= args.Length || args[pos + 1] != '%')
+				var cmd = match.Groups["CMD"];
+				var param = match.Groups["PARAM"];
+				var value = match.Groups["VALUE"];
+				if (cmd.Success)
 				{
-					for (int i = 0; i < 4; i++)
-					{
-						PT_Type t;
-						if (MessageParser.MessageTypes.TryGetValue(args.Substring(pos, ((pos + 1) + i)), out t))
-						{
-							this.Param_types.Add(t);
-							break;
-						}
-					}
+					Name = cmd.Value;
 				}
-				args = args.Substring(pos + 1);
+				if (param.Success && value.Success)
+				{
+					var handle = MessageParser.MessageTypes[value.Value];
+					Param_types.Add(handle);
+				}
+				match = match.NextMatch();
 			}
 		}
 
-		public override (Dictionary<string, object> msg, int pos) Parse(byte[] s, int pos)
+		public override Dictionary<string, object> Parse(ReadOnlySpan<byte> s, ref int pos)
 		{
 			pos++;
-			var output = new List<int>();
+			var output = new string[Param_types.Count];
 			for (int i = 0; i < Param_types.Count; i++)
 			{
-				var data = Param_types[i].parse(s, pos);
-				//if (!Param_types[i].is_integer)
-				//	v = repr(v);
-				//output.append(v);
+				var data = Param_types[i].parse(s, ref pos);
+				if (data == null)
+					data = "null";
+				output[i] = data as string;
 			}
-			//var outmsg = Debugformat % tuple(out);
-			//return ((outmsg), pos);
-			return (null, 0);
+			var outmsg = string.Format(Debugformat, output);
+			var dict = new Dictionary<string, object>(1) {
+				{ "#msg", outmsg }
+			};
+			return dict;
 		}
 		public override string Format_params(Dictionary<string, string> parameters)
 		{
@@ -267,11 +271,20 @@ namespace KlipperSharp
 		{
 			Name = "#unknown";
 		}
-		public override (Dictionary<string, object> msg, int pos) Parse(byte[] s, int pos)
+		public unsafe override Dictionary<string, object> Parse(ReadOnlySpan<byte> s, ref int pos)
 		{
 			var msgid = s[pos];
-			var msg = s;// str(bytearray(s));
-			return (/*{ "#msgid": msgid, "#msg": msg}*/null, s.Length - MessageParser.MESSAGE_TRAILER_SIZE);
+
+			byte* block = stackalloc byte[s.Length];
+			s.CopyTo(new Span<byte>(block, s.Length));
+			var msg = Encoding.ASCII.GetString(block, s.Length);
+
+			pos += s.Length - MessageParser.MESSAGE_TRAILER_SIZE;
+			var output = new Dictionary<string, object>(2) {
+				{ "#msgid", msgid },
+				{ "#msg", msg }
+			};
+			return output;
 		}
 		public override string Format_params(Dictionary<string, string> parameters)
 		{
@@ -279,8 +292,10 @@ namespace KlipperSharp
 		}
 	}
 
-	public class MessageParser
+	public unsafe class MessageParser
 	{
+		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
+
 		public const int MESSAGE_MIN = 5;
 		public const int MESSAGE_MAX = 64;
 		public const int MESSAGE_HEADER_SIZE = 2;
@@ -314,67 +329,47 @@ namespace KlipperSharp
 		public Dictionary<string, string> config = new Dictionary<string, string>();
 		public string version = "";
 		public string build_versions = "";
-		private byte[] raw_identify_data = null;
+		private MemoryStream raw_identify_data = null;
 
-		[DataContract]
-		public class IdentifyData
-		{
-			[DataMember]
-			public Dictionary<int, string> messages;
-			[DataMember]
-			public List<int> commands;
-			[DataMember]
-			public List<int> responses;
-			[DataMember]
-			public Dictionary<int, string> static_strings;
-			[DataMember]
-			public Dictionary<string, string> config;
-			[DataMember]
-			public string version;
-			[DataMember]
-			public string build_versions;
-		}
 
-		public static int Crc16_ccitt(ReadOnlySpan<byte> buff)
-		{
-			int crc = 0xffff;
-			for (int i = 0; i < buff.Length; i++)
-			{
-				int data = buff[i];
-				data ^= crc & 0xff;
-				data ^= (data & 0x0f) << 4;
-				crc = ((data << 8) | (crc >> 8)) ^ (data >> 4) ^ (data << 3);
-			}
-			return crc;
-		}
-
-		// Update the message format to be compatible with python's % operator
+		internal static Regex MessageFormatRegex = new Regex(@"(^\s*(?<CMD>[\w]+))|(\s*(?<PARAM>[\w]+)=(?<VALUE>[\w\%\.]+)\s*)",
+			RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+		internal static Regex DebugFormatRegex = new Regex(@"(%u)|(%i)|(%hu)|(%hi)|(%c)|(%s)|(%\.\*s)|(%\*s)",
+			RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 		public static string Convert_msg_format(string msgformat)
 		{
-			var mf = msgformat.Replace("%c", "%u").Replace("%.*s", "%s").Replace("%*s", "%s");
-			return mf;
+			var parts = DebugFormatRegex.Split(msgformat);
+			var sb = new StringBuilder(msgformat.Length);
+			for (int i = 0; i < parts.Length; i++)
+			{
+				sb.Append(parts[i]);
+				sb.Append("{");
+				sb.Append(i);
+				sb.Append("}");
+			}
+			return sb.ToString();
 		}
 
 
 		public MessageParser()
 		{
-			this._init_messages(DefaultMessages, DefaultMessages.Keys.ToList());
+			_init_messages(DefaultMessages, DefaultMessages.Keys.ToList());
 		}
 
 		public void _init_messages(Dictionary<int, string> messages, List<int> parsers)
 		{
-			foreach (var _tup_1 in messages)
+			foreach (var item in messages)
 			{
-				var msgid = _tup_1.Key;
-				var msgformat = _tup_1.Value;
+				var msgid = item.Key;
+				var msgformat = item.Value;
 				if (!parsers.Contains(msgid))
 				{
-					this.messages_by_id[msgid] = new OutputFormat(msgid, msgformat);
+					messages_by_id[msgid] = new OutputFormat(msgid, msgformat);
 					continue;
 				}
 				var msg = new MessageFormat(msgid, msgformat);
-				this.messages_by_id[msgid] = msg;
-				this.messages_by_name[msg.Name] = msg;
+				messages_by_id[msgid] = msg;
+				messages_by_name[msg.Name] = msg;
 			}
 		}
 
@@ -404,30 +399,30 @@ namespace KlipperSharp
 				return -1;
 			}
 			var msgcrc = BitConverter.ToInt16(s, msglen - MESSAGE_TRAILER_CRC);
-			var crc = Crc16_ccitt(new ReadOnlySpan<byte>(s, 0, msglen - MESSAGE_TRAILER_SIZE));
+			var crc = SerialUtil.Crc16_ccitt(new ReadOnlySpan<byte>(s, 0, msglen - MESSAGE_TRAILER_SIZE));
 			if (crc != msgcrc)
 			{
-				//logging.debug("got crc %s vs %s", repr(crc), repr(msgcrc))
+				logging.Debug("got crc {0} vs {1}", crc, msgcrc);
 				return -1;
 			}
 			return msglen;
 		}
-		public List<object> dump(byte[] s)
+		public List<string> dump(byte[] s)
 		{
 			var msgseq = s[MESSAGE_POS_SEQ];
 			var @out = new List<string> { $"seq: {msgseq:X}" };
 			var pos = MESSAGE_HEADER_SIZE;
-			while (true)
-			{
-				var msgid = s[pos];
-				BaseFormat mid = this.messages_by_id.Get(msgid, unknown);
-				var _tup_1 = mid.Parse(s, pos);
-				var parameter = _tup_1.Item1;
-				pos = _tup_1.Item2;
-				@out.Add(mid.Format_params(parameter));
-				if (pos >= s.Length - MESSAGE_TRAILER_SIZE)
-					break;
-			}
+			//while (true)
+			//{
+			//	var msgid = s[pos];
+			//	BaseFormat mid = this.messages_by_id.Get(msgid, unknown);
+			//	var _tup_1 = mid.Parse(s, pos);
+			//	var parameter = _tup_1.Item1;
+			//	pos = _tup_1.Item2;
+			//	//@out.Add(mid.Format_params(parameter));
+			//	if (pos >= s.Length - MESSAGE_TRAILER_SIZE)
+			//		break;
+			//}
 			return @out;
 		}
 
@@ -448,27 +443,29 @@ namespace KlipperSharp
 			return null;
 		}
 
-		public object parse(byte[] s)
+		public Dictionary<string, object> parse(ref QueueMessage s)
 		{
-			var msgid = s[MESSAGE_HEADER_SIZE];
+			var msgid = s.msg[MESSAGE_HEADER_SIZE];
 			BaseFormat mid;
-			if (!this.messages_by_id.TryGetValue(msgid, out mid))
-				mid = this.unknown;
-			//var _tup_1 = mid.Parse(s, MESSAGE_HEADER_SIZE);
-			//var parameter = _tup_1.Item1;
-			//var pos = _tup_1.Item2;
-			//if (pos != s.Length - MESSAGE_TRAILER_SIZE)
-			//{
-			//	throw new Exception("Extra data at end of message");
-			//}
-			//parameter["#name"] = mid.name;
-			//var static_string_id = parameter.get("static_string_id");
-			//if (static_string_id != null)
-			//{
-			//	parameter["#msg"] = this.static_strings.get(static_string_id, "?");
-			//}
-			//return parameter;
-			return null;
+			if (!messages_by_id.TryGetValue(msgid, out mid))
+				mid = unknown;
+			Dictionary<string, object> parameter;
+			var pos = MESSAGE_HEADER_SIZE;
+			fixed (byte* pMsg = s.msg)
+			{
+				parameter = mid.Parse(new ReadOnlySpan<byte>(pMsg, s.len), ref pos);
+			}
+			if (pos != s.len - MESSAGE_TRAILER_SIZE)
+			{
+				throw new Exception("Extra data at end of message");
+			}
+			parameter["#name"] = mid.Name;
+			var static_string_id = parameter.Get("static_string_id");
+			if (static_string_id != null)
+			{
+				parameter["#msg"] = static_strings.Get((int)static_string_id, "?");
+			}
+			return parameter;
 		}
 
 		public byte[] encode(int seq, byte[] cmd)
@@ -480,7 +477,7 @@ namespace KlipperSharp
 				(byte)seq
 			};
 			@out.AddRange(cmd);
-			@out.AddRange(BitConverter.GetBytes((short)Crc16_ccitt(@out.ToArray())));
+			@out.AddRange(BitConverter.GetBytes((short)SerialUtil.Crc16_ccitt(@out.ToArray())));
 			@out.Add(MESSAGE_SYNC);
 			return @out.ToArray();
 		}
@@ -505,8 +502,9 @@ namespace KlipperSharp
 
 		public BaseFormat lookup_command(string msgformat)
 		{
-			var parts = msgformat.Trim().Split();
-			var msgname = parts[0];
+			msgformat = msgformat.Trim();
+			var idx = msgformat.IndexOf(' ');
+			var msgname = msgformat.Substring(0, idx);
 			BaseFormat mp;
 			if (!messages_by_name.TryGetValue(msgname, out mp))
 			{
@@ -525,7 +523,7 @@ namespace KlipperSharp
 				return;
 
 			string msgName;
-			Dictionary<string, string> msgParams = ParseMsgFormat(msg, out msgName);
+			var msgParams = ParseMsgFormat(msg, out msgName);
 
 			if (msgName == null || msgParams.Count == 0)
 				return;
@@ -534,7 +532,7 @@ namespace KlipperSharp
 			if (!messages_by_name.TryGetValue(msgName, out mp))
 				throw new Exception($"Unknown command: {msgName}");
 
-			Dictionary<string, object> argParts = new Dictionary<string, object>(msgParams.Count);
+			var argParts = new Dictionary<string, object>(msgParams.Count);
 			try
 			{
 				foreach (var item in msgParams)
@@ -547,7 +545,7 @@ namespace KlipperSharp
 					}
 					else
 					{
-						tval = this._parse_buffer(item.Value);
+						tval = _parse_buffer(item.Value);
 					}
 					argParts[item.Key] = tval;
 				}
@@ -572,7 +570,7 @@ namespace KlipperSharp
 		{
 			msgName = null;
 			var msgParams = new Dictionary<string, string>();
-			var match = MessageFormat.format.Match(msg);
+			var match = MessageFormatRegex.Match(msg);
 			while (match.Success)
 			{
 				var cmd = match.Groups["CMD"];
@@ -591,71 +589,91 @@ namespace KlipperSharp
 			return msgParams;
 		}
 
-		public void process_identify(byte[] data, bool decompress = true)
+		public void process_identify(MemoryStream data, bool decompress = true)
 		{
 			try
 			{
 				if (decompress)
 				{
 					data = ZlibDecompress(data);
-					//data = zlib.decompress(data);
 				}
-				this.raw_identify_data = data;
-				var identify_data = JsonLoad<IdentifyData>(data);
-
-				//data = json.loads(data);
-				var messages = identify_data.messages;
-				var commands = identify_data.commands;
-				var responses = identify_data.responses;
-				this.command_ids = commands;
-				this.static_strings = identify_data.static_strings ?? new Dictionary<int, string>();
-				this.config = identify_data.config ?? new Dictionary<string, string>();
-				this.version = identify_data.version ?? "";
-				this.build_versions = identify_data.build_versions ?? "";
-
-				var cmds = new List<int>();
-				cmds.AddRange(commands);
-				cmds.AddRange(responses);
-				this._init_messages(messages, cmds);
-			}
-			catch (Exception e)
-			{
-				//logging.exception("process_identify error");
-				throw new Exception($"Error during identify: {e}");
-			}
-		}
-
-		private static byte[] ZlibDecompress(byte[] data)
-		{
-			var ms = new MemoryStream(512);
-			using (var s = new GZipStream(new MemoryStream(data), CompressionLevel.Optimal))
-			{
-				var buffer = new byte[512];
-				int read;
-				do
+				raw_identify_data = data;
+				using (var identify_data = JsonDocument.Parse(data))
 				{
-					read = s.Read(buffer, 0, 512);
-					ms.Write(buffer, 0, read);
-				} while (read > 0);
+					var cmds = new List<int>();
+
+					var messagesJson = identify_data.RootElement.GetProperty("messages");
+					var messages = new Dictionary<int, string>();
+					foreach (var property in messagesJson.EnumerateObject())
+					{
+						messages.Add(int.Parse(property.Name), property.Value.GetString());
+					}
+
+					var commandsJson = identify_data.RootElement.GetProperty("commands");
+					command_ids = new List<int>();
+					foreach (var item in commandsJson.EnumerateArray())
+					{
+						var cmd = item.GetInt32();
+						cmds.Add(cmd);
+						command_ids.Add(cmd);
+					}
+
+					var responsesJson = identify_data.RootElement.GetProperty("responses");
+					foreach (var item in responsesJson.EnumerateArray())
+					{
+						cmds.Add(item.GetInt32());
+					}
+
+					var staticStringsJson = identify_data.RootElement.GetProperty("static_strings");
+					static_strings = new Dictionary<int, string>();
+					foreach (var property in staticStringsJson.EnumerateObject())
+					{
+						static_strings.Add(int.Parse(property.Name), property.Value.GetString());
+					}
+
+					var configJson = identify_data.RootElement.GetProperty("config");
+					config = new Dictionary<string, string>();
+					foreach (var property in configJson.EnumerateObject())
+					{
+						config.Add(property.Name, property.Value.GetString());
+					}
+
+					version = identify_data.RootElement.GetProperty("version").GetString() ?? "";
+					build_versions = identify_data.RootElement.GetProperty("build_versions").GetString() ?? "";
+
+					_init_messages(messages, cmds);
+				}
 			}
-			data = ms.ToArray();
-			return data;
+			catch (Exception ex)
+			{
+				logging.Error(ex, "process_identify error");
+			}
 		}
 
-		private static T JsonLoad<T>(byte[] data)
+		private static MemoryStream ZlibDecompress(MemoryStream data)
 		{
-			var ser = new DataContractJsonSerializer(typeof(T));
-			return (T)ser.ReadObject(new MemoryStream(data));
+			// hack fix
+			var ms = new MemoryStream((int)data.Length);
+			// ignore first two and the last bytes
+			data.Position = 2;
+			data.SetLength(data.Length - 1);
+			using (var s = new DeflateStream(data, CompressionMode.Decompress, true))
+			{
+				s.CopyTo(ms, 512);
+			}
+			data.Position = 0;
+			data.SetLength(data.Length + 1);
+			return ms;
 		}
 
-		public string get_constant(string name, string @default = "", object parser = null)
+		public string get_constant(string name, string @default = "")
 		{
 			string value;
 			if (!config.TryGetValue(name, out value))
 			{
 				if (@default == "")
 				{
-					throw new Exception($"Firmware constant {name}' not found");
+					throw new Exception($"Firmware constant '{name}' not found");
 				}
 				value = @default;
 			}
@@ -664,7 +682,7 @@ namespace KlipperSharp
 
 		public float get_constant_float(string name, float @default = 0)
 		{
-			var result = this.get_constant(name, "0");
+			var result = get_constant(name, "0");
 			float value;
 			if (!float.TryParse(result, out value))
 				value = @default;
@@ -673,7 +691,7 @@ namespace KlipperSharp
 
 		public int get_constant_int(string name, int @default = 0)
 		{
-			var result = this.get_constant(name, "0");
+			var result = get_constant(name, "0");
 			int value;
 			if (!int.TryParse(result, out value))
 				value = @default;

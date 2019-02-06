@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
@@ -9,6 +10,8 @@ namespace KlipperSharp
 {
 	public class SerialReader
 	{
+		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
+
 		public const int BITS_PER_BYTE = 10;
 
 		private SerialPort serialPort;
@@ -16,135 +19,130 @@ namespace KlipperSharp
 		public MessageParser msgparser;
 		private object _lock = new object();
 		private Thread background_thread;
-		private Dictionary<(string, int), Action<object>> handlers;
+		private Dictionary<ValueTuple<string, int>, Action<Dictionary<string, object>>> handlers;
 
-		public SerialQueue queue;
+		public SerialQueue serialqueue;
 
 		public string Port;
 		public int Baud;
+		public command_queue default_cmd_queue = new command_queue();
 
 		public SerialReader(string port, int baud)
 		{
 			Port = port;
 			Baud = baud;
-			msgparser = new MessageParser();
-
-			// Threading
-			this.background_thread = new Thread(_bg_thread);
 			// Message handlers
-			var handlers = new Dictionary<string, Action<object>>
+			handlers = new Dictionary<ValueTuple<string, int>, Action<Dictionary<string, object>>>()
 			{
-				{ "#unknown", this.handle_unknown },
-				{ "#output", this.handle_output },
-				{ "shutdown", this.handle_output },
-				{ "is_shutdown", this.handle_output }
+				{ ("#unknown", 0), handle_unknown },
+				{ ("#output", 0), handle_output },
+				{ ("shutdown", 0), handle_output },
+				{ ("is_shutdown", 0), handle_output },
 			};
-			this.handlers = new Dictionary<(string, int), Action<object>>();
-			foreach (var item in handlers)
-			{
-				var key = (item.Key, 0);
-				this.handlers[key] = item.Value;
-			}
 		}
 		~SerialReader()
 		{
-			this.disconnect();
+			disconnect();
 		}
 
 		private void _bg_thread()
 		{
+			QueueMessage response;
 			while (processRead)
 			{
-				//var line = serialPort.Read();
+				serialqueue.pull(out response);
+				if (response.len == 0)
+					continue;
 
-
-
-				var parameter = this.msgparser.parse(line);
+				var parameter = msgparser.parse(ref response);
 				parameter["#sent_time"] = response.sent_time;
 				parameter["#receive_time"] = response.receive_time;
-				var hdl = (parameter["#name"], parameter.get("oid"));
+				var hdl = ((string)parameter["#name"], (int)parameter.Get("oid"));
+				Action<Dictionary<string, object>> callback;
 				lock (_lock)
 				{
-					hdl = this.handlers.get(hdl, this.handle_default);
+					callback = handlers.Get(hdl, handle_default);
 				}
 				try
 				{
-					hdl(parameter);
+					callback(parameter);
 				}
-				catch
+				catch (Exception ex)
 				{
-					//logging.exception("Exception in serial callback");
+					logging.Error(ex, $"Exception in serial callback '{hdl.Item1}'");
 				}
-
-				Thread.Sleep(0);
 			}
 		}
 
 		public void Connect()
 		{
 			// Initial connection
-			//logging.info("Starting serial connect");
-			byte[] identify_data = null;
+			logging.Info("Starting serial connect");
+			MemoryStream identify_data = null;
 			while (true)
 			{
 				//var starttime = this.reactor.monotonic();
 				try
 				{
-					if (this.Baud != 0)
+					if (Baud != 0)
 					{
 						serialPort = new SerialPort(Port, Baud);
 						serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
 						serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
 						serialPort.Encoding = Encoding.ASCII;
 						serialPort.Open();
-
 					}
 					//else
 					//{
 					//	this.ser = open(this.serialport, "rb+");
 					//}
 				}
-				catch
+				catch (Exception ex)
 				{
-					//logging.warn("Unable to open port: %s", e);
+					logging.Warn(ex, $"Unable to open port: {Port}");
 					//this.reactor.pause(starttime + 5.0);
+					Thread.Sleep(5000);
 					continue;
 				}
 				//if (this.Baud != 0)
 				//{
 				//	stk500v2_leave(this.ser, this.reactor);
 				//}
-				//this.serialqueue = this.ffi_lib.serialqueue_alloc(this.ser.fileno(), 0);
-				this.background_thread = new Thread(_bg_thread);
-				this.background_thread.IsBackground = true;
-				this.background_thread.Priority = ThreadPriority.AboveNormal;
-				this.background_thread.Start();
+				serialqueue = new SerialQueue(serialPort);
+				serialqueue.Start();
+				background_thread = new Thread(_bg_thread)
+				{
+					Name = nameof(SerialReader),
+					IsBackground = true,
+				};
+				background_thread.Start();
 				// Obtain and load the data dictionary from the firmware
-				//var sbs = SerialBootStrap(this);
-				//identify_data = sbs.get_identify_data(starttime + 5.0);
-				//if (identify_data == null)
-				//{
-				//	logging.warn("Timeout on serial connect");
-				//	this.disconnect();
-				//	continue;
-				//}
+				var sbs = new SerialBootStrap(this);
+				identify_data = sbs.get_identify_data(/*starttime + 5.0*/ 0);
+				if (identify_data == null)
+				{
+					logging.Warn("Timeout on serial connect");
+					disconnect();
+					continue;
+				}
 				break;
 			}
 			msgparser = new MessageParser();
 			msgparser.process_identify(identify_data);
-			this.register_callback(this.handle_unknown, "#unknown");
+			register_callback(handle_unknown, "#unknown");
 			// Setup baud adjust
 			var mcu_baud = msgparser.get_constant_int("SERIAL_BAUD");
 			if (mcu_baud != 0)
 			{
 				var baud_adjust = BITS_PER_BYTE / mcu_baud;
 				serialPort.BaudRate = baud_adjust;
+				serialqueue.set_baud_adjust(baud_adjust);
 				//this.ffi_lib.serialqueue_set_baud_adjust(this.serialqueue, baud_adjust);
 			}
 			var receive_window = msgparser.get_constant_int("RECEIVE_WINDOW");
 			if (receive_window != 0)
 			{
-				//serialPort.ReceivedBytesThreshold = receive_window;
+				serialqueue.set_receive_window(receive_window);
 				//this.ffi_lib.serialqueue_set_receive_window(this.serialqueue, receive_window);
 			}
 		}
@@ -156,13 +154,30 @@ namespace KlipperSharp
 			//this.serialqueue = this.ffi_lib.serialqueue_alloc(this.ser.fileno(), 1);
 		}
 
-		public void set_clock_est(object freq, object last_time, object last_clock)
+		public void set_clock_est(double freq, double last_time, ulong last_clock)
 		{
+			serialqueue.set_clock_est(freq, last_time, last_clock);
 			//this.ffi_lib.serialqueue_set_clock_est(this.serialqueue, freq, last_time, last_clock);
 		}
 
 		public void disconnect()
 		{
+			processRead = false;
+			if (serialqueue != null)
+			{
+				serialqueue.Close();
+				serialqueue = null;
+			}
+			if (background_thread != null && !background_thread.Join(5000))
+			{
+				background_thread.Abort();
+				background_thread = null;
+			}
+			if (serialPort != null)
+			{
+				serialPort.Close();
+				serialPort = null;
+			}
 			//if (this.serialqueue != null)
 			//{
 			//	this.ffi_lib.serialqueue_exit(this.serialqueue);
@@ -180,7 +195,7 @@ namespace KlipperSharp
 			//}
 		}
 
-		public string stats(object eventtime)
+		public string stats(double eventtime)
 		{
 			//if (this.serialqueue == null)
 			//{
@@ -188,15 +203,19 @@ namespace KlipperSharp
 			//}
 			//this.ffi_lib.serialqueue_get_stats(this.serialqueue, this.stats_buf, this.stats_buf.Count);
 			//return this.ffi_main.@string(this.stats_buf);
-			return null;
+			if (serialqueue == null)
+			{
+				return "";
+			}
+			return serialqueue.GetStats();
 		}
 
 		// Serial response callbacks
-		public void register_callback(Action<object> callback, string name, int oid = 0)
+		public void register_callback(Action<Dictionary<string, object>> callback, string name, int oid = 0)
 		{
 			lock (_lock)
 			{
-				//this.handlers[name, oid] = callback;
+				handlers[(name, oid)] = callback;
 			}
 		}
 
@@ -204,36 +223,31 @@ namespace KlipperSharp
 		{
 			lock (_lock)
 			{
-				//this.handlers.Remove([name, oid]);
+				handlers.Remove((name, oid));
 			}
 		}
 
 		// Command sending
-		public void raw_send(object cmd, int minclock, int reqclock, object cmd_queue)
+		public void raw_send(byte[] cmd, ulong minclock, ulong reqclock, command_queue cmd_queue)
 		{
 			//this.ffi_lib.serialqueue_send(this.serialqueue, cmd_queue, cmd, cmd.Count, minclock, reqclock);
+			serialqueue.send(cmd_queue, cmd, cmd.Length, minclock, reqclock);
 		}
 
-		public void send(object msg, int minclock = 0, int reqclock = 0)
+		public void send(object msg, ulong minclock = 0, ulong reqclock = 0)
 		{
-			//var cmd = this.msgparser.create_command(msg);
-			//this.raw_send(cmd, minclock, reqclock, this.default_cmd_queue);
+			//var cmd = msgparser.create_command(msg);
+			//raw_send(cmd, minclock, reqclock, default_cmd_queue);
 		}
 
-		public SerialCommand lookup_command(string msgformat, object cq = null)
+		public SerialCommand lookup_command(string msgformat, command_queue cq = null)
 		{
 			if (cq == null)
 			{
-				cq = this.default_cmd_queue;
+				cq = default_cmd_queue;
 			}
-			var cmd = this.msgparser.lookup_command(msgformat);
+			var cmd = msgparser.lookup_command(msgformat);
 			return new SerialCommand(this, cq, cmd);
-		}
-
-		public object alloc_command_queue()
-		{
-			//return this.ffi_main.gc(this.ffi_lib.serialqueue_alloc_commandqueue(), this.ffi_lib.serialqueue_free_commandqueue);
-			return null;
 		}
 
 
@@ -270,19 +284,19 @@ namespace KlipperSharp
 
 
 		// Default message handlers
-		public void handle_unknown(object parameter)
+		public void handle_unknown(Dictionary<string, object> parameter)
 		{
-			//logging.warn("Unknown message type %d: %s", parameter["#msgid"], repr(parameter["#msg"]));
+			logging.Warn("Unknown message type %d: %s", parameter["#msgid"], parameter["#msg"]);
 		}
 
-		public void handle_output(object parameter)
+		public void handle_output(Dictionary<string, object> parameter)
 		{
-			//logging.info("%s: %s", params["#parameter"], parameter["#msg"]);
+			logging.Info("%s: %s", parameter["#name"], parameter["#msg"]);
 		}
 
-		public void handle_default(object parameter)
+		public void handle_default(Dictionary<string, object> parameter)
 		{
-			//logging.warn("got %s", parameter);
+			logging.Warn("got %s", parameter);
 		}
 
 	}
@@ -290,30 +304,30 @@ namespace KlipperSharp
 	public class SerialCommand
 	{
 		private SerialReader serial;
-		private object cmd_queue;
+		private command_queue cmd_queue;
 		private BaseFormat cmd;
 
-		public SerialCommand(SerialReader serial, object cmd_queue, BaseFormat cmd)
+		public SerialCommand(SerialReader serial, command_queue cmd_queue, BaseFormat cmd)
 		{
 			this.serial = serial;
 			this.cmd_queue = cmd_queue;
 			this.cmd = cmd;
 		}
 
-		public void send(object data/* = Tuple.Create("<Empty>")*/, int minclock = 0, int reqclock = 0)
+		public void send(object[] data/* = Tuple.Create("<Empty>")*/, ulong minclock = 0, ulong reqclock = 0)
 		{
 			var buffer = new MemoryStream();
 			var writer = new BinaryWriter(buffer, Encoding.ASCII);
-			this.cmd.Encode(data, writer);
-			this.serial.raw_send(cmd, minclock, reqclock, this.cmd_queue);
+			cmd.Encode(data, writer);
+			serial.raw_send(buffer.ToArray(), minclock, reqclock, cmd_queue);
 		}
 
-		public object send_with_response(object data /*= Tuple.Create("<Empty>")*/, object response = null, int response_oid = 0)
+		public Dictionary<string, object> send_with_response(object[] data /*= Tuple.Create("<Empty>")*/, string response = null, int response_oid = 0)
 		{
 			var buffer = new MemoryStream();
 			var writer = new BinaryWriter(buffer, Encoding.ASCII);
-			this.cmd.Encode(data, writer);
-			var src = new SerialRetryCommand(this.serial, cmd, response, response_oid);
+			cmd.Encode(data, writer);
+			var src = new SerialRetryCommand(serial, buffer.ToArray(), response, response_oid);
 			return src.get_response();
 		}
 	}
@@ -323,69 +337,71 @@ namespace KlipperSharp
 		public const double TIMEOUT_TIME = 5.0;
 		public const double RETRY_TIME = 0.5;
 		private SerialReader serial;
-		private object cmd;
+		private byte[] cmd;
 		private string name;
 		private int oid;
 		private object response;
 		private double min_query_time;
 		private object send_timer;
 
-		public SerialRetryCommand(SerialReader serial, object cmd, string name, int oid = 0)
+		public SerialRetryCommand(SerialReader serial, byte[] cmd, string name, int oid = 0)
 		{
 			this.serial = serial;
 			this.cmd = cmd;
 			this.name = name;
 			this.oid = oid;
-			this.response = null;
-			this.min_query_time = this.serial.queue.get_monotonic();//this.serial.reactor.monotonic();
-			this.serial.register_callback(this.handle_callback, this.name, this.oid);
+			response = null;
+			//min_query_time = this.serial.serialQueue.get_monotonic();//this.serial.reactor.monotonic();
+			this.serial.register_callback(handle_callback, this.name, this.oid);
 			//this.send_timer = this.serial.reactor.register_timer(this.send_event, this.serial.reactor.NOW);
 		}
 
 		public void unregister()
 		{
-			this.serial.unregister_callback(this.name, this.oid);
+			serial.unregister_callback(name, oid);
 			//this.serial.reactor.unregister_timer(this.send_timer);
 		}
 
 		public double send_event(double eventtime)
 		{
-			if (this.response != null)
-			{
-				return this.serial.reactor.NEVER;
-			}
-			this.serial.raw_send(this.cmd, 0, 0, this.serial.default_cmd_queue);
+			//if (response != null)
+			//{
+			//	return serial.reactor.NEVER;
+			//}
+			//serial.raw_send(cmd, 0, 0, serial.default_cmd_queue);
 			return eventtime + RETRY_TIME;
 		}
 
-		public void handle_callback(object parameter)
+		public void handle_callback(Dictionary<string, object> parameter)
 		{
-			double last_sent_time = parameter["#sent_time"];
-			if (last_sent_time >= this.min_query_time)
+			double last_sent_time = (double)parameter.Get("#sent_time");
+			if (last_sent_time >= min_query_time)
 			{
-				this.response = parameter;
+				response = parameter;
 			}
 		}
 
-		public object get_response()
+		public Dictionary<string, object> get_response()
 		{
-			double eventtime = this.serial.reactor.monotonic();
-			while (this.response == null)
-			{
-				eventtime = this.serial.reactor.pause(eventtime + 0.05);
-				if (eventtime > this.min_query_time + TIMEOUT_TIME)
-				{
-					this.unregister();
-					throw new Exception($"Timeout on wait for '{this.name}' response");
-				}
-			}
-			this.unregister();
-			return this.response;
+			//double eventtime = serial.reactor.monotonic();
+			//while (response == null)
+			//{
+			//	eventtime = serial.reactor.pause(eventtime + 0.05);
+			//	if (eventtime > min_query_time + TIMEOUT_TIME)
+			//	{
+			//		unregister();
+			//		throw new Exception($"Timeout on wait for '{name}' response");
+			//	}
+			//}
+			//unregister();
+			return response;
 		}
 	}
 
 	public class SerialBootStrap
 	{
+		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
+
 		public const double RETRY_TIME = 0.5;
 		private bool is_done;
 		private SerialReader serial;
@@ -396,58 +412,58 @@ namespace KlipperSharp
 		public SerialBootStrap(SerialReader serial)
 		{
 			this.serial = serial;
-			this.identify_data = new MemoryStream();
-			this.identify_cmd = this.serial.lookup_command("identify offset=%u count=%c");
-			this.serial.register_callback(this.handle_identify, "identify_response");
-			this.serial.register_callback(this.handle_unknown, "#unknown");
+			identify_data = new MemoryStream();
+			identify_cmd = this.serial.lookup_command("identify offset=%u count=%c");
+			this.serial.register_callback(handle_identify, "identify_response");
+			this.serial.register_callback(handle_unknown, "#unknown");
 			//this.send_timer = this.serial.reactor.register_timer(this.send_event, this.serial.reactor.NOW);
 		}
 
-		public byte[] get_identify_data(object timeout)
+		public MemoryStream get_identify_data(int timeout)
 		{
-			var eventtime = this.serial.reactor.monotonic();
-			while (!this.is_done && eventtime <= timeout)
-			{
-				eventtime = this.serial.reactor.pause(eventtime + 0.05);
-			}
-			this.serial.unregister_callback("identify_response");
-			this.serial.reactor.unregister_timer(this.send_timer);
-			if (!this.is_done)
-			{
-				return null;
-			}
-			return this.identify_data;
+			//var eventtime = serial.reactor.monotonic();
+			//while (!is_done && eventtime <= timeout)
+			//{
+			//	eventtime = serial.reactor.pause(eventtime + 0.05);
+			//}
+			//serial.unregister_callback("identify_response");
+			//serial.reactor.unregister_timer(send_timer);
+			//if (!is_done)
+			//{
+			//	return null;
+			//}
+			return identify_data;
 		}
 
-		public void handle_identify(object parameters)
+		public void handle_identify(Dictionary<string, object> parameter)
 		{
-			if (this.is_done || parameters["offset"] != this.identify_data.Length)
-			{
-				return;
-			}
-			byte[] msgdata = parameters["data"];
-			if (msgdata == null)
-			{
-				this.is_done = true;
-				return;
-			}
-			this.identify_data.Write(msgdata);
-			this.identify_cmd.send(new List<int> { (int)this.identify_data.Length, 40 });
+			//if (is_done || parameters["offset"] != identify_data.Length)
+			//{
+			//	return;
+			//}
+			//byte[] msgdata = parameters["data"];
+			//if (msgdata == null)
+			//{
+			//	is_done = true;
+			//	return;
+			//}
+			//identify_data.Write(msgdata);
+			//identify_cmd.send(new List<int> { (int)identify_data.Length, 40 });
 		}
 
 		public double send_event(double eventtime)
 		{
-			if (this.is_done)
-			{
-				return this.serial.reactor.NEVER;
-			}
-			this.identify_cmd.send(new List<int> { (int)this.identify_data.Length, 40 });
+			//if (is_done)
+			//{
+			//	return serial.reactor.NEVER;
+			//}
+			//identify_cmd.send(new List<int> { (int)identify_data.Length, 40 });
 			return eventtime + RETRY_TIME;
 		}
 
-		public void handle_unknown(object parameters)
+		public void handle_unknown(Dictionary<string, object> parameter)
 		{
-			//logging.debug("Unknown message %d (len %d) while identifying", parameters["#msgid"], parameters["#msg"].Count);
+			logging.Debug("Unknown message %d (len %d) while identifying", parameter.Get("#msgid"), ((byte[])parameter.Get("#msg")).Length);
 		}
 	}
 
