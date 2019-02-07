@@ -3,6 +3,7 @@ using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Ports;
 using System.Text;
 using System.Threading;
 
@@ -18,7 +19,13 @@ namespace KlipperSharpTest
 		[Test(Description = "Test identify and identify_response command")]
 		public void TestConnect()
 		{
-			var ser = new SerialQueue("COM5", 250000);
+			var serialPort = new SerialPort("COM5", 250000);
+			serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
+			serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
+			serialPort.Encoding = Encoding.ASCII;
+			serialPort.Open();
+
+			var ser = new SerialQueue(serialPort);
 			ser.Start();
 
 			MemoryStream buffer = new MemoryStream();

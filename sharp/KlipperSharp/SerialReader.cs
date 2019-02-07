@@ -340,7 +340,7 @@ namespace KlipperSharp
 		private byte[] cmd;
 		private string name;
 		private int oid;
-		private object response;
+		private Dictionary<string, object> response;
 		private double min_query_time;
 		private object send_timer;
 
