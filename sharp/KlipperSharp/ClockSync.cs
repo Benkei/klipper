@@ -9,9 +9,9 @@ namespace KlipperSharp
 		public const double RTT_AGE = 1E-05 / (60.0 * 60.0);
 		public const double DECAY = 1.0 / 30.0;
 		public const double TRANSMIT_EXTRA = 0.001;
-		protected object reactor;
+		protected SelectReactor reactor;
 		protected SerialReader serial;
-		private object get_clock_timer;
+		private ReactorTimer get_clock_timer;
 		private SerialCommand get_clock_cmd;
 		private int queries_pending;
 		protected internal double mcu_freq;
@@ -26,7 +26,7 @@ namespace KlipperSharp
 		private double time_variance;
 		private double clock_covariance;
 
-		public ClockSync(object reactor)
+		public ClockSync(SelectReactor reactor)
 		{
 			this.reactor = reactor;
 			serial = null;
@@ -67,7 +67,7 @@ namespace KlipperSharp
 				this.reactor.pause(0.1);
 			}
 			serial.register_callback(this._handle_clock, "clock");
-			this.reactor.update_timer(this.get_clock_timer, this.reactor.NOW);
+			this.reactor.update_timer(this.get_clock_timer, SelectReactor.NOW);
 		}
 
 		public virtual void connect_file(SerialReader serial, bool pace = false)
@@ -236,7 +236,7 @@ namespace KlipperSharp
 		private (double, double) clock_adj;
 		private double last_sync_time;
 
-		public SecondarySync(object reactor, ClockSync main_sync)
+		public SecondarySync(SelectReactor reactor, ClockSync main_sync)
 			 : base(reactor)
 		{
 			this.main_sync = main_sync;
