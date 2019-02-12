@@ -314,7 +314,7 @@ namespace KlipperSharp
 			this.cmd = cmd;
 		}
 
-		public void send(object[] data/* = Tuple.Create("<Empty>")*/, ulong minclock = 0, ulong reqclock = 0)
+		public void send(object[] data = null/* = Tuple.Create("<Empty>")*/, ulong minclock = 0, ulong reqclock = 0)
 		{
 			var buffer = new MemoryStream();
 			var writer = new BinaryWriter(buffer, Encoding.ASCII);
