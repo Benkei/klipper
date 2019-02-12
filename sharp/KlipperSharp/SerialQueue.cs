@@ -139,6 +139,11 @@ namespace KlipperSharp
 			// Allocate a queue_message and fill it with a series of encoded vlq integers
 			public static RawMessage CreateAndEncode(uint[] data, int len)
 			{
+				fixed (uint* pData = data)
+					return CreateAndEncode(pData, len);
+			}
+			public static RawMessage CreateAndEncode(uint* data, int len)
+			{
 				RawMessage qm = new RawMessage();
 				int i;
 				byte* p = qm.msg;
