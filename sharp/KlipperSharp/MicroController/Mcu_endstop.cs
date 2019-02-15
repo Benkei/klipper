@@ -16,30 +16,30 @@ namespace KlipperSharp.MicroController
 		public const double RETRY_QUERY = 1.0;
 		private Mcu _mcu;
 		private List<Mcu_stepper> _steppers;
-		private int _pin;
-		private int _pullup;
-		private int _invert;
+		private string _pin;
+		private bool _pullup;
+		private bool _invert;
 		private int _oid;
 		private bool _homing;
 		private double _min_query_time;
 		private double _next_query_print_time;
-		private Dictionary<object, object> _last_state;
-		private object _home_cmd;
-		private object _query_cmd;
+		private Dictionary<string, object> _last_state;
+		private SerialCommand _home_cmd;
+		private SerialCommand _query_cmd;
 
-		public Mcu_endstop(Mcu mcu, object pin_parameters)
+		public Mcu_endstop(Mcu mcu, PinParams pin_parameters)
 		{
 			_mcu = mcu;
 			_steppers = new List<Mcu_stepper>();
-			_pin = pin_parameters["pin"];
-			_pullup = pin_parameters["pullup"];
-			_invert = pin_parameters["invert"];
+			_pin = pin_parameters.pin;
+			_pullup = pin_parameters.pullup;
+			_invert = pin_parameters.invert;
 			_oid = 0;
 			_mcu.register_config_callback(_build_config);
 			_homing = false;
 			_min_query_time = 0.0;
 			_next_query_print_time = 0.0;
-			_last_state = new Dictionary<object, object>();
+			_last_state = new Dictionary<string, object>();
 		}
 
 		public Mcu get_mcu()
@@ -98,17 +98,17 @@ namespace KlipperSharp.MicroController
 			_homing = true;
 			_min_query_time = _mcu.monotonic();
 			_next_query_print_time = print_time + RETRY_QUERY;
-			_home_cmd.send(new List<object> {
+			_home_cmd.send(new object[] {
 					 _oid,
 					 clock,
 					 _mcu.seconds_to_clock(sample_time),
 					 sample_count,
 					 rest_ticks,
 					 triggered ^ _invert
-				}, reqclock: clock);
+				}, reqclock: (ulong)clock);
 			foreach (var s in _steppers)
 			{
-				s.note_homing_start(clock);
+				s.note_homing_start((ulong)clock);
 			}
 		}
 
@@ -125,7 +125,7 @@ namespace KlipperSharp.MicroController
 		{
 		}
 
-		public void _handle_end_stop_state(object parameters)
+		public void _handle_end_stop_state(Dictionary<string, object> parameters)
 		{
 			//logging.debug("end_stop_state %s", parameters);
 			_last_state = parameters;
@@ -134,14 +134,14 @@ namespace KlipperSharp.MicroController
 		public bool _check_busy(double eventtime, double home_end_time = 0.0)
 		{
 			// Check if need to send an end_stop_query command
-			var last_sent_time = _last_state.get("#sent_time", -1.0);
+			var last_sent_time = (double)_last_state.Get("#sent_time", -1.0);
 			if (last_sent_time >= _min_query_time || _mcu.is_fileoutput())
 			{
 				if (!_homing)
 				{
 					return false;
 				}
-				if (!_last_state.get("homing", 0))
+				if (!(bool)_last_state.Get("homing", false))
 				{
 					foreach (var s in _steppers)
 					{
@@ -159,14 +159,7 @@ namespace KlipperSharp.MicroController
 						s.note_homing_end();
 					}
 					_homing = false;
-					_home_cmd.send(new List<object> {
-								_oid,
-								0,
-								0,
-								0,
-								0,
-								0
-						  });
+					_home_cmd.send(new object[] { _oid, 0, 0, 0, 0, 0 });
 					throw new TimeoutError("Timeout during endstop homing");
 				}
 			}
@@ -178,7 +171,7 @@ namespace KlipperSharp.MicroController
 			if (est_print_time >= _next_query_print_time)
 			{
 				_next_query_print_time = est_print_time + RETRY_QUERY;
-				_query_cmd.send(new List<object> { _oid });
+				_query_cmd.send(new object[] { _oid });
 			}
 			return true;
 		}
@@ -190,14 +183,14 @@ namespace KlipperSharp.MicroController
 			_next_query_print_time = print_time;
 		}
 
-		public void query_endstop_wait()
+		public bool query_endstop_wait()
 		{
 			double eventtime = _mcu.monotonic();
 			while (_check_busy(eventtime))
 			{
 				eventtime = _mcu.pause(eventtime + 0.1);
 			}
-			return _last_state.get("pin", _invert) ^ _invert;
+			return (bool)_last_state.Get("pin", _invert) ^ _invert;
 		}
 	}
 }

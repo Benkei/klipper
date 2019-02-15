@@ -209,8 +209,18 @@ namespace KlipperSharp
 			var clock = _tup_1.Item2;
 			var freq = _tup_1.Item3;
 			return String.Format($"clocksync state: mcu_freq=%d last_clock=%d\" clock_est=(%.3f %d %.3f) min_half_rtt=%.6f min_rtt_time=%.3f\"\" time_avg=%.3f(%.3f) clock_avg=%.3f(%.3f)\"\" pred_variance=%.3f\"",
-			this.mcu_freq, this.last_clock, sample_time, clock, freq, this.min_half_rtt, this.min_rtt_time, this.time_avg,
-			this.time_variance, this.clock_avg, this.clock_covariance, this.prediction_variance);
+								this.mcu_freq,
+								this.last_clock,
+								sample_time,
+								clock,
+								freq,
+								this.min_half_rtt,
+								this.min_rtt_time,
+								this.time_avg,
+								this.time_variance,
+								this.clock_avg,
+								this.clock_covariance,
+								this.prediction_variance);
 		}
 
 		public virtual string stats(double eventtime)

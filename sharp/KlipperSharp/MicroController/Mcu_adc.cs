@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace KlipperSharp.MicroController
 {
 	public class Mcu_adc
 	{
 		private Mcu _mcu;
-		private object _pin;
+		private string _pin;
 		private double _min_sample;
 		private double _max_sample;
 		private int _range_check_count;
@@ -19,10 +18,10 @@ namespace KlipperSharp.MicroController
 		private double _report_time;
 		private Action<int, int> _callback;
 
-		public Mcu_adc(Mcu mcu, object pin_parameters)
+		public Mcu_adc(Mcu mcu, PinParams pin_parameters)
 		{
 			this._mcu = mcu;
-			this._pin = pin_parameters["pin"];
+			this._pin = pin_parameters.pin;
 			this._min_sample = 0.0;
 			this._sample_time = 0.0;
 			this._sample_count = 0;
@@ -77,16 +76,16 @@ namespace KlipperSharp.MicroController
 			this._mcu.register_msg(this._handle_analog_in_state, "analog_in_state", this._oid);
 		}
 
-		public void _handle_analog_in_state(object parameters)
+		public void _handle_analog_in_state(Dictionary<string, object> parameters)
 		{
-			var last_value = parameters["value"] * this._inv_max_adc;
+			var last_value = (double)parameters["value"] * this._inv_max_adc;
 
-			var next_clock = this._mcu.clock32_to_clock64(parameters["next_clock"]);
+			var next_clock = this._mcu.clock32_to_clock64((int)parameters["next_clock"]);
 			var last_read_clock = next_clock - this._report_clock;
 			var last_read_time = this._mcu.clock_to_print_time(last_read_clock);
 			if (this._callback != null)
 			{
-				this._callback(last_read_time, last_value);
+				this._callback((int)last_read_time, (int)last_value);
 			}
 		}
 	}

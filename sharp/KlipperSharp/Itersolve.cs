@@ -4,11 +4,23 @@ using System.Text;
 
 namespace KlipperSharp
 {
+	public delegate void move_fill_callback(ref move m, double print_time, double accel_t, double cruise_t, double decel_t, double start_pos_x,
+													  double start_pos_y, double start_pos_z, double axes_d_x, double axes_d_y, double axes_d_z, double start_v,
+													  double cruise_v, double accel);
+
 	public class Itersolve
 	{
 		/****************************************************************
 		 * Kinematic moves
 		 ****************************************************************/
+
+		public static move move_alloc()
+		{
+			//move *m = malloc(sizeof(*m));
+			//memset(m, 0, sizeof(*m));
+			//return m;
+			return new move();
+		}
 
 		// Populate a 'struct move' with a velocity trapezoid
 		public static void move_fill(ref move m, double print_time
@@ -100,7 +112,7 @@ namespace KlipperSharp
 				if (Math.Abs(guess_time - best_guess.time) <= 0.000000001)
 					break;
 				best_guess.time = guess_time;
-				best_guess.position = calc_position(sk, ref m, guess_time);
+				best_guess.position = calc_position(ref sk, ref m, guess_time);
 				double guess_position = best_guess.position - target;
 				int guess_sign = Math.Sign(guess_position);
 				if (guess_sign == high_sign)
@@ -138,7 +150,7 @@ namespace KlipperSharp
 					if (high.time >= m.move_t)
 						// At end of move
 						break;
-					NewMethod(sk, ref m, calc_position, last,ref low, ref high, ref seek_time_delta);
+					NewMethod(sk, ref m, calc_position, last, ref low, ref high, ref seek_time_delta);
 					continue;
 				}
 				bool next_sdir = dist > 0.0;
@@ -158,7 +170,7 @@ namespace KlipperSharp
 					{
 						// Must seek new low range to avoid re-finding previous time
 						high.time = (last.time + high.time) * .5;
-						high.position = calc_position(sk, ref m, high.time);
+						high.position = calc_position(ref sk, ref m, high.time);
 						continue;
 					}
 					ret = Stepcompress.queue_append_set_next_step_dir(ref qa, next_sdir);
@@ -204,7 +216,7 @@ namespace KlipperSharp
 			seek_time_delta += seek_time_delta;
 			if (high.time > m.move_t)
 				high.time = m.move_t;
-			high.position = calc_position(sk, ref m, high.time);
+			high.position = calc_position(ref sk, ref m, high.time);
 		}
 
 		public static void itersolve_set_stepcompress(ref stepper_kinematics sk, ref stepcompress sc, double step_dist)
@@ -217,7 +229,7 @@ namespace KlipperSharp
 		{
 			move m = new move();
 			move_fill(ref m, 0.0, 0.0, 1.0, 0.0, x, y, z, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0);
-			return sk.calc_position(sk, ref m, 0.0);
+			return sk.calc_position(ref sk, ref m, 0.0);
 		}
 
 		public static void itersolve_set_commanded_pos(ref stepper_kinematics sk, double pos)
@@ -229,7 +241,6 @@ namespace KlipperSharp
 		{
 			return sk.commanded_pos;
 		}
-
 
 	}
 
@@ -244,6 +255,11 @@ namespace KlipperSharp
 	{
 		public double c1;
 		public double c2;
+	}
+
+	public struct timepos
+	{
+		public double time, position;
 	}
 
 	public struct move
@@ -263,14 +279,9 @@ namespace KlipperSharp
 		public sk_callback calc_position;
 	}
 
-	public struct timepos
-	{
-		public double time, position;
-	}
-
 
 	//typedef double (* sk_callback) (struct stepper_kinematics * sk, struct move * m, double move_time);
-	public delegate double sk_callback(object sk, ref move m, double move_time);
+	public delegate double sk_callback(ref stepper_kinematics sk, ref move m, double move_time);
 
 
 }

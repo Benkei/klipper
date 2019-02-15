@@ -505,7 +505,7 @@ namespace KlipperSharp
 		 ****************************************************************/
 
 		// Allocate a new 'steppersync' object
-		steppersync steppersync_alloc(SerialQueue sq, List<stepcompress> sc_list, int sc_num, int move_num)
+		public static steppersync steppersync_alloc(SerialQueue sq, List<stepcompress> sc_list, int sc_num, int move_num)
 		{
 			steppersync ss = new steppersync();
 			ss.sq = sq;
@@ -521,18 +521,18 @@ namespace KlipperSharp
 		}
 
 		// Free memory associated with a 'steppersync' object
-		//void steppersync_free(ref steppersync ss)
-		//{
-		//    if (!ss)
-		//        return;
-		//    free(ss.sc_list);
-		//    free(ss.move_clocks);
-		//    serialqueue_free_commandqueue(ss.cq);
-		//    free(ss);
-		//}
+		public static void steppersync_free(steppersync ss)
+		{
+			//if (!ss)
+			//	return;
+			//free(ss.sc_list);
+			//free(ss.move_clocks);
+			//serialqueue_free_commandqueue(ss.cq);
+			//free(ss);
+		}
 
 		// Set the conversion rate of 'print_time' to mcu clock
-		void steppersync_set_time(steppersync ss, double time_offset, double mcu_freq)
+		public static void steppersync_set_time(steppersync ss, double time_offset, double mcu_freq)
 		{
 			int i;
 			for (i = 0; i < ss.sc_num; i++)
@@ -572,7 +572,7 @@ namespace KlipperSharp
 		}
 
 		// Find and transmit any scheduled steps prior to the given 'move_clock'
-		int steppersync_flush(steppersync ss, ulong move_clock)
+		public static int steppersync_flush(steppersync ss, ulong move_clock)
 		{
 			// Flush each stepcompress to the specified move_clock
 			int i;

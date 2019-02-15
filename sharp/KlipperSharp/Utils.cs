@@ -13,5 +13,22 @@ namespace KlipperSharp
 				value = defaults;
 			return value;
 		}
+
+		// get programm start args
+		public static string get(this string[] args, string key)
+		{
+			if (args == null)
+			{
+				return null;
+			}
+
+			var idx = Array.IndexOf(args, key);
+			if (idx == -1 || idx + 1 >= args.Length)
+			{
+				return null;
+			}
+
+			return args[idx + 1];
+		}
 	}
 }

@@ -225,7 +225,8 @@ namespace KlipperSharp
 		private readonly Dictionary<string, int> pins;
 		private readonly Dictionary<int, string> active_pins;
 
-		static readonly Regex re_pin = new Regex(@"(?P<prefix>[ _]pin=)|(?P<name>[^ ]*)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
+		static readonly Regex re_pin = new Regex(@"(?<prefix>[ _]pin=)|(?<name>[^ ]*)",
+			RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
 		public PinResolver(string mcu_type, bool validate_aliases = true)
 		{
@@ -262,143 +263,131 @@ namespace KlipperSharp
 		}
 	}
 
+
+	public interface IPinSetup
+	{
+		T setup_pin<T>(string pin_type, PinParams pin_params) where T : class;
+	}
+	public class PinParams
+	{
+		public IPinSetup chip;
+		public string chip_name;
+		public string pin;
+		public string share_type;
+		public bool invert;
+		public bool pullup;
+		internal StepperEnablePin classPin;
+	}
+
 	/// <summary>
 	/// Pin to chip mapping
 	/// </summary>
 	public class PrinterPins
 	{
-		Dictionary<string, int> chips = new Dictionary<string, int>();
-		Dictionary<string, int> active_pins = new Dictionary<string, int>();
-
-		public struct PinInfo
-		{
-			public string chip;
-			public string chip_name;
-			public string pin;
-			public string share_type;
-			public bool invert;
-			public bool pullup;
-		}
-
-		public PrinterPins()
-		{
-		}
-
-		public PinInfo Lookup_pin(string pin_desc, bool can_invert = false, bool can_pullup = false, string share_type = null)
-		{
-			var desc = pin_desc.Trim();
-			var pullup = 0;
-			var invert = 0;
-			if (can_pullup && desc.StartsWith('^'))
-			{
-				pullup = 1;
-				desc = desc.Remove(1).Trim();
-			}
-			if (can_invert && desc.StartsWith('!'))
-			{
-				invert = 1;
-				desc = desc.Remove(1).Trim();
-			}
-			string chip_name = null;
-			string pin;
-			if (!desc.Contains(':'))
-			{
-				pin = "mcu";
-			}
-			else
-			{
-				//pin = [s.strip() for s in desc.split(':', 1)];
-			}
-
-			if (!chips.ContainsKey(chip_name))
-				throw new Exception($"Unknown pin chip name '{chip_name}'");
-
-			//if [c for c in '^!: ' if c in pin]:
-			//    format = ""
-			//    if can_pullup:
-			//        format += "[^] "
-			//    if can_invert:
-			//        format += "[!] "
-			//    raise error("Invalid pin description '%s'\n""Format is: %s[chip_name:] pin_name" % (pin_desc, format))
-
-			return new PinInfo();
-		}
+		private Dictionary<string, IPinSetup> chips = new Dictionary<string, IPinSetup>();
+		private Dictionary<string, PinParams> active_pins = new Dictionary<string, PinParams>();
 
 		static string[] canInvertType = { "stepper", "endstop", "digital_out", "pwm" };
 		static string[] can_pullupType = { "endstop" };
 
-		public string Setup_pin(string pin_type, string pin_desc)
+
+		public PinParams lookup_pin(string pin_desc, bool can_invert = false, bool can_pullup = false, string share_type = null)
+		{
+			PinParams pin_params;
+			string pin;
+			string chip_name;
+			var desc = pin_desc.Trim();
+			bool pullup = false;
+			bool invert = false;
+			if (can_pullup && desc.StartsWith("^"))
+			{
+				pullup = true;
+				desc = desc.Substring(1).Trim();
+			}
+			if (can_invert && desc.StartsWith("!"))
+			{
+				invert = true;
+				desc = desc.Substring(1).Trim();
+			}
+			if (!desc.Contains(":"))
+			{
+				chip_name = "mcu";
+				pin = desc;
+			}
+			else
+			{
+				var _tup_1 = (from s in desc.Split(":", 1) select s.Trim()).ToList();
+				chip_name = _tup_1[0];
+				pin = _tup_1[1];
+			}
+			if (!chips.ContainsKey(chip_name))
+			{
+				throw new Exception($"Unknown pin chip name '{chip_name}'");
+			}
+			if ((from c in "^!: " where pin.Contains(c) select c).Count() > 0)
+			{
+				var format = "";
+				if (can_pullup)
+				{
+					format += "[^] ";
+				}
+				if (can_invert)
+				{
+					format += "[!] ";
+				}
+				throw new Exception($"Invalid pin description '{pin_desc}'\n\"Format is: {format}[chip_name:] pin_name\"");
+			}
+			var share_name = $"{chip_name}:{pin}";
+			if (this.active_pins.ContainsKey(share_name))
+			{
+				pin_params = this.active_pins[share_name];
+				if (share_type == null || share_type != pin_params.share_type)
+				{
+					throw new Exception($"pin {pin} used multiple times in config");
+				}
+				if (invert != pin_params.invert || pullup != pin_params.pullup)
+				{
+					throw new Exception($"Shared pin {pin} must have same polarity");
+				}
+				return pin_params;
+			}
+			pin_params = new PinParams()
+			{
+				chip = this.chips[chip_name],
+				chip_name = chip_name,
+				pin = pin,
+				share_type = share_type,
+				invert = invert,
+				pullup = pullup
+			};
+			this.active_pins[share_name] = pin_params;
+			return pin_params;
+		}
+
+		public T setup_pin<T>(string pin_type, string pin_desc) where T : class
 		{
 			var can_invert = canInvertType.Contains(pin_type);
 			var can_pullup = can_pullupType.Contains(pin_type);
-			var pin_params = Lookup_pin(pin_desc, can_invert, can_pullup);
-
-			//return pin_params.chip.setup_pin(pin_type, pin_params);
-			return null;
+			var pin_params = lookup_pin(pin_desc, can_invert, can_pullup);
+			var result = pin_params.chip.setup_pin<T>(pin_type, pin_params);
+			return result;
 		}
-		public void Reset_pin_sharing(PinInfo pin_params)
+
+		public void reset_pin_sharing(PinParams pin_params)
 		{
 			var share_name = $"{pin_params.chip_name}:{pin_params.pin}";
 			active_pins.Remove(share_name);
 		}
-		public void Register_chip(string chip_name, int chip)
+
+		public void register_chip(string chip_name, IPinSetup chip)
 		{
 			chip_name = chip_name.Trim();
 			if (chips.ContainsKey(chip_name))
-				throw new ArgumentException($"Duplicate chip name '{chip_name}'");
+			{
+				throw new Exception($"Duplicate chip name '{chip_name}'");
+			}
 			chips[chip_name] = chip;
 		}
-
-		//def lookup_pin(self, pin_desc, can_invert=False, can_pullup=False,
-		//               share_type=None):
-		//    desc = pin_desc.strip()
-		//    pullup = invert = 0
-		//    if can_pullup and desc.startswith('^'):
-		//        pullup = 1
-		//        desc = desc[1:].strip()
-		//    if can_invert and desc.startswith('!'):
-		//        invert = 1
-		//        desc = desc[1:].strip()
-		//    if ':' not in desc:
-		//        chip_name, pin = 'mcu', desc
-		//    else:
-		//        chip_name, pin = [s.strip() for s in desc.split(':', 1)]
-		//    if chip_name not in self.chips:
-		//        raise error("Unknown pin chip name '%s'" % (chip_name,))
-		//    if [c for c in '^!: ' if c in pin]:
-		//        format = ""
-		//        if can_pullup:
-		//            format += "[^] "
-		//        if can_invert:
-		//            format += "[!] "
-		//        raise error("Invalid pin description '%s'\n"
-		//                    "Format is: %s[chip_name:] pin_name" % (
-		//                        pin_desc, format))
-		//    share_name = "%s:%s" % (chip_name, pin)
-		//    if share_name in self.active_pins:
-		//        pin_params = self.active_pins[share_name]
-		//        if share_type is None or share_type != pin_params['share_type']:
-		//            raise error("pin %s used multiple times in config" % (pin,))
-		//        if invert != pin_params['invert'] or pullup != pin_params['pullup']:
-		//            raise error("Shared pin %s must have same polarity" % (pin,))
-		//        return pin_params
-		//    pin_params = {'chip': self.chips[chip_name], 'chip_name': chip_name,
-		//                  'pin': pin, 'share_type': share_type,
-		//                  'invert': invert, 'pullup': pullup}
-		//    self.active_pins[share_name] = pin_params
-		//    return pin_params
-		//def setup_pin(self, pin_type, pin_desc):
-		//    can_invert = pin_type in ['stepper', 'endstop', 'digital_out', 'pwm']
-		//    can_pullup = pin_type in ['endstop']
-		//    pin_params = self.lookup_pin(pin_desc, can_invert, can_pullup)
-		//    return pin_params['chip'].setup_pin(pin_type, pin_params)
-		//def reset_pin_sharing(self, pin_params):
-		//    share_name = "%s:%s" % (pin_params['chip_name'], pin_params['pin'])
-		//    del self.active_pins[share_name]
-		//def register_chip(self, chip_name, chip):
-		//    chip_name = chip_name.strip()
-		//    if chip_name in self.chips:
-		//        raise error("Duplicate chip name '%s'" % (chip_name,))
-		//    self.chips[chip_name] = chip
 	}
+
 }

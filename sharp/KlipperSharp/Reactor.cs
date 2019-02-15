@@ -44,9 +44,9 @@ namespace KlipperSharp
 	public class ReactorFileHandler
 	{
 		private object fd;
-		private object callback;
+		private Action<double> callback;
 
-		public ReactorFileHandler(object fd, object callback)
+		public ReactorFileHandler(object fd, Action<double> callback)
 		{
 			this.fd = fd;
 			this.callback = callback;
@@ -74,7 +74,7 @@ namespace KlipperSharp
 		public const double NEVER = 9999999999999999.0;
 
 		protected bool _process;
-		protected Func<double> monotonic;
+		public Func<double> monotonic;
 		private List<ReactorTimer> _timers;
 		private double _next_timer;
 		private object _pipe_fds;
@@ -275,7 +275,7 @@ namespace KlipperSharp
 		}
 
 		// File descriptors
-		public virtual ReactorFileHandler register_fd(object fd, object callback)
+		public virtual ReactorFileHandler register_fd(object fd, Action<double> callback)
 		{
 			var handler = new ReactorFileHandler(fd, callback);
 			_fds.Add(handler);

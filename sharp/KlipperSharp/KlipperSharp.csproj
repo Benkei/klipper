@@ -14,24 +14,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="MicroController\Mcu.cs" />
-    <Compile Remove="MicroController\Mcu_adc.cs" />
-    <Compile Remove="MicroController\Mcu_digital_out.cs" />
-    <Compile Remove="MicroController\Mcu_endstop.cs" />
-    <Compile Remove="MicroController\Mcu_pwm.cs" />
-    <Compile Remove="MicroController\Mcu_stepper.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="MicroController\Mcu.cs" />
-    <None Include="MicroController\Mcu_adc.cs" />
-    <None Include="MicroController\Mcu_digital_out.cs" />
-    <None Include="MicroController\Mcu_endstop.cs" />
-    <None Include="MicroController\Mcu_pwm.cs" />
-    <None Include="MicroController\Mcu_stepper.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="NLog" Version="4.5.11" />
     <PackageReference Include="System.IO.Ports" Version="4.6.0-preview.19073.11" />
   </ItemGroup>

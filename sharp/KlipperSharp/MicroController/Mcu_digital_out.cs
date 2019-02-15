@@ -8,27 +8,26 @@ namespace KlipperSharp.MicroController
 	{
 		private Mcu _mcu;
 		private int _oid;
-		private int _pin;
+		private string _pin;
 		private bool _invert;
 		private bool _start_value;
 		private bool _is_static;
 		private double _max_duration;
 		private int _last_clock;
-		private object _set_cmd;
+		private SerialCommand _set_cmd;
 		private bool _shutdown_value;
 
-		public Mcu_digital_out(Mcu mcu, object pin_params)
+		public Mcu_digital_out(Mcu mcu, PinParams pin_params)
 		{
 			_mcu = mcu;
 			_oid = 0;
 			_mcu.register_config_callback(_build_config);
-			_pin = pin_params["pin"];
-			_invert = pin_params["invert"];
+			_pin = pin_params.pin;
+			_invert = pin_params.invert;
 			_start_value = _invert;
 			_is_static = false;
 			_max_duration = 2.0;
 			_last_clock = 0;
-			_set_cmd = null;
 		}
 
 		public Mcu get_mcu()
@@ -74,11 +73,7 @@ namespace KlipperSharp.MicroController
 		public void set_digital(double print_time, bool value)
 		{
 			var clock = _mcu.print_time_to_clock(print_time);
-			_set_cmd.send(new List<object> {
-					 _oid,
-					 clock,
-					 !!value ^ _invert
-				}, minclock: _last_clock, reqclock: clock);
+			_set_cmd.send(new object[] { _oid, clock, !!value ^ _invert }, (ulong)_last_clock, (ulong)clock);
 			_last_clock = clock;
 		}
 

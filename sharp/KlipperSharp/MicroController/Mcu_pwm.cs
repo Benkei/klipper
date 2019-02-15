@@ -11,30 +11,30 @@ namespace KlipperSharp.MicroController
 		private double _cycle_time;
 		private double _max_duration;
 		private int _oid;
-		private int _pin;
-		private int _invert;
+		private string _pin;
+		private bool _invert;
 		private double _start_value;
 		private double _shutdown_value;
 		private bool _is_static;
 		private int _last_clock;
 		private double _pwm_max;
-		private object _set_cmd;
+		private SerialCommand _set_cmd;
 
-		public Mcu_pwm(Mcu mcu, object pin_params)
+		public Mcu_pwm(Mcu mcu, PinParams pin_params)
 		{
-			this._mcu = mcu;
-			this._hardware_pwm = false;
-			this._cycle_time = 0.1;
-			this._max_duration = 2.0;
-			this._oid = 0;
-			this._mcu.register_config_callback(this._build_config);
-			this._pin = pin_params["pin"];
-			this._invert = pin_params["invert"];
-			this._start_value = (double)this._invert;
-			this._is_static = false;
-			this._last_clock = 0;
-			this._pwm_max = 0.0;
-			this._set_cmd = null;
+			_mcu = mcu;
+			_hardware_pwm = false;
+			_cycle_time = 0.1;
+			_max_duration = 2.0;
+			_oid = 0;
+			_mcu.register_config_callback(this._build_config);
+			_pin = pin_params.pin;
+			_invert = pin_params.invert;
+			_start_value = this._shutdown_value = pin_params.invert ? 1 : 0;
+			_is_static = false;
+			_last_clock = 0;
+			_pwm_max = 0.0;
+			_set_cmd = null;
 		}
 
 		public Mcu get_mcu()
@@ -59,7 +59,7 @@ namespace KlipperSharp.MicroController
 			{
 				throw new Exception("Static pin can not have shutdown value");
 			}
-			if (_invert != 0)
+			if (_invert)
 			{
 				start_value = 1.0 - start_value;
 				shutdown_value = 1.0 - shutdown_value;
@@ -112,16 +112,12 @@ namespace KlipperSharp.MicroController
 		public void set_pwm(double print_time, double value)
 		{
 			var clock = this._mcu.print_time_to_clock(print_time);
-			if (this._invert != 0)
+			if (this._invert)
 			{
 				value = 1.0 - value;
 			}
 			value = Convert.ToInt32(Math.Max(0.0, Math.Min(1.0, value)) * this._pwm_max + 0.5);
-			this._set_cmd.send(new List<object> {
-					 this._oid,
-					 clock,
-					 value
-				}, minclock: this._last_clock, reqclock: clock);
+			this._set_cmd.send(new object[] { this._oid, clock, value }, minclock: (ulong)this._last_clock, reqclock: (ulong)clock);
 			this._last_clock = clock;
 		}
 	}
