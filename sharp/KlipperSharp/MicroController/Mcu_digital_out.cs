@@ -4,7 +4,14 @@ using System.Text;
 
 namespace KlipperSharp.MicroController
 {
-	public class Mcu_digital_out
+	public interface IMcuDigitalOut
+	{
+		Mcu get_mcu();
+		void setup_max_duration(double max_duration);
+		void set_pwm(double print_time, double value);
+	}
+
+	public class Mcu_digital_out : IMcuDigitalOut
 	{
 		private Mcu _mcu;
 		private int _oid;

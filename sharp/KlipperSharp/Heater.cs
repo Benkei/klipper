@@ -39,7 +39,7 @@ namespace KlipperSharp
 		private double last_temp_time;
 		private double next_pwm_time;
 		private double last_pwm_value;
-		private Mcu_pwm mcu_pwm;
+		private IMcuDigitalOut mcu_pwm;
 		private double smoothed_temp;
 		private BaseControl control;
 
@@ -85,9 +85,10 @@ namespace KlipperSharp
 			}
 			else
 			{
-				this.mcu_pwm = ppins.setup_pin<Mcu_pwm>("pwm", heater_pin);
+				var pwm = ppins.setup_pin<Mcu_pwm>("pwm", heater_pin);
 				var pwm_cycle_time = config.getfloat("pwm_cycle_time", 0.1, above: 0.0, maxval: this.pwm_delay);
-				this.mcu_pwm.setup_cycle_time(pwm_cycle_time);
+				pwm.setup_cycle_time(pwm_cycle_time);
+				this.mcu_pwm = pwm;
 			}
 			this.mcu_pwm.setup_max_duration(MAX_HEAT_TIME);
 			// Load additional modules

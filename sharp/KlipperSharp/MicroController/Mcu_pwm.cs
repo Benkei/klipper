@@ -4,7 +4,7 @@ using System.Text;
 
 namespace KlipperSharp.MicroController
 {
-	public class Mcu_pwm
+	public class Mcu_pwm : IMcuDigitalOut
 	{
 		private Mcu _mcu;
 		private bool _hardware_pwm;
