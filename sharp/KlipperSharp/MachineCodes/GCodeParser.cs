@@ -60,38 +60,22 @@ namespace KlipperSharp.MachineCodes
 				"STATUS",
 				"HELP"
 		  };
-
 		public string[] cmd_G1_aliases = new string[] { "G0" };
-		public object cmd_M105_when_not_ready = true;
-
-		public object cmd_M112_when_not_ready = true;
-
-		public object cmd_M115_when_not_ready = true;
-
-		public object cmd_IGNORE_when_not_ready = true;
-
+		public bool cmd_M105_when_not_ready = true;
+		public bool cmd_M112_when_not_ready = true;
+		public bool cmd_M115_when_not_ready = true;
+		public bool cmd_IGNORE_when_not_ready = true;
 		public string[] cmd_IGNORE_aliases = new string[] { "G21", "M110", "M21" };
-
-		public object cmd_GET_POSITION_when_not_ready = true;
-
-		public object cmd_RESTART_when_not_ready = true;
-
-		public object cmd_RESTART_help = "Reload config file and restart host software";
-
-		public object cmd_FIRMWARE_RESTART_when_not_ready = true;
-
-		public object cmd_FIRMWARE_RESTART_help = "Restart firmware, host, and reload config";
-
-		public object cmd_ECHO_when_not_ready = true;
-
-		public object cmd_STATUS_when_not_ready = true;
-
-		public object cmd_STATUS_help = "Report the printer status";
-
-		public object cmd_HELP_when_not_ready = true;
-
-
-		public object cmd_SET_GCODE_OFFSET_help = "Set a virtual offset to g-code positions";
+		public bool cmd_GET_POSITION_when_not_ready = true;
+		public bool cmd_RESTART_when_not_ready = true;
+		public const string cmd_RESTART_help = "Reload config file and restart host software";
+		public bool cmd_FIRMWARE_RESTART_when_not_ready = true;
+		public const string cmd_FIRMWARE_RESTART_help = "Restart firmware, host, and reload config";
+		public bool cmd_ECHO_when_not_ready = true;
+		public bool cmd_STATUS_when_not_ready = true;
+		public const string cmd_STATUS_help = "Report the printer status";
+		public bool cmd_HELP_when_not_ready = true;
+		public const string cmd_SET_GCODE_OFFSET_help = "Set a virtual offset to g-code positions";
 
 
 		private Machine printer;
@@ -99,7 +83,7 @@ namespace KlipperSharp.MachineCodes
 		private SelectReactor reactor;
 		private bool is_processing_data;
 		private bool is_fileinput;
-		public object cmd_M114_when_not_ready = true;
+		public bool cmd_M114_when_not_ready = true;
 		private string partial_input;
 		private List<string> pending_commands = new List<string>();
 		private int bytes_read;
@@ -956,7 +940,7 @@ namespace KlipperSharp.MachineCodes
 		}
 
 		public void cmd_G4(Dictionary<string, object> parameters)
-		{ 
+		{
 			double delay;
 			// Dwell
 			if (parameters.ContainsKey("S"))
