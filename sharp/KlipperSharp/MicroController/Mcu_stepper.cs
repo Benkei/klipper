@@ -71,9 +71,10 @@ namespace KlipperSharp.MicroController
 			this._step_dist = step_dist;
 		}
 
-		public void setup_itersolve(Func<object, stepper_kinematics> alloc_func, params object[] parameters)
+		public void setup_itersolve(string alloc_func, params object[] parameters)
 		{
-			stepper_kinematics sk = alloc_func(parameters);
+			//stepper_kinematics sk = alloc_func(parameters);
+			stepper_kinematics sk = new stepper_kinematics();
 			this.set_stepper_kinematics(sk);
 		}
 

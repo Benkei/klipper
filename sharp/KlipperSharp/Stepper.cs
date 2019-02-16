@@ -62,7 +62,7 @@ namespace KlipperSharp
 		private Mcu_stepper mcu_stepper;
 		private Func<double> get_step_dist;
 		public Action<move> step_itersolve;
-		public Action<Func<object, stepper_kinematics>, object[]> setup_itersolve;
+		public Action<string, object[]> setup_itersolve;
 		private Func<stepper_kinematics, stepper_kinematics> set_stepper_kinematics;
 		private Func<bool, object> set_ignore_move;
 		private Func<List<double>, double> calc_position_from_coord;
@@ -316,7 +316,7 @@ namespace KlipperSharp
 			}
 		}
 
-		public void setup_itersolve(object alloc_func, params object[] parameters)
+		public void setup_itersolve(string alloc_func, params object[] parameters)
 		{
 			foreach (var stepper in this.steppers)
 			{
