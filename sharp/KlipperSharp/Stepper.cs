@@ -62,7 +62,7 @@ namespace KlipperSharp
 		private Mcu_stepper mcu_stepper;
 		private Func<double> get_step_dist;
 		public Action<move> step_itersolve;
-		public Action<object, object[]> setup_itersolve;
+		public Action<Func<object, stepper_kinematics>, object[]> setup_itersolve;
 		private Func<stepper_kinematics, stepper_kinematics> set_stepper_kinematics;
 		private Func<bool, object> set_ignore_move;
 		private Func<List<double>, double> calc_position_from_coord;
@@ -154,6 +154,11 @@ namespace KlipperSharp
 	// Stepper controlled rails
 	//#####################################################################
 
+	public interface ICustomEndstop
+	{
+		double get_position_endstop();
+	}
+
 	// A motor control "rail" with one (or more) steppers and one (or more)
 	// endstops.
 	public class PrinterRail
@@ -187,9 +192,9 @@ namespace KlipperSharp
 			var mcu_endstop = ppins.setup_pin<Mcu_endstop>("endstop", config.get("endstop_pin"));
 			this.endstops = new List<(Mcu_endstop endstop, string name)> { (mcu_endstop, this.name) };
 			stepper.add_to_endstop(mcu_endstop);
-			if (hasattr(mcu_endstop, "get_position_endstop"))
+			if (mcu_endstop is ICustomEndstop)
 			{
-				this.position_endstop = mcu_endstop.get_position_endstop();
+				this.position_endstop = ((ICustomEndstop)mcu_endstop).get_position_endstop();
 			}
 			else if (default_position_endstop == null)
 			{
@@ -255,7 +260,8 @@ namespace KlipperSharp
 
 		public Homing_info get_homing_info()
 		{
-			return new Homing_info() {
+			return new Homing_info()
+			{
 				speed = this.homing_speed,
 				position_endstop = this.position_endstop,
 				retract_dist = this.homing_retract_dist,
