@@ -43,7 +43,7 @@ Printer is shutdown
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
 		private QueueListener bglogger;
-		private string[] start_args;
+		private Dictionary<string, object> start_args;
 		private SelectReactor reactor;
 		private string state_message;
 		private bool is_shutdown;
@@ -54,7 +54,7 @@ Printer is shutdown
 
 		//public object config_error = configfile.error;
 
-		public Machine(object input_fd, QueueListener bglogger, string[] start_args)
+		public Machine(object input_fd, QueueListener bglogger, Dictionary<string, object> start_args)
 		{
 			this.bglogger = bglogger;
 			this.start_args = start_args;
@@ -68,7 +68,7 @@ Printer is shutdown
 			this.objects = new Dictionary<string, object> { { "gcode", gc } };
 		}
 
-		public string[] get_start_args()
+		public Dictionary<string, object> get_start_args()
 		{
 			return this.start_args;
 		}
@@ -89,7 +89,7 @@ Printer is shutdown
 			{
 				this.state_message = msg;
 			}
-			if (msg != message_ready && this.start_args.Contains("debuginput"))
+			if (msg != message_ready && this.start_args.ContainsKey("debuginput"))
 			{
 				this.request_exit("error_exit");
 			}

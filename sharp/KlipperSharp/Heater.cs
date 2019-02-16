@@ -57,7 +57,7 @@ namespace KlipperSharp
 			this.pwm_delay = this.sensor.get_report_time_delta();
 			// Setup temperature checks
 			this.min_extrude_temp = config.getfloat("min_extrude_temp", 170.0, minval: this.min_temp, maxval: this.max_temp);
-			var is_fileoutput = printer.get_start_args().get("debugoutput") != null;
+			var is_fileoutput = printer.get_start_args().Get("debugoutput") != null;
 			this.can_extrude = this.min_extrude_temp <= 0.0 || is_fileoutput;
 			this.max_power = config.getfloat("max_power", 1.0, above: 0.0, maxval: 1.0);
 			this.smooth_time = config.getfloat("smooth_time", 2.0, above: 0.0);

@@ -291,7 +291,7 @@ namespace KlipperSharp
 
 		public ConfigWrapper read_main_config()
 		{
-			var filename = this.printer.get_start_args().get("config_file");
+			var filename = (string)this.printer.get_start_args().Get("config_file");
 			var data = this._read_config_file(filename);
 			var _tup_1 = this._find_autosave_data(data);
 			var regular_data = _tup_1.Item1;
@@ -379,7 +379,7 @@ namespace KlipperSharp
 			lines.Add("");
 			autosave_data = string.Join("\n", lines);
 			// Read in and validate current config file
-			var cfgname = this.printer.get_start_args().get("config_file");
+			var cfgname = (string)this.printer.get_start_args().Get("config_file");
 			try
 			{
 				data = this._read_config_file(cfgname);

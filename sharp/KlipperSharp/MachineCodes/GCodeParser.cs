@@ -125,7 +125,7 @@ namespace KlipperSharp.MachineCodes
 			// Input handling
 			this.reactor = printer.get_reactor();
 			this.is_processing_data = false;
-			this.is_fileinput = printer.get_start_args().get("debuginput") != null;
+			this.is_fileinput = printer.get_start_args().Get("debuginput") != null;
 			this.fd_handle = null;
 			if (!this.is_fileinput)
 			{
@@ -1171,7 +1171,7 @@ namespace KlipperSharp.MachineCodes
 		public void cmd_M115(Dictionary<string, object> parameters)
 		{
 			// Get Firmware Version and Capabilities
-			var software_version = this.printer.get_start_args().get("software_version");
+			var software_version = (string)this.printer.get_start_args().Get("software_version");
 			this.ack($"FIRMWARE_NAME:Klipper FIRMWARE_VERSION:{software_version}");
 		}
 

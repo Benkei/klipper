@@ -166,7 +166,7 @@ or in response to an internal error in the host software."}
 		// Connection phase
 		public void _check_restart(string reason)
 		{
-			var start_reason = this._printer.get_start_args().get("start_reason");
+			var start_reason = (string)this._printer.get_start_args().Get("start_reason");
 			if (start_reason == "firmware_restart")
 			{
 				return;
@@ -322,7 +322,7 @@ or in response to an internal error in the host software."}
 			}
 			else
 			{
-				var start_reason = this._printer.get_start_args().get("start_reason");
+				var start_reason = (string)this._printer.get_start_args().Get("start_reason");
 				if (start_reason == "firmware_restart")
 				{
 					throw new Exception(String.Format("Failed automated reset of MCU '%s'", this._name));
@@ -602,7 +602,7 @@ or in response to an internal error in the host software."}
 		// Misc external commands
 		public bool is_fileoutput()
 		{
-			return this._printer.get_start_args().get("debugoutput") != null;
+			return this._printer.get_start_args().Get("debugoutput") != null;
 		}
 
 		public bool is_shutdown()
