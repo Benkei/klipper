@@ -15,7 +15,7 @@ namespace KlipperSharp
 		private double kick_start_time;
 		private Mcu_pwm mcu_fan;
 
-		public Fan(MachineConfig config, double default_shutdown_speed = 0.0)
+		public Fan(ConfigWrapper config, double default_shutdown_speed = 0.0)
 		{
 			this.last_fan_value = 0.0;
 			this.last_fan_time = 0.0;

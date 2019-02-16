@@ -18,7 +18,7 @@ namespace KlipperSharp
 		private int dual_carriage_axis;
 		private List<PrinterRail> dual_carriage_rails;
 
-		public CartesianKinemactic(ToolHead toolhead, MachineConfig config)
+		public CartesianKinemactic(ToolHead toolhead, ConfigWrapper config)
 		{
 			this.printer = config.get_printer();
 			// Setup axis rails

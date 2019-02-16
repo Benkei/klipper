@@ -43,7 +43,7 @@ namespace KlipperSharp
 		private double smoothed_temp;
 		private BaseControl control;
 
-		public Heater(MachineConfig config, ISensor sensor, string gcode_id)
+		public Heater(ConfigWrapper config, ISensor sensor, string gcode_id)
 		{
 			var printer = config.get_printer();
 			this.name = config.get_name();
@@ -235,7 +235,7 @@ namespace KlipperSharp
 		private readonly double max_delta;
 		private bool heating;
 
-		public ControlBangBang(Heater heater, MachineConfig config)
+		public ControlBangBang(Heater heater, ConfigWrapper config)
 		{
 			this.heater = heater;
 			this.heater_max_power = heater.get_max_power();
@@ -289,7 +289,7 @@ namespace KlipperSharp
 		private double prev_temp_deriv;
 		private double prev_temp_integ;
 
-		public ControlPID(Heater heater, MachineConfig config)
+		public ControlPID(Heater heater, ConfigWrapper config)
 		{
 			this.heater = heater;
 			this.heater_max_power = heater.get_max_power();
@@ -353,11 +353,11 @@ namespace KlipperSharp
 	{
 		public const string cmd_TURN_OFF_HEATERS_help = "Turn off all heaters";
 		private Machine printer;
-		private Dictionary<string, Func<MachineConfig, ISensor>> sensors = new Dictionary<string, Func<MachineConfig, ISensor>>();
+		private Dictionary<string, Func<ConfigWrapper, ISensor>> sensors = new Dictionary<string, Func<ConfigWrapper, ISensor>>();
 		private Dictionary<string, Heater> heaters = new Dictionary<string, Heater>();
 		private Dictionary<string, string> heaters_gcode_id = new Dictionary<string, string>();
 
-		public PrinterHeaters(MachineConfig config)
+		public PrinterHeaters(ConfigWrapper config)
 		{
 			this.printer = config.get_printer();
 			// Register TURN_OFF_HEATERS command
@@ -365,12 +365,12 @@ namespace KlipperSharp
 			gcode.register_command("TURN_OFF_HEATERS", this.cmd_TURN_OFF_HEATERS, desc: cmd_TURN_OFF_HEATERS_help);
 		}
 
-		public void add_sensor(string sensor_type, Func<MachineConfig, ISensor> sensor_factory)
+		public void add_sensor(string sensor_type, Func<ConfigWrapper, ISensor> sensor_factory)
 		{
 			this.sensors[sensor_type] = sensor_factory;
 		}
 
-		public Heater setup_heater(MachineConfig config, string gcode_id)
+		public Heater setup_heater(ConfigWrapper config, string gcode_id)
 		{
 			var heater_name = config.get_name();
 			if (heater_name == "extruder")
@@ -403,7 +403,7 @@ namespace KlipperSharp
 			return this.heaters[heater_name];
 		}
 
-		public ISensor setup_sensor(MachineConfig config)
+		public ISensor setup_sensor(ConfigWrapper config)
 		{
 			this.printer.try_load_module(config, "thermistor");
 			this.printer.try_load_module(config, "adc_temperature");

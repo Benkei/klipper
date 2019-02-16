@@ -44,7 +44,7 @@ namespace KlipperSharp
 		public move_fill_callback move_fill;
 		public BaseKinematic kin;
 
-		public ToolHead(MachineConfig config)
+		public ToolHead(ConfigWrapper config)
 		{
 			this.printer = config.get_printer();
 			this.reactor = this.printer.get_reactor();

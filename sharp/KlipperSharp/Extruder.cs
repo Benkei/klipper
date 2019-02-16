@@ -47,7 +47,7 @@ namespace KlipperSharp
 		private Action<move, double, double, double, double, double, double, double, double, double, double> extruder_move_fill;
 		private Heater heater;
 
-		public PrinterExtruder(MachineConfig config, object extruder_num)
+		public PrinterExtruder(ConfigWrapper config, object extruder_num)
 		{
 			this.printer = config.get_printer();
 			this.name = config.get_name();
@@ -333,7 +333,7 @@ namespace KlipperSharp
 		}
 
 		// Dummy extruder class used when a printer has no extruder at all
-		public static void add_printer_objects(MachineConfig config)
+		public static void add_printer_objects(ConfigWrapper config)
 		{
 			var printer = config.get_printer();
 			for (var i = 0; i < 99; i++)

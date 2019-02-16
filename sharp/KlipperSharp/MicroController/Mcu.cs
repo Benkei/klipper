@@ -39,7 +39,7 @@ namespace KlipperSharp.MicroController
 		private steppersync _steppersync;
 		private bool _is_timeout;
 
-		public Mcu(MachineConfig config, ClockSync clocksync)
+		public Mcu(ConfigWrapper config, ClockSync clocksync)
 		{
 			this._printer = config.get_printer();
 			this._clocksync = clocksync;
@@ -57,7 +57,7 @@ namespace KlipperSharp.MicroController
 			var baud = 0;
 			if (!(this._serialport.StartsWith("/dev/rpmsg_") || this._serialport.StartsWith("/tmp/klipper_host_")))
 			{
-				baud = config.getint("baud", 250000, minval: 2400);
+				baud = (int)config.getint("baud", 250000, minval: 2400);
 			}
 			this._serial = new SerialReader(this._serialport, baud);
 			// Restarts
@@ -179,35 +179,35 @@ or in response to an internal error in the host software."}
 
 		public void _connect_file(bool pace = false)
 		{
-			object dict_fname;
-			object out_fname;
-			// In a debugging mode.  Open debug output file and read data dictionary
-			var start_args = this._printer.get_start_args();
-			if (this._name == "mcu")
-			{
-				out_fname = start_args.get("debugoutput");
-				dict_fname = start_args.get("dictionary");
-			}
-			else
-			{
-				out_fname = start_args.get("debugoutput") + "-" + this._name;
-				dict_fname = start_args.get("dictionary_" + this._name);
-			}
-			var outfile = open(out_fname, "wb");
-			var dfile = open(dict_fname, "rb");
-			var dict_data = dfile.read();
-			dfile.close();
-			this._serial.connect_file(outfile, dict_data);
-			this._clocksync.connect_file(this._serial, pace);
-			// Handle pacing
-			if (!pace)
-			{
-				Func<object, object> dummy_estimated_print_time = eventtime =>
-				{
-					return 0.0;
-				};
-				this.estimated_print_time = dummy_estimated_print_time;
-			}
+			//object dict_fname;
+			//object out_fname;
+			//// In a debugging mode.  Open debug output file and read data dictionary
+			//var start_args = this._printer.get_start_args();
+			//if (this._name == "mcu")
+			//{
+			//	out_fname = start_args.get("debugoutput");
+			//	dict_fname = start_args.get("dictionary");
+			//}
+			//else
+			//{
+			//	out_fname = start_args.get("debugoutput") + "-" + this._name;
+			//	dict_fname = start_args.get("dictionary_" + this._name);
+			//}
+			//var outfile = open(out_fname, "wb");
+			//var dfile = open(dict_fname, "rb");
+			//var dict_data = dfile.read();
+			//dfile.close();
+			//this._serial.connect_file(outfile, dict_data);
+			//this._clocksync.connect_file(this._serial, pace);
+			//// Handle pacing
+			//if (!pace)
+			//{
+			//	Func<object, object> dummy_estimated_print_time = eventtime =>
+			//	{
+			//		return 0.0;
+			//	};
+			//	this.estimated_print_time = dummy_estimated_print_time;
+			//}
 		}
 
 		public void _add_custom()

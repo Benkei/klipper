@@ -7,7 +7,7 @@ namespace KlipperSharp
 {
 	public class KinematicFactory
 	{
-		public static BaseKinematic load_kinematics(string type, ToolHead toolhead, MachineConfig config)
+		public static BaseKinematic load_kinematics(string type, ToolHead toolhead, ConfigWrapper config)
 		{
 			//return DeltaKinematics(toolhead, config);
 			throw new NotImplementedException();

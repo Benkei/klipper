@@ -12,7 +12,7 @@ namespace KlipperSharp
 		private Machine printer;
 		private List<(Mcu_endstop endstop, string name)> endstops;
 
-		public QueryEndstops(MachineConfig config)
+		public QueryEndstops(ConfigWrapper config)
 		{
 			this.printer = config.get_printer();
 			this.endstops = new List<(Mcu_endstop endstop, string name)>();
@@ -51,7 +51,7 @@ namespace KlipperSharp
 			gcode.respond(msg);
 		}
 
-		public static QueryEndstops load_config(MachineConfig config)
+		public static QueryEndstops load_config(ConfigWrapper config)
 		{
 			return new QueryEndstops(config);
 		}

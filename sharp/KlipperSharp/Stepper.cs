@@ -72,7 +72,7 @@ namespace KlipperSharp
 		public Func<int> get_mcu_position;
 		private StepperEnablePin enable;
 
-		public PrinterStepper(MachineConfig config)
+		public PrinterStepper(ConfigWrapper config)
 		{
 			var printer = config.get_printer();
 			this.name = config.get_name();
@@ -88,8 +88,8 @@ namespace KlipperSharp
 			mcu_stepper.setup_step_distance(step_dist);
 			this.enable = StepperEnablePin.lookup_enable_pin(ppins, config.get("enable_pin", null));
 			// Register STEPPER_BUZZ command
-			var force_move = printer.try_load_module(config, "force_move");
-			force_move.register_stepper(this);
+			//var force_move = printer.try_load_module(config, "force_move");
+			//force_move.register_stepper(this);
 			// Wrappers
 			this.step_itersolve = mcu_stepper.step_itersolve;
 			this.setup_itersolve = mcu_stepper.setup_itersolve;
@@ -177,7 +177,7 @@ namespace KlipperSharp
 		public Func<double> get_commanded_position;
 		public Func<bool> is_motor_enabled;
 
-		public PrinterRail(MachineConfig config, bool need_position_minmax = true, double? default_position_endstop = null)
+		public PrinterRail(ConfigWrapper config, bool need_position_minmax = true, double? default_position_endstop = null)
 		{
 			// Primary stepper
 			var stepper = new PrinterStepper(config);
@@ -204,8 +204,8 @@ namespace KlipperSharp
 			{
 				this.position_endstop = config.getfloat("position_endstop", default_position_endstop);
 			}
-			var query_endstops = printer.try_load_module(config, "query_endstops");
-			query_endstops.register_endstop(mcu_endstop, this.name);
+			//var query_endstops = printer.try_load_module(config, "query_endstops");
+			//query_endstops.register_endstop(mcu_endstop, this.name);
 			// Axis range
 			if (need_position_minmax)
 			{
@@ -280,7 +280,7 @@ namespace KlipperSharp
 			return this.endstops.ToList();
 		}
 
-		public void add_extra_stepper(MachineConfig config)
+		public void add_extra_stepper(ConfigWrapper config)
 		{
 			var stepper = new PrinterStepper(config);
 			this.steppers.Add(stepper);
@@ -294,8 +294,8 @@ namespace KlipperSharp
 				mcu_endstop = ppins.setup_pin<Mcu_endstop>("endstop", endstop_pin);
 				var name = stepper.get_name(shortName: true);
 				this.endstops.Add((mcu_endstop, name));
-				var query_endstops = printer.try_load_module(config, "query_endstops");
-				query_endstops.register_endstop(mcu_endstop, name);
+				//var query_endstops = printer.try_load_module(config, "query_endstops");
+				//query_endstops.register_endstop(mcu_endstop, name);
 			}
 			stepper.add_to_endstop(mcu_endstop);
 		}
@@ -358,7 +358,7 @@ namespace KlipperSharp
 
 
 		// Wrapper for dual stepper motor support
-		public static PrinterRail LookupMultiRail(MachineConfig config)
+		public static PrinterRail LookupMultiRail(ConfigWrapper config)
 		{
 			var rail = new PrinterRail(config);
 			for (int i = 0; i < 99; i++)

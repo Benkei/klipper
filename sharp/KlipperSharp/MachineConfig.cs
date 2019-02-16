@@ -5,51 +5,31 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using IniParser;
+using IniParser.Parser;
+using IniParser.Model.Configuration;
+using IniParser.Model;
+using System.Linq;
+using KlipperSharp.MachineCodes;
 
 namespace KlipperSharp
 {
-	public class MachineConfig
+	public class ConfigWrapper
 	{
-		Machine machine;
-		XmlDocument config;
-
-		public MachineConfig()
-		{
-
-		}
-
-
-		XmlDocument _read_config_file(string filename)
-		{
-			try
-			{
-				var doc = new XmlDocument();
-				using (var fs = File.OpenRead(filename))
-				{
-					doc.Load(fs);
-				}
-				return doc;
-			}
-			catch (Exception)
-			{
-
-				throw;
-			}
-		}
-
-
-
-
 		private Machine printer;
-		public string section;
+		public IniData fileconfig;
+		public HashSet<(string, string)> access_tracking;
+		private string section;
+		private KeyDataCollection options;
 
-		//public ConfigWrapper(Machine printer, object fileconfig, object access_tracking, string section)
-		//{
-		//	this.printer = printer;
-		//	//this.fileconfig = fileconfig;
-		//	//this.access_tracking = access_tracking;
-		//	this.section = section;
-		//}
+		public ConfigWrapper(Machine printer, IniData fileconfig, HashSet<(string, string)> access_tracking, string section)
+		{
+			this.printer = printer;
+			this.fileconfig = fileconfig;
+			this.access_tracking = access_tracking;
+			this.section = section;
+			this.options = fileconfig.Sections[section];
+		}
 
 		public Machine get_printer()
 		{
@@ -61,62 +41,37 @@ namespace KlipperSharp
 			return this.section;
 		}
 
-		public object _get_wrapper(
-			 object parser,
-			 object option,
-			 string @default,
-			 object minval = null,
-			 object maxval = null,
-			 object above = null,
-			 object below = null)
+		string _get_wrapper(string option, string @default)
 		{
-			throw new NotImplementedException();
-			//if (@default != sentinel && !this.fileconfig.has_option(this.section, option))
-			//{
-			//	return @default;
-			//}
-			//this.access_tracking[Tuple.Create(this.section.lower(), option.lower())] = 1;
-			//try
-			//{
-			//	var v = parser(this.section, option);
-			//}
-			//catch
-			//{
-			//	throw;
-			//}
-			//catch
-			//{
-			//	throw error(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
-			//}
-			//if (minval != null && v < minval)
-			//{
-			//	throw error(String.Format("Option '%s' in section '%s' must have minimum of %s", option, this.section, minval));
-			//}
-			//if (maxval != null && v > maxval)
-			//{
-			//	throw error(String.Format("Option '%s' in section '%s' must have maximum of %s", option, this.section, maxval));
-			//}
-			//if (above != null && v <= above)
-			//{
-			//	throw error(String.Format("Option '%s' in section '%s' must be above %s", option, this.section, above));
-			//}
-			//if (below != null && v >= below)
-			//{
-			//	throw this.error(String.Format("Option '%s' in section '%s' must be below %s", option, this.section, below));
-			//}
-			//return v;
+			if (@default != null && !options.ContainsKey(option))
+			{
+				return @default;
+			}
+			this.access_tracking.Add((this.section.ToLowerInvariant(), option.ToLowerInvariant()));
+			return options[option];
 		}
 
 		public string get(string option, string @default = null)
 		{
-			throw new NotImplementedException();
-			//return this._get_wrapper(this.fileconfig.get, option, @default);
+			return this._get_wrapper(option, @default);
 		}
 
-		public int getint(string option, int? @default = null, int? minval = null, int? maxval = null)
+		public long getint(string option, long? @default = null, long? minval = null, long? maxval = null)
 		{
-			throw new NotImplementedException();
-			//return this._get_wrapper(this.fileconfig.getint, option, @default, minval, maxval);
+			var raw = this._get_wrapper(option, null);
+			if (!long.TryParse(raw, out long v))
+			{
+				throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+			}
+			if (minval != null && v < minval)
+			{
+				throw new Exception(String.Format("Option '%s' in section '%s' must have minimum of %s", option, this.section, minval));
+			}
+			if (maxval != null && v > maxval)
+			{
+				throw new Exception(String.Format("Option '%s' in section '%s' must have maximum of %s", option, this.section, maxval));
+			}
+			return v;
 		}
 
 		public double getfloat(
@@ -127,87 +82,345 @@ namespace KlipperSharp
 			 double? above = null,
 			 double? below = null)
 		{
-			throw new NotImplementedException();
-			//return this._get_wrapper(this.fileconfig.getfloat, option, @default, minval, maxval, above, below);
+			var raw = this._get_wrapper(option, null);
+			if (!double.TryParse(raw, out double v))
+			{
+				throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+			}
+			if (minval != null && v < minval)
+			{
+				throw new Exception(String.Format("Option '%s' in section '%s' must have minimum of %s", option, this.section, minval));
+			}
+			if (maxval != null && v > maxval)
+			{
+				throw new Exception(String.Format("Option '%s' in section '%s' must have maximum of %s", option, this.section, maxval));
+			}
+			if (above != null && v <= above)
+			{
+				throw new Exception(String.Format("Option '%s' in section '%s' must be above %s", option, this.section, above));
+			}
+			if (below != null && v >= below)
+			{
+				throw new Exception(String.Format("Option '%s' in section '%s' must be below %s", option, this.section, below));
+			}
+			return v;
 		}
 
-		public bool? getboolean(string option, bool? @default = null)
+		public bool getboolean(string option, bool? @default = null)
 		{
-			throw new NotImplementedException();
-			//return this._get_wrapper(this.fileconfig.getboolean, option, @default);
+			var raw = this._get_wrapper(option, null);
+			return raw == "1";
 		}
 
-		public T getchoice<T>(string option, Dictionary<string, T> choices, T @default = default(T))
+		public T getchoice<T>(string option, Dictionary<string, T> choices, string @default = null)
 		{
-			throw new NotImplementedException();
-			//var c = this.get(option, @default);
-			//if (!choices.Contains(c))
-			//{
-			//	throw error(String.Format("Choice '%s' for option '%s' in section '%s'\" is not a valid choice\"", c, option, this.section));
-			//}
-			//return choices[c];
+			var c = this.get(option, @default);
+			if (!choices.ContainsKey(c))
+			{
+				throw new Exception(String.Format("Choice '%s' for option '%s' in section '%s'\" is not a valid choice\"", c, option, this.section));
+			}
+			return choices[c];
 		}
 
-		public MachineConfig getsection(string section)
+		public ConfigWrapper getsection(string section)
 		{
-			throw new NotImplementedException();
-			//return new ConfigWrapper(this.printer, this.fileconfig, this.access_tracking, section);
+			return new ConfigWrapper(this.printer, this.fileconfig, this.access_tracking, section);
 		}
 
 		public bool has_section(string section)
 		{
-			throw new NotImplementedException();
-			//return this.fileconfig.has_section(section);
+			return this.fileconfig.Sections.ContainsSection(section);
 		}
 
-		public MachineConfig[] get_prefix_sections(string prefix)
+		public ConfigWrapper[] get_prefix_sections(string prefix)
 		{
-			throw new NotImplementedException();
-			//return (from s in this.fileconfig.sections()
-			//		  where s.startswith(prefix)
-			//		  select this.getsection(s)).ToList();
+			return (from s in this.fileconfig.Sections
+					  where s.SectionName.StartsWith(prefix)
+					  select this.getsection(s.SectionName)).ToArray();
 		}
 
-		//public virtual object get_prefix_options(object prefix)
-		//{
-		//	return (from o in this.fileconfig.options(this.section)
-		//			  where o.startswith(prefix)
-		//			  select o).ToList();
-		//}
+		public object get_prefix_options(string prefix)
+		{
+			return (from o in options
+					  where o.KeyName.StartsWith(prefix)
+					  select o).ToList();
+		}
 	}
 
-	public class PrinterConfig
+
+	public class MachineConfig
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
+		public const string cmd_SAVE_CONFIG_help = "Overwrite config file and restart";
+		public const string AUTOSAVE_HEADER = @"#*# <---------------------- SAVE_CONFIG ---------------------->
+#*# DO NOT EDIT THIS BLOCK OR BELOW. The contents are auto-generated.
+#*#";
 		public static Regex comment_r = new Regex("[#;].*$");
 		public static Regex value_r = new Regex("[^A-Za-z0-9_].*$");
-		public const string cmd_SAVE_CONFIG_help = "Overwrite config file and restart";
 		private Machine printer;
+		private ConfigWrapper autosave;
 
-		public PrinterConfig(Machine printer)
+		static FileIniDataParser fileIniParser;
+
+		static MachineConfig()
 		{
-			//this.printer = printer;
-			//this.autosave = null;
-			//var gcode = this.printer.lookup_object("gcode");
-			//gcode.register_command("SAVE_CONFIG", this.cmd_SAVE_CONFIG, desc: cmd_SAVE_CONFIG_help);
+			var parserConfiguration = new IniParserConfiguration()
+			{
+				CaseInsensitive = false,
+				CommentString = "#",
+				SectionStartChar = '[',
+				SectionEndChar = ']',
+				KeyValueAssigmentChar = ':',
+			};
+			var iniParser = new IniDataParser(parserConfiguration);
+			fileIniParser = new FileIniDataParser(iniParser);
+		}
+		public MachineConfig(Machine printer)
+		{
+			this.printer = printer;
+			this.autosave = null;
+			var gcode = this.printer.lookup_object<GCodeParser>("gcode");
+			gcode.register_command("SAVE_CONFIG", cmd_SAVE_CONFIG, desc: cmd_SAVE_CONFIG_help);
 		}
 
-		internal MachineConfig read_main_config()
+		string _read_config_file(string filename)
 		{
-			throw new NotImplementedException();
+			string data;
+			try
+			{
+				data = File.ReadAllText(filename);
+			}
+			catch
+			{
+				var msg = String.Format("Unable to open config file %s", filename);
+				logging.Error(msg);
+				throw new Exception(msg);
+			}
+			return data.Replace("\r\n", "\n");
 		}
 
-		internal void log_config(object config)
+		(string, string) _find_autosave_data(string data)
 		{
-			throw new NotImplementedException();
+			var regular_data = data;
+			var autosave_data = "";
+			var pos = data.IndexOf(AUTOSAVE_HEADER);
+			if (pos >= 0)
+			{
+				regular_data = data.Substring(0, pos);
+				autosave_data = data.Substring(pos + AUTOSAVE_HEADER.Length).Trim();
+			}
+			// Check for errors and strip line prefixes
+			if (regular_data.Contains("\n#*# "))
+			{
+				logging.Warn("Can't read autosave from config file\" - autosave state corrupted\"");
+				return (data, "");
+			}
+			var @out = new List<object> { "" };
+			foreach (var line in autosave_data.Split("\n"))
+			{
+				if ((!line.StartsWith("#*#") || line.Length >= 4 && !line.StartsWith("#*# ")) && autosave_data != null)
+				{
+					logging.Warn("Can't read autosave from config file\" - modifications after header\"");
+					return (data, "");
+				}
+				@out.Add(line.Substring(4));
+			}
+			@out.Add("");
+			return (regular_data, string.Join("\n", @out));
 		}
 
-		internal void check_unused_options(object config)
+		public string _strip_duplicates(string data, ConfigWrapper config)
 		{
-			throw new NotImplementedException();
+			var fileconfig = config.fileconfig;
+			// Comment out fields in 'data' that are defined in 'config'
+			var lines = data.Split("\n");
+			string section = null;
+			var is_dup_field = false;
+			for (int lineno = 0; lineno < lines.Length; lineno++)
+			{
+				var line = lines[lineno];
+				var pruned_line = comment_r.Match(line).Value.TrimEnd();
+				if (pruned_line == null)
+				{
+					continue;
+				}
+				if (char.IsWhiteSpace(pruned_line[0]))
+				{
+					if (is_dup_field)
+					{
+						lines[lineno] = "#" + lines[lineno];
+					}
+					continue;
+				}
+				is_dup_field = false;
+				if (pruned_line[0] == '[')
+				{
+					section = pruned_line.Substring(1, pruned_line.Length - 2).Trim();
+					continue;
+				}
+				var field = value_r.Match(pruned_line).Value;
+				if (config.fileconfig[section].ContainsKey(field))
+				{
+					is_dup_field = true;
+					lines[lineno] = "#" + lines[lineno];
+				}
+			}
+			return string.Join("\n", lines);
 		}
 
+		ConfigWrapper _build_config_wrapper(string data)
+		{
+			var fileconfig = fileIniParser.Parser.Parse(data);
+			return new ConfigWrapper(this.printer, fileconfig, new HashSet<(string, string)>(), "printer");
+		}
+
+		string _build_config_string(ConfigWrapper config)
+		{
+			MemoryStream ms = new MemoryStream();
+			fileIniParser.WriteData(new StreamWriter(ms), config.fileconfig);
+			ms.Position = 0;
+			var data = new StreamReader(ms).ReadToEnd();
+			return data.Trim();
+		}
+
+		public ConfigWrapper read_config(string filename)
+		{
+			return this._build_config_wrapper(this._read_config_file(filename));
+		}
+
+		public ConfigWrapper read_main_config()
+		{
+			var filename = this.printer.get_start_args().get("config_file");
+			var data = this._read_config_file(filename);
+			var _tup_1 = this._find_autosave_data(data);
+			var regular_data = _tup_1.Item1;
+			var autosave_data = _tup_1.Item2;
+			var regular_config = this._build_config_wrapper(regular_data);
+			autosave_data = this._strip_duplicates(autosave_data, regular_config);
+			this.autosave = this._build_config_wrapper(autosave_data);
+			return this._build_config_wrapper(regular_data + autosave_data);
+		}
+
+		public void check_unused_options(ConfigWrapper config)
+		{
+			var fileconfig = config.fileconfig;
+			var objects = this.printer.lookup_objects<object>().ToDictionary((a) => a.name, (b) => b.modul);
+			// Determine all the fields that have been accessed
+			var access_tracking = new HashSet<(string, string)>(config.access_tracking);
+			foreach (var section in this.autosave.fileconfig.Sections)
+			{
+				foreach (var option in section.Keys)
+				{
+					access_tracking.Add((section.SectionName.ToLowerInvariant(), option.KeyName.ToLowerInvariant()));
+				}
+			}
+			// Validate that there are no undefined parameters in the config file
+			var valid_sections = access_tracking.Select((a) => a.Item1).ToHashSet();
+			foreach (var section in fileconfig.Sections)
+			{
+				var sectionName = section.SectionName.ToLowerInvariant();
+				if (!valid_sections.Contains(sectionName) && !objects.ContainsKey(sectionName))
+				{
+					throw new Exception(String.Format("Section '%s' is not a valid config section", sectionName));
+				}
+				foreach (var option in section.Keys)
+				{
+					var optionName = option.KeyName.ToLowerInvariant();
+					if (!access_tracking.Contains((sectionName, optionName)))
+					{
+						throw new Exception(String.Format("Option '%s' is not valid in section '%s'", option, sectionName));
+					}
+				}
+			}
+		}
+
+		public void log_config(ConfigWrapper config)
+		{
+			var lines = new List<object> {
+					 "===== Config file =====",
+					 this._build_config_string(config),
+					 "======================="
+				};
+			this.printer.set_rollover_info("config", string.Join("\n", lines));
+		}
+
+		// Autosave functions
+		public void set(string section, string option, string value)
+		{
+			if (!this.autosave.fileconfig.Sections.ContainsSection(section))
+			{
+				this.autosave.fileconfig.Sections.AddSection(section);
+			}
+			this.autosave.fileconfig.Sections[section][option] = value;
+			logging.Info("save_config: set [%s] %s = %s", section, option, value);
+		}
+
+		public void remove_section(string section)
+		{
+			this.autosave.fileconfig.Sections.RemoveSection(section);
+		}
+
+		public void cmd_SAVE_CONFIG(Dictionary<string, object> parameters)
+		{
+			string msg;
+			string regular_data;
+			string data;
+			if (this.autosave.fileconfig.Sections.Count == 0)
+			{
+				return;
+			}
+			var gcode = this.printer.lookup_object<GCodeParser>("gcode");
+			// Create string containing autosave data
+			var autosave_data = this._build_config_string(this.autosave);
+			var lines = (from l in autosave_data.Split("\n")
+							 select ("#*# " + l).TrimEnd()).ToList();
+			lines.Insert(0, "\n" + AUTOSAVE_HEADER);
+			lines.Add("");
+			autosave_data = string.Join("\n", lines);
+			// Read in and validate current config file
+			var cfgname = this.printer.get_start_args().get("config_file");
+			try
+			{
+				data = this._read_config_file(cfgname);
+				var _tup_1 = this._find_autosave_data(data);
+				regular_data = _tup_1.Item1;
+				var old_autosave_data = _tup_1.Item2;
+				var config = this._build_config_wrapper(regular_data);
+			}
+			catch (Exception ex)
+			{
+				msg = "Unable to parse existing config on SAVE_CONFIG";
+				logging.Error(msg);
+				throw new Exception(msg, ex);
+			}
+			regular_data = this._strip_duplicates(regular_data, this.autosave);
+			data = regular_data.Trim() + autosave_data;
+			// Determine filenames
+			var datestr = DateTime.Now.ToLongDateString();// ("-%Y%m%d_%H%M%S");
+			var backup_name = cfgname + datestr;
+			var temp_name = cfgname + "_autosave";
+			if (cfgname.EndsWith(".cfg"))
+			{
+				backup_name = cfgname.Substring(0, cfgname.Length - 4) + datestr + ".cfg";
+				temp_name = cfgname.Substring(0, cfgname.Length - 4) + "_autosave.cfg";
+			}
+			// Create new config file with temporary name and swap with main config
+			logging.Info("SAVE_CONFIG to '%s' (backup in '%s')", cfgname, backup_name);
+			try
+			{
+				File.WriteAllText(temp_name, data);
+				File.Move(cfgname, backup_name, true);
+				File.Move(temp_name, cfgname, true);
+			}
+			catch (Exception ex)
+			{
+				msg = "Unable to write config file during SAVE_CONFIG";
+				logging.Error(msg);
+				throw new Exception(msg, ex);
+			}
+			gcode.request_restart("restart");
+		}
 	}
 
 }

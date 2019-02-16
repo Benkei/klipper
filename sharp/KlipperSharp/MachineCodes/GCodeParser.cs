@@ -137,14 +137,14 @@ namespace KlipperSharp.MachineCodes
 			this.is_printer_ready = false;
 			foreach (var cmd in this.all_handlers)
 			{
-				var func = getattr(this, "cmd_" + cmd);
-				var wnr = getattr(this, "cmd_" + cmd + "_when_not_ready", false);
-				var desc = getattr(this, "cmd_" + cmd + "_help", null);
-				this.register_command(cmd, func, wnr, desc);
-				foreach (var a in getattr(this, "cmd_" + cmd + "_aliases", new List<object>()))
-				{
-					this.register_command(a, func, wnr);
-				}
+				//var func = getattr(this, "cmd_" + cmd);
+				//var wnr = getattr(this, "cmd_" + cmd + "_when_not_ready", false);
+				//var desc = getattr(this, "cmd_" + cmd + "_help", null);
+				//this.register_command(cmd, func, wnr, desc);
+				//foreach (var a in getattr(this, "cmd_" + cmd + "_aliases", new List<object>()))
+				//{
+				//	this.register_command(a, func, wnr);
+				//}
 			}
 			// G-Code coordinate manipulation
 			this.absolutecoord = true;
@@ -407,67 +407,67 @@ namespace KlipperSharp.MachineCodes
 		public void process_data(double eventtime)
 		{
 			// Read input, separate by newline, and add to pending_commands
-			string data;
-			try
-			{
-				data = os.read(this.fd, 4096);
-			}
-			catch
-			{
-				logging.Error("Read g-code");
-				return;
-			}
-			this.input_log.Add((eventtime, data));
-			this.bytes_read += data.Length;
-			var lines = new List<string>(data.Split("\n"));
-			lines[0] = this.partial_input + lines[0];
-			this.partial_input = lines[lines.Count - 1];
-			lines.RemoveAt(lines.Count - 1);
-			var pending_commands = this.pending_commands;
-			pending_commands.AddRange(lines);
-			// Special handling for debug file input EOF
-			if (data == null && this.is_fileinput)
-			{
-				if (!this.is_processing_data)
-				{
-					this.request_restart("exit");
-				}
-				pending_commands.Add("");
-			}
-			// Handle case where multiple commands pending
-			if (this.is_processing_data || pending_commands.Count > 1)
-			{
-				if (pending_commands.Count < 20)
-				{
-					// Check for M112 out-of-order
-					foreach (var line in lines)
-					{
-						if (m112_r.IsMatch(line))
-						{
-							this.cmd_M112(new Dictionary<string, object>());
-						}
-					}
-				}
-				if (this.is_processing_data)
-				{
-					if (pending_commands.Count >= 20)
-					{
-						// Stop reading input
-						this.reactor.unregister_fd(this.fd_handle);
-						this.fd_handle = null;
-					}
-					return;
-				}
-			}
-			// Process commands
-			this.is_processing_data = true;
-			this.pending_commands = new List<string>();
-			this.process_commands(pending_commands);
-			if (this.pending_commands.Count != 0)
-			{
-				this.process_pending();
-			}
-			this.is_processing_data = false;
+			//string data;
+			//try
+			//{
+			//	data = os.read(this.fd, 4096);
+			//}
+			//catch
+			//{
+			//	logging.Error("Read g-code");
+			//	return;
+			//}
+			//this.input_log.Add((eventtime, data));
+			//this.bytes_read += data.Length;
+			//var lines = new List<string>(data.Split("\n"));
+			//lines[0] = this.partial_input + lines[0];
+			//this.partial_input = lines[lines.Count - 1];
+			//lines.RemoveAt(lines.Count - 1);
+			//var pending_commands = this.pending_commands;
+			//pending_commands.AddRange(lines);
+			//// Special handling for debug file input EOF
+			//if (data == null && this.is_fileinput)
+			//{
+			//	if (!this.is_processing_data)
+			//	{
+			//		this.request_restart("exit");
+			//	}
+			//	pending_commands.Add("");
+			//}
+			//// Handle case where multiple commands pending
+			//if (this.is_processing_data || pending_commands.Count > 1)
+			//{
+			//	if (pending_commands.Count < 20)
+			//	{
+			//		// Check for M112 out-of-order
+			//		foreach (var line in lines)
+			//		{
+			//			if (m112_r.IsMatch(line))
+			//			{
+			//				this.cmd_M112(new Dictionary<string, object>());
+			//			}
+			//		}
+			//	}
+			//	if (this.is_processing_data)
+			//	{
+			//		if (pending_commands.Count >= 20)
+			//		{
+			//			// Stop reading input
+			//			this.reactor.unregister_fd(this.fd_handle);
+			//			this.fd_handle = null;
+			//		}
+			//		return;
+			//	}
+			//}
+			//// Process commands
+			//this.is_processing_data = true;
+			//this.pending_commands = new List<string>();
+			//this.process_commands(pending_commands);
+			//if (this.pending_commands.Count != 0)
+			//{
+			//	this.process_pending();
+			//}
+			//this.is_processing_data = false;
 		}
 
 		public void process_pending()
@@ -548,42 +548,42 @@ namespace KlipperSharp.MachineCodes
 		// Response handling
 		public void ack(string msg = null)
 		{
-			if (!this.need_ack || this.is_fileinput)
-			{
-				return;
-			}
-			try
-			{
-				if (msg != null)
-				{
-					os.write(this.fd, String.Format("ok %s\n", msg));
-				}
-				else
-				{
-					os.write(this.fd, "ok\n");
-				}
-			}
-			catch
-			{
-				logging.Error("Write g-code ack");
-			}
-			this.need_ack = false;
+			//if (!this.need_ack || this.is_fileinput)
+			//{
+			//	return;
+			//}
+			//try
+			//{
+			//	if (msg != null)
+			//	{
+			//		os.write(this.fd, String.Format("ok %s\n", msg));
+			//	}
+			//	else
+			//	{
+			//		os.write(this.fd, "ok\n");
+			//	}
+			//}
+			//catch
+			//{
+			//	logging.Error("Write g-code ack");
+			//}
+			//this.need_ack = false;
 		}
 
 		public void respond(string msg)
 		{
-			if (this.is_fileinput)
-			{
-				return;
-			}
-			try
-			{
-				os.write(this.fd, msg + "\n");
-			}
-			catch
-			{
-				logging.Error("Write g-code response");
-			}
+			//if (this.is_fileinput)
+			//{
+			//	return;
+			//}
+			//try
+			//{
+			//	os.write(this.fd, msg + "\n");
+			//}
+			//catch
+			//{
+			//	logging.Error("Write g-code response");
+			//}
 		}
 
 		public void respond_info(string msg)
@@ -683,24 +683,25 @@ namespace KlipperSharp.MachineCodes
 
 		public Dictionary<string, object> get_extended_params(Dictionary<string, object> parameters)
 		{
-			var m = extended_r.Match(parameters["#original"] as string);
-			if (m == null)
-			{
-				// Not an "extended" command
-				return parameters;
-			}
-			var eargs = m.Groups["args"];
-			try
-			{
-				var eparams = (from earg in shlex.split(eargs.Value) select earg.split("=", 1)).ToList();
-				eparams = eparams.ToDictionary(_tup_1 => _tup_1.Item1.upper(), _tup_1 => _tup_1.Item2);
-				eparams.update(parameters.ToDictionary(k => k, k => parameters[k]));
-				return eparams;
-			}
-			catch (Exception ex)
-			{
-				throw new Exception(String.Format("Malformed command '%s'", parameters["#original"]), ex);
-			}
+			//var m = extended_r.Match(parameters["#original"] as string);
+			//if (m == null)
+			//{
+			//	// Not an "extended" command
+			//	return parameters;
+			//}
+			//var eargs = m.Groups["args"];
+			//try
+			//{
+			//	var eparams = (from earg in shlex.split(eargs.Value) select earg.split("=", 1)).ToList();
+			//	eparams = eparams.ToDictionary(_tup_1 => _tup_1.Item1.upper(), _tup_1 => _tup_1.Item2);
+			//	eparams.update(parameters.ToDictionary(k => k, k => parameters[k]));
+			//	return eparams;
+			//}
+			//catch (Exception ex)
+			//{
+			//	throw new Exception(String.Format("Malformed command '%s'", parameters["#original"]), ex);
+			//}
+			throw new NotImplementedException();
 		}
 
 		// Temperature wrappers

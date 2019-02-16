@@ -148,7 +148,7 @@ Printer is shutdown
 			}
 		}
 
-		public object try_load_module(MachineConfig config, string section)
+		public object try_load_module(ConfigWrapper config, string section)
 		{
 			//if (objects.ContainsKey(section))
 			//{
@@ -179,8 +179,8 @@ Printer is shutdown
 
 		public void _read_config()
 		{
-			PrinterConfig pconfig;
-			objects["configfile"] = pconfig = new PrinterConfig(this);
+			MachineConfig pconfig;
+			objects["configfile"] = pconfig = new MachineConfig(this);
 			var config = pconfig.read_main_config();
 			if (bglogger != null)
 			{
@@ -207,15 +207,15 @@ Printer is shutdown
 			pconfig.check_unused_options(config);
 		}
 
-		private void add_printer_objects_pins(MachineConfig config)
+		private void add_printer_objects_pins(ConfigWrapper config)
 		{
 			config.get_printer().add_object("pins", new PrinterPins());
 		}
-		private void add_printer_objects_heater(MachineConfig config)
+		private void add_printer_objects_heater(ConfigWrapper config)
 		{
 			config.get_printer().add_object("heater", new PrinterHeaters(config));
 		}
-		public void add_printer_objects_mcu(MachineConfig config)
+		public void add_printer_objects_mcu(ConfigWrapper config)
 		{
 			var printer = config.get_printer();
 			var reactor = printer.get_reactor();
@@ -223,11 +223,11 @@ Printer is shutdown
 			printer.add_object("mcu", new Mcu(config.getsection("mcu"), mainsync));
 			foreach (var s in config.get_prefix_sections("mcu "))
 			{
-				printer.add_object(s.section, new Mcu(s, new SecondarySync(reactor, mainsync)));
+				printer.add_object(s.get_name(), new Mcu(s, new SecondarySync(reactor, mainsync)));
 			}
 		}
 		// Main code to track events (and their timing) on the printer toolhead
-		public void add_printer_objects_toolhead(MachineConfig config)
+		public void add_printer_objects_toolhead(ConfigWrapper config)
 		{
 			config.get_printer().add_object("toolhead", new ToolHead(config));
 			PrinterExtruder.add_printer_objects(config);
