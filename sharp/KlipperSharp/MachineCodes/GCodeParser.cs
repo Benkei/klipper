@@ -318,7 +318,7 @@ namespace KlipperSharp.MachineCodes
 
 		public void reset_last_position()
 		{
-			this.last_position = this.position_with_transform();
+			this.last_position = this.position_with_transform().ToArray();
 		}
 
 		public void dump_debug()
@@ -931,7 +931,7 @@ namespace KlipperSharp.MachineCodes
 			}
 			try
 			{
-				this.move_with_transform(this.last_position, this.speed * this.speed_factor);
+				this.move_with_transform(new List<double>(this.last_position), this.speed * this.speed_factor);
 			}
 			catch (Exception)
 			{
