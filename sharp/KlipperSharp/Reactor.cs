@@ -58,22 +58,23 @@ namespace KlipperSharp
 		}
 	}
 
-	public class ReactorGreenlet //: greenlet.greenlet
-	{
+	//public class ReactorGreenlet //: greenlet.greenlet
+	//{
 
-		public ReactorGreenlet(object run)
-		//: base(run: run)
-		{
-			//this.timer = null;
-		}
-	}
+	//	public ReactorGreenlet(object run)
+	//	//: base(run: run)
+	//	{
+	//		//this.timer = null;
+	//	}
+	//}
 
 	public class SelectReactor
 	{
 		public const double NOW = 0.0;
 		public const double NEVER = 9999999999999999.0;
 
-		protected bool _process;
+		protected bool _process = false;
+		private Thread bg_thread;
 		public Func<double> monotonic;
 		private List<ReactorTimer> _timers;
 		private double _next_timer;
@@ -86,7 +87,6 @@ namespace KlipperSharp
 		public SelectReactor()
 		{
 			// Main code
-			_process = false;
 			monotonic = () => HighResolutionTime.Now; //chelper.get_ffi()[1].get_monotonic;
 																	// Timers
 			_timers = new List<ReactorTimer>();
@@ -112,12 +112,15 @@ namespace KlipperSharp
 		}
 
 		// Timers
-		public void _note_time(ReactorTimer t)
+		void _note_time(ReactorTimer t)
 		{
-			var nexttime = t.waketime;
-			if (nexttime < this._next_timer)
+			lock (_timers)
 			{
-				_next_timer = nexttime;
+				var nexttime = t.waketime;
+				if (nexttime < this._next_timer)
+				{
+					_next_timer = nexttime;
+				}
 			}
 		}
 
@@ -130,47 +133,46 @@ namespace KlipperSharp
 		public ReactorTimer register_timer(ReactorAction callback, double waketime = NEVER)
 		{
 			var handler = new ReactorTimer(callback, waketime);
-			var timers = _timers;
-			timers.Add(handler);
-			_timers = timers;
-			_note_time(handler);
+			lock (_timers)
+			{
+				_timers.Add(handler);
+				_note_time(handler);
+			}
 			return handler;
 		}
 
 		public void unregister_timer(ReactorTimer handler)
 		{
-			var timers = _timers;
-			timers.Remove(handler);
-			_timers = timers;
+			lock (_timers)
+			{
+				_timers.Remove(handler);
+			}
 		}
 
-		public double _check_timers(double eventtime)
+		double _check_timers(double eventtime)
 		{
-			if (eventtime < _next_timer)
+			lock (_timers)
 			{
-				return Math.Min(1.0, Math.Max(0.001, _next_timer - eventtime));
-			}
-			_next_timer = NEVER;
-			var g_dispatch = _g_dispatch;
-			foreach (var t in _timers)
-			{
-				if (eventtime >= t.waketime)
+				if (eventtime < _next_timer)
 				{
-					t.waketime = NEVER;
-					t.waketime = t.callback(eventtime);
-					if (g_dispatch != _g_dispatch)
-					{
-						_end_greenlet(g_dispatch);
-						return 0.0;
-					}
+					return Math.Min(1.0, Math.Max(0.001, _next_timer - eventtime));
 				}
-				_note_time(t);
+				_next_timer = NEVER;
+				foreach (var t in _timers)
+				{
+					if (eventtime >= t.waketime)
+					{
+						t.waketime = NEVER;
+						t.waketime = t.callback(eventtime);
+					}
+					_note_time(t);
+				}
+				if (eventtime >= _next_timer)
+				{
+					return 0.0;
+				}
+				return Math.Min(1.0, Math.Max(0.001, _next_timer - monotonic()));
 			}
-			if (eventtime >= _next_timer)
-			{
-				return 0.0;
-			}
-			return Math.Min(1.0, Math.Max(0.001, _next_timer - monotonic()));
 		}
 
 		// Callbacks
@@ -191,7 +193,7 @@ namespace KlipperSharp
 			}
 		}
 
-		public void _got_pipe_signal(double eventtime)
+		void _got_pipe_signal(double eventtime)
 		{
 			try
 			{
@@ -215,7 +217,7 @@ namespace KlipperSharp
 			}
 		}
 
-		public void _setup_async_callbacks()
+		void _setup_async_callbacks()
 		{
 			//_pipe_fds = os.pipe();
 			//util.set_nonblock(_pipe_fds[0]);
@@ -224,7 +226,7 @@ namespace KlipperSharp
 		}
 
 		// Greenlets
-		public double _sys_pause(double waketime)
+		double _sys_pause(double waketime)
 		{
 			// Pause using system sleep for when reactor not running
 			var delay = waketime - monotonic();
@@ -261,7 +263,7 @@ namespace KlipperSharp
 			throw new NotImplementedException();
 		}
 
-		public void _end_greenlet(object g_old)
+		void _end_greenlet(object g_old)
 		{
 			//// Cache this greenlet for later use
 			//_greenlets.Add(g_old);
@@ -288,7 +290,7 @@ namespace KlipperSharp
 		}
 
 		// Main loop
-		public virtual void _dispatch_loop()
+		protected virtual void _dispatch_loop()
 		{
 			//var _g_dispatch = this.g_dispatch = greenlet.getcurrent();
 			//var eventtime = monotonic();
@@ -309,7 +311,42 @@ namespace KlipperSharp
 			//	}
 			//}
 			//_g_dispatch = null;
-			throw new NotImplementedException();
+			//var _g_dispatch = this.g_dispatch = greenlet.getcurrent();
+			var eventtime = monotonic();
+			while (_process)
+			{
+				var timeout = _check_timers(eventtime);
+				eventtime = monotonic();
+				//var res = select.select(_fds, new List<object>(), new List<object>(), timeout);
+				//eventtime = monotonic();
+				//foreach (var fd in res[0])
+				//{
+				//	fd.callback(eventtime);
+				//	if (g_dispatch != this.g_dispatch)
+				//	{
+				//		this._end_greenlet(g_dispatch);
+				//		eventtime = monotonic();
+				//		break;
+				//	}
+				//}
+
+				while (true)
+				{
+					if (timeout <= 0f)
+						break;
+
+					if (timeout < 0.001f)
+						Thread.SpinWait(10);
+					else if (timeout < 0.050f)
+						Thread.SpinWait(100);
+					else
+						Thread.Sleep(1);
+
+					if (!_process)
+						return;
+				}
+			}
+			//_g_dispatch = null;
 		}
 
 		public void run()
@@ -318,10 +355,16 @@ namespace KlipperSharp
 			//{
 			//	_setup_async_callbacks();
 			//}
-			//_process = true;
+			_process = true;
 			//var g_next = new ReactorGreenlet(new Action(_dispatch_loop));
 			//g_next.@switch();
-			throw new NotImplementedException();
+			bg_thread = new Thread(_dispatch_loop)
+			{
+				Name = "Reactor",
+				IsBackground = true,
+				Priority = ThreadPriority.AboveNormal,
+			};
+			bg_thread.Start();
 		}
 
 		public void end()
