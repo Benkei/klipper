@@ -7,6 +7,17 @@ using System.Linq;
 
 namespace KlipperSharp
 {
+	public enum KinematicType
+	{
+		none,
+		cartesian,
+		corexy,
+		delta,
+		extruder,
+		polar,
+		winch,
+	}
+
 	public class ToolHead
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
@@ -85,7 +96,7 @@ namespace KlipperSharp
 			// Create kinematics class
 			this.extruder = new DummyExtruder();
 			this.move_queue.set_extruder(this.extruder);
-			var kin_name = config.get("kinematics");
+			var kin_name = config.getEnum<KinematicType>("kinematics");
 			try
 			{
 				this.kin = KinematicFactory.load_kinematics(kin_name, this, config);

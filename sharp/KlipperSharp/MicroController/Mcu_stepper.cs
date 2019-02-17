@@ -82,9 +82,8 @@ namespace KlipperSharp.MicroController
 		{
 			var max_error = this._mcu.get_max_stepper_error();
 			var min_stop_interval = Math.Max(0.0, this._min_stop_interval - max_error);
-			this._mcu.add_config_cmd(String.Format("config_stepper oid=%d step_pin=%s dir_pin=%s\" min_stop_interval=%d invert_step=%d\"",
-				this._oid, this._step_pin, this._dir_pin, this._mcu.seconds_to_clock(min_stop_interval), this._invert_step));
-			this._mcu.add_config_cmd(String.Format("reset_step_clock oid=%d clock=0", this._oid), is_init: true);
+			this._mcu.add_config_cmd($"config_stepper oid={this._oid} step_pin={this._step_pin} dir_pin={this._dir_pin} min_stop_interval={this._mcu.seconds_to_clock(min_stop_interval)} invert_step={(this._invert_step ? 1 : 0)}");
+			this._mcu.add_config_cmd($"reset_step_clock oid={this._oid} clock=0", is_init: true);
 			var step_cmd_id = this._mcu.lookup_command_id("queue_step oid=%c interval=%u count=%hu add=%hi");
 			var dir_cmd_id = this._mcu.lookup_command_id("set_next_step_dir oid=%c dir=%c");
 			this._reset_cmd_id = this._mcu.lookup_command_id("reset_step_clock oid=%c clock=%u");

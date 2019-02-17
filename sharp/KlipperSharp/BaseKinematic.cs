@@ -7,8 +7,18 @@ namespace KlipperSharp
 {
 	public class KinematicFactory
 	{
-		public static BaseKinematic load_kinematics(string type, ToolHead toolhead, ConfigWrapper config)
+		public static BaseKinematic load_kinematics(KinematicType type, ToolHead toolhead, ConfigWrapper config)
 		{
+			switch (type)
+			{
+				case KinematicType.none: break;
+				case KinematicType.cartesian: return new CartesianKinemactic(toolhead, config);
+				case KinematicType.corexy: break;
+				case KinematicType.delta: break;
+				case KinematicType.extruder: break;
+				case KinematicType.polar: break;
+				case KinematicType.winch: break;
+			}
 			//return DeltaKinematics(toolhead, config);
 			throw new NotImplementedException();
 		}

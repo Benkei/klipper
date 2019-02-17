@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,6 +17,8 @@ namespace KlipperSharp
 	//
 	public unsafe class SerialQueue
 	{
+		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
+
 		public const double PR_NOW = 0.0;
 		public const double PR_NEVER = 9999999999999999.0;
 
@@ -218,7 +221,7 @@ namespace KlipperSharp
 
 		public void Start()
 		{
-			serialPort.Open();
+			//serialPort.Open();
 			background_thread.Start();
 		}
 
@@ -315,7 +318,11 @@ namespace KlipperSharp
 					//if (pollreactor_is_exit(&sq->pr))
 					//    goto exit;
 					receive_waiting = true;
-					Monitor.Wait(_lock);
+					if (!Monitor.Wait(_lock, 1000))
+					{
+						pqm = new QueueMessage();
+						return;
+					}
 					//int ret = pthread_cond_wait(&sq->cond, &sq->lock);
 					//if (ret)
 					//    report_errno("pthread_cond_wait", ret);
@@ -899,7 +906,6 @@ namespace KlipperSharp
 			send_seq++;
 			need_ack_bytes += output.len;
 			send_queue.Enqueue(output);
-			Console.WriteLine($"sen {send_seq}");
 		}
 
 		#endregion

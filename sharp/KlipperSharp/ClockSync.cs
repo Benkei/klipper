@@ -52,17 +52,17 @@ namespace KlipperSharp
 			mcu_freq = serial.msgparser.get_constant_float("CLOCK_FREQ");
 			// Load initial clock and frequency
 			var get_uptime_cmd = serial.lookup_command("get_uptime");
-			var parameters = get_uptime_cmd.send_with_response(null, response: "uptime");
-			last_clock = (long)parameters["high"] << 32 | (long)parameters["clock"];
+			var parameters = get_uptime_cmd.send_with_response(response: "uptime");
+			last_clock = parameters.Get<long>("high") << 32 | parameters.Get<long>("clock");
 			clock_avg = last_clock;
-			time_avg = (double)parameters["#sent_time"];
+			time_avg = parameters.Get<double>("#sent_time");
 			clock_est = (time_avg, clock_avg, mcu_freq);
 			prediction_variance = Math.Pow(0.001 * mcu_freq, 2);
 			// Enable periodic get_clock timer
 			get_clock_cmd = serial.lookup_command("get_clock");
 			for (int i = 0; i < 8; i++)
 			{
-				parameters = get_clock_cmd.send_with_response(null, response: "clock");
+				parameters = get_clock_cmd.send_with_response(response: "clock");
 				this._handle_clock(parameters);
 				this.reactor.pause(0.1);
 			}
@@ -98,7 +98,7 @@ namespace KlipperSharp
 			this.queries_pending = 0;
 			// Extend clock to 64bit
 			var last_clock = this.last_clock;
-			var clock = last_clock & ~-1L | (long)parameters["clock"];
+			var clock = last_clock & ~-1L | parameters.Get<long>("clock");
 			if (clock < last_clock)
 			{
 				clock += 4294967296L;

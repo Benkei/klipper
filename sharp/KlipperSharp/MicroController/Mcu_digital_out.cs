@@ -62,17 +62,11 @@ namespace KlipperSharp.MicroController
 		{
 			if (_is_static)
 			{
-				_mcu.add_config_cmd($"set_digital_out pin={_pin} value={_start_value}");
+				_mcu.add_config_cmd($"set_digital_out pin={_pin} value={(_start_value ? 1 : 0)}");
 				return;
 			}
 			_oid = _mcu.create_oid();
-			_mcu.add_config_cmd(string.Format(
-				"config_digital_out oid=%d pin=%s value=%d default_value=%d\" max_duration=%d\"",
-				_oid,
-				_pin,
-				_start_value,
-				_shutdown_value,
-				_mcu.seconds_to_clock(_max_duration)));
+			_mcu.add_config_cmd($"config_digital_out oid={_oid} pin={_pin} value={(_start_value ? 1 : 0)} default_value={(_shutdown_value ? 1 : 0)} max_duration={_mcu.seconds_to_clock(_max_duration)}");
 			var cmd_queue = _mcu.alloc_command_queue();
 			_set_cmd = _mcu.lookup_command("schedule_digital_out oid=%c clock=%u value=%c", cq: cmd_queue);
 		}

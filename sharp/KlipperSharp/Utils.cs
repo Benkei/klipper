@@ -6,11 +6,29 @@ namespace KlipperSharp
 {
 	static class Utils
 	{
-		public static TReturn Get<T, TReturn>(this Dictionary<T, TReturn> dict, T key, TReturn defaults = default(TReturn))
+		public static TReturn Get<TReturn>(this Dictionary<string, object> dict, string key, TReturn defaults = default(TReturn))
+		{
+			object value;
+			dict.TryGetValue(key, out value);
+			if (value == null)
+			{
+				return defaults;
+			}
+			value = Convert.ChangeType(value, typeof(TReturn), System.Globalization.CultureInfo.InvariantCulture);
+			if (value is TReturn)
+			{
+				return (TReturn)value;
+			}
+			throw new ArgumentException($"Invalid cast '{value}' to {typeof(TReturn)}");
+		}
+		public static TReturn Get<TKey, TReturn>(this Dictionary<TKey, TReturn> dict, TKey key, TReturn defaults = default(TReturn))
 		{
 			TReturn value;
-			if (!dict.TryGetValue(key, out value))
-				value = defaults;
+			dict.TryGetValue(key, out value);
+			if (value == null)
+			{
+				return defaults;
+			}
 			return value;
 		}
 

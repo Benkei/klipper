@@ -72,7 +72,7 @@ namespace KlipperSharp.MicroController
 			this._report_clock = this._mcu.seconds_to_clock(this._report_time);
 			var min_sample = Math.Max(0, Math.Min(65535, Convert.ToInt32(this._min_sample * max_adc)));
 			var max_sample = Math.Max(0, Math.Min(65535, Convert.ToInt32(Math.Ceiling(this._max_sample * max_adc))));
-			_mcu.add_config_cmd($"query_analog_in oid={_oid} clock={clock} sample_ticks={sample_ticks} sample_count={_sample_count}\" rest_ticks={_report_clock} min_value={min_sample} max_value={max_sample} range_check_count={_range_check_count}\"", is_init: true);
+			_mcu.add_config_cmd($"query_analog_in oid={_oid} clock={clock} sample_ticks={sample_ticks} sample_count={_sample_count} rest_ticks={_report_clock} min_value={min_sample} max_value={max_sample} range_check_count={_range_check_count}", is_init: true);
 			this._mcu.register_msg(this._handle_analog_in_state, "analog_in_state", this._oid);
 		}
 

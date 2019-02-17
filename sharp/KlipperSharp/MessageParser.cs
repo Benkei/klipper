@@ -1,6 +1,7 @@
 ﻿using NLog;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -138,7 +139,7 @@ namespace KlipperSharp
 
 		public virtual void Encode(object[] parameters, BinaryWriter writer)
 		{
-			writer.Write(Msgid);
+			writer.Write((byte)Msgid);
 			for (int i = 0; i < Param_types.Count; i++)
 			{
 				Param_types[i].encode(writer, parameters[i]);
@@ -146,7 +147,7 @@ namespace KlipperSharp
 		}
 		public virtual void Encode_by_name(Dictionary<string, object> parameters, BinaryWriter writer)
 		{
-			writer.Write(Msgid);
+			writer.Write((byte)Msgid);
 			for (int i = 0; i < Param_names.Count; i++)
 			{
 				Param_names[i].Type.encode(writer, parameters[Param_names[i].Name]);
@@ -332,7 +333,7 @@ namespace KlipperSharp
 		private MemoryStream raw_identify_data = null;
 
 
-		internal static Regex MessageFormatRegex = new Regex(@"(^\s*(?<CMD>[\w]+))|(\s*(?<PARAM>[\w]+)=(?<VALUE>[\w\%\.]+)\s*)",
+		internal static Regex MessageFormatRegex = new Regex(@"(^\s*(?<CMD>[\w]+))|(\s*(?<PARAM>[\w]+)=(?<VALUE>[\w\%\.\*]+)\s*)",
 			RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 		internal static Regex DebugFormatRegex = new Regex(@"(%u)|(%i)|(%hu)|(%hi)|(%c)|(%s)|(%\.\*s)|(%\*s)",
 			RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
@@ -342,6 +343,10 @@ namespace KlipperSharp
 			var sb = new StringBuilder(msgformat.Length);
 			for (int i = 0; i < parts.Length; i++)
 			{
+				if (string.IsNullOrEmpty(parts[i]))
+				{
+					continue;
+				}
 				sb.Append(parts[i]);
 				sb.Append("{");
 				sb.Append(i);
@@ -443,27 +448,27 @@ namespace KlipperSharp
 			return null;
 		}
 
-		public Dictionary<string, object> parse(ref QueueMessage s)
+		public Dictionary<string, object> parse(ref QueueMessage qm)
 		{
-			var msgid = s.msg[MESSAGE_HEADER_SIZE];
+			var msgid = qm.msg[MESSAGE_HEADER_SIZE];
 			BaseFormat mid;
 			if (!messages_by_id.TryGetValue(msgid, out mid))
 				mid = unknown;
 			Dictionary<string, object> parameter;
 			var pos = MESSAGE_HEADER_SIZE;
-			fixed (byte* pMsg = s.msg)
+			fixed (byte* pMsg = qm.msg)
 			{
-				parameter = mid.Parse(new ReadOnlySpan<byte>(pMsg, s.len), ref pos);
+				parameter = mid.Parse(new ReadOnlySpan<byte>(pMsg, qm.len - MESSAGE_HEADER_SIZE), ref pos);
 			}
-			if (pos != s.len - MESSAGE_TRAILER_SIZE)
+			if (pos != qm.len - MESSAGE_TRAILER_SIZE)
 			{
 				throw new Exception("Extra data at end of message");
 			}
 			parameter["#name"] = mid.Name;
-			var static_string_id = parameter.Get("static_string_id");
-			if (static_string_id != null)
+			var static_string_id = parameter.Get<int>("static_string_id", -1);
+			if (static_string_id != -1)
 			{
-				parameter["#msg"] = static_strings.Get((int)static_string_id, "?");
+				parameter["#msg"] = static_strings.Get(static_string_id, "?");
 			}
 			return parameter;
 		}
@@ -504,7 +509,7 @@ namespace KlipperSharp
 		{
 			msgformat = msgformat.Trim();
 			var idx = msgformat.IndexOf(' ');
-			var msgname = msgformat.Substring(0, idx);
+			var msgname = idx == -1 ? msgformat : msgformat.Substring(0, idx);
 			BaseFormat mp;
 			if (!messages_by_name.TryGetValue(msgname, out mp))
 			{
@@ -597,6 +602,14 @@ namespace KlipperSharp
 				{
 					data = ZlibDecompress(data);
 				}
+
+				using (var muh = File.OpenWrite("identify_data.json"))
+				{
+					muh.SetLength(0);
+					data.CopyTo(muh, 512);
+					data.Position = 0;
+				}
+
 				raw_identify_data = data;
 				using (var identify_data = JsonDocument.Parse(data))
 				{
@@ -663,6 +676,7 @@ namespace KlipperSharp
 			}
 			data.Position = 0;
 			data.SetLength(data.Length + 1);
+			ms.Position = 0;
 			return ms;
 		}
 
@@ -680,21 +694,21 @@ namespace KlipperSharp
 			return value;
 		}
 
-		public float get_constant_float(string name, float @default = 0)
+		public double get_constant_float(string name, double? @default = null)
 		{
-			var result = get_constant(name, "0");
-			float value;
-			if (!float.TryParse(result, out value))
-				value = @default;
+			var result = get_constant(name, @default.HasValue ? null : "");
+			double value;
+			if (!double.TryParse(result, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && @default.HasValue)
+				value = (double)@default;
 			return value;
 		}
 
-		public int get_constant_int(string name, int @default = 0)
+		public long get_constant_int(string name, long? @default = null)
 		{
-			var result = get_constant(name, "0");
-			int value;
-			if (!int.TryParse(result, out value))
-				value = @default;
+			var result = get_constant(name, @default.HasValue ? null : "");
+			long value;
+			if (!long.TryParse(result, out value) && @default.HasValue)
+				value = (long)@default;
 			return value;
 		}
 

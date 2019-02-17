@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "KlipperSharpApp": {
+      "commandName": "Project",
+      "commandLineArgs": "generic-ramps.cfg"
+    }
+  }
+}

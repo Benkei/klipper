@@ -174,7 +174,7 @@ namespace KlipperSharp
 					return 0.0;
 				}
 				if ((move.extrude_r > prev_move.extrude_r * EXTRUDE_DIFF_IGNORE
-					|| prev_move.extrude_r > move.extrude_r * EXTRUDE_DIFF_IGNORE) 
+					|| prev_move.extrude_r > move.extrude_r * EXTRUDE_DIFF_IGNORE)
 					&& Math.Abs(move.move_d * prev_move.extrude_r - extrude) >= 0.001)
 				{
 					// Extrude ratio between moves is too different
@@ -322,7 +322,7 @@ namespace KlipperSharp
 			var @out = new List<PrinterExtruder>();
 			for (int i = 0; i < 99; i++)
 			{
-				var extruder = printer.lookup_object<PrinterExtruder>(String.Format("extruder%d", i), null);
+				var extruder = printer.lookup_object<PrinterExtruder>($"extruder{i}", null);
 				if (extruder == null)
 				{
 					break;
@@ -338,7 +338,7 @@ namespace KlipperSharp
 			var printer = config.get_printer();
 			for (var i = 0; i < 99; i++)
 			{
-				var section = String.Format("extruder%d", i);
+				var section = $"extruder{i}";
 				if (!config.has_section(section))
 				{
 					if (i != 0 && config.has_section("extruder"))

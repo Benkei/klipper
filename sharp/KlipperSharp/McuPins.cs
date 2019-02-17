@@ -129,7 +129,7 @@ namespace KlipperSharp
 
 			public static void Update_map_arduino(Dictionary<string, int> pins, string mcu)
 			{
-				if (Arduino_from_mcu.ContainsKey(mcu))
+				if (!Arduino_from_mcu.ContainsKey(mcu))
 					throw new ArgumentOutOfRangeException(nameof(mcu), $"Arduino aliases not supported on mcu '{mcu}'");
 
 				var data = Arduino_from_mcu[mcu];
@@ -225,7 +225,7 @@ namespace KlipperSharp
 		private readonly Dictionary<string, int> pins;
 		private readonly Dictionary<int, string> active_pins;
 
-		static readonly Regex re_pin = new Regex(@"(?<prefix>[ _]pin=)|(?<name>[^ ]*)",
+		static readonly Regex re_pin = new Regex(@"(?<prefix>[ _]pin=)(?<name>[^ ]*)",
 			RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture);
 
 		public PinResolver(string mcu_type, bool validate_aliases = true)
@@ -250,8 +250,8 @@ namespace KlipperSharp
 		public string Update_command(string cmd)
 		{
 			var m = re_pin.Match(cmd);
-			if (m.Success)
-				throw new ArgumentException($"Unable to translate pin name: {cmd}");
+			if (!m.Success)
+				return cmd;
 			var name = m.Groups["name"].Value;
 			if (!pins.ContainsKey(name))
 				throw new ArgumentException($"Unable to translate pin name: {cmd}");
@@ -259,7 +259,7 @@ namespace KlipperSharp
 			if (active_pins.ContainsKey(pin_id) && name != active_pins[pin_id] && validate_Aliases)
 				throw new ArgumentException($"pin {name} is an alias for {active_pins[pin_id]}");
 
-			return m.Groups["prefix"].Value + pin_id;
+			return re_pin.Replace(cmd, m.Groups["prefix"].Value + pin_id);
 		}
 	}
 

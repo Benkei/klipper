@@ -3,6 +3,7 @@ using KlipperSharp.MicroController;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace KlipperSharp
@@ -54,7 +55,7 @@ Printer is shutdown
 
 		//public object config_error = configfile.error;
 
-		public Machine(object input_fd, QueueListener bglogger, Dictionary<string, object> start_args)
+		public Machine(Stream input_fd, QueueListener bglogger, Dictionary<string, object> start_args)
 		{
 			this.bglogger = bglogger;
 			this.start_args = start_args;
@@ -83,7 +84,7 @@ Printer is shutdown
 			return this.state_message;
 		}
 
-		public void _set_state(string msg)
+		void _set_state(string msg)
 		{
 			if (this.state_message == message_ready || this.state_message == message_startup)
 			{
@@ -104,15 +105,20 @@ Printer is shutdown
 			objects[name] = obj;
 		}
 
-		public T lookup_object<T>(string name, T @default = null) where T : class
+		public T lookup_object<T>(string name) where T : class
 		{
 			if (this.objects.ContainsKey(name))
 			{
 				return this.objects[name] as T;
 			}
-			if (@default == null)
+			throw new Exception(string.Format("Unknown config object '{0}'", name));
+		}
+
+		public T lookup_object<T>(string name, T @default = null) where T : class
+		{
+			if (this.objects.ContainsKey(name))
 			{
-				throw new Exception(string.Format("Unknown config object '{0}'", name));
+				return this.objects[name] as T;
 			}
 			return @default;
 		}
@@ -150,12 +156,12 @@ Printer is shutdown
 
 		public object try_load_module(ConfigWrapper config, string section)
 		{
-			//if (objects.ContainsKey(section))
-			//{
-			//	return objects[section];
-			//}
-			//var module_parts = section.Split();
-			//var module_name = module_parts[0];
+			if (objects.ContainsKey(section))
+			{
+				return objects[section];
+			}
+			var module_parts = section.Split();
+			var module_name = module_parts[0];
 			//var py_name = os.path.join(os.path.dirname(@__file__), "extras", module_name + ".py");
 			//var py_dirname = os.path.join(os.path.dirname(@__file__), "extras", module_name, "__init__.py");
 			//if (!os.path.exists(py_name) && !os.path.exists(py_dirname))
@@ -164,7 +170,7 @@ Printer is shutdown
 			//}
 			//var mod = importlib.import_module("extras." + module_name);
 			//var init_func = "load_config";
-			//if (module_parts.Count > 1)
+			//if (module_parts.Length > 1)
 			//{
 			//	init_func = "load_config_prefix";
 			//}
@@ -174,10 +180,10 @@ Printer is shutdown
 			//	this.objects[section] = init_func(config.getsection(section));
 			//	return this.objects[section];
 			//}
-			throw new NotImplementedException();
+			return null;
 		}
 
-		public void _read_config()
+		void _read_config()
 		{
 			MachineConfig pconfig;
 			objects["configfile"] = pconfig = new MachineConfig(this);
@@ -204,7 +210,7 @@ Printer is shutdown
 			//	m.add_printer_objects(config);
 			//}
 			// Validate that there are no undefined parameters in the config file
-			pconfig.check_unused_options(config);
+			//pconfig.check_unused_options(config);
 		}
 
 		private void add_printer_objects_pins(ConfigWrapper config)
@@ -234,7 +240,7 @@ Printer is shutdown
 		}
 
 
-		public double _connect(double eventtime)
+		double _connect(double eventtime)
 		{
 			try
 			{

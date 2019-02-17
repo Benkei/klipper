@@ -6,6 +6,14 @@
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.4.3" />
     <PackageReference Include="NLog" Version="4.5.11" />
@@ -13,6 +21,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\KlipperSharp\KlipperSharp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="generic-ramps.cfg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

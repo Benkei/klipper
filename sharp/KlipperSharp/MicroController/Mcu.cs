@@ -6,6 +6,14 @@ using System.Text;
 
 namespace KlipperSharp.MicroController
 {
+	public enum RestartMethod
+	{
+		None,
+		Arduino,
+		Command,
+		Rpi_usb
+	}
+
 	public class Mcu : IPinSetup
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
@@ -16,7 +24,7 @@ namespace KlipperSharp.MicroController
 		private string _name;
 		private string _serialport;
 		private SerialReader _serial;
-		private string _restart_method;
+		private RestartMethod _restart_method;
 		private SerialCommand _reset_cmd;
 		private SerialCommand _config_reset_cmd;
 		private SerialCommand _emergency_stop_cmd;
@@ -59,13 +67,12 @@ namespace KlipperSharp.MicroController
 			{
 				baud = (int)config.getint("baud", 250000, minval: 2400);
 			}
-			this._serial = new SerialReader(this._serialport, baud);
+			this._serial = new SerialReader(this._reactor, this._serialport, baud);
 			// Restarts
-			this._restart_method = "command";
+			this._restart_method = RestartMethod.Command;
 			if (baud != 0)
 			{
-				var rmethods = new List<string> { null, "arduino", "command", "rpi_usb" }.ToDictionary(m => m, m => m);
-				this._restart_method = config.getchoice("restart_method", rmethods, null);
+				this._restart_method = config.getEnum<RestartMethod>("restart_method", RestartMethod.None);
 			}
 			this._reset_cmd = null;
 			this._emergency_stop_cmd = null;
@@ -135,16 +142,15 @@ or in response to an internal error in the host software."}
 		// Serial callbacks
 		public void _handle_mcu_stats(Dictionary<string, object> parameters)
 		{
-			var count = (int)parameters["count"];
-			var tick_sum = (int)parameters["sum"];
+			var count = parameters.Get<int>("count");
+			var tick_sum = parameters.Get<int>("sum");
 			var c = 1.0 / (count * this._mcu_freq);
 			this._mcu_tick_avg = tick_sum * c;
-			var tick_sumsq = (double)parameters["sumsq"] * this._stats_sumsq_base;
+			var tick_sumsq = parameters.Get<int>("sumsq") * this._stats_sumsq_base;
 
 			this._mcu_tick_stddev = c * Math.Sqrt(count * tick_sumsq - Math.Pow(tick_sum, 2));
 
 			this._mcu_tick_awake = tick_sum / this._mcu_freq;
-
 		}
 
 		public void _handle_shutdown(Dictionary<string, object> parameters)
@@ -307,7 +313,7 @@ or in response to an internal error in the host software."}
 			var config_parameters = this._send_get_config();
 			if (config_parameters.Get("is_config") == null)
 			{
-				if (this._restart_method == "rpi_usb")
+				if (this._restart_method == RestartMethod.Rpi_usb)
 				{
 					// Only configure mcu after usb power reset
 					this._check_restart("full reset before config");
@@ -344,7 +350,7 @@ or in response to an internal error in the host software."}
 			}
 			else
 			{
-				if (this._restart_method == "rpi_usb" && !System.IO.File.Exists(this._serialport))
+				if (this._restart_method == RestartMethod.Rpi_usb && !System.IO.File.Exists(this._serialport))
 				{
 					// Try toggling usb power
 					this._check_restart("enable power");
@@ -367,11 +373,11 @@ or in response to an internal error in the host software."}
 			this._emergency_stop_cmd = this.lookup_command("emergency_stop");
 			this._reset_cmd = this.try_lookup_command("reset");
 			this._config_reset_cmd = this.try_lookup_command("config_reset");
-			if (this._restart_method == null
+			if (this._restart_method == RestartMethod.None
 				&& (this._reset_cmd != null || this._config_reset_cmd != null)
 				&& msgparser.get_constant("SERIAL_BAUD", null) == null)
 			{
-				this._restart_method = "command";
+				this._restart_method = RestartMethod.Command;
 			}
 			this.register_msg(this._handle_shutdown, "shutdown");
 			this.register_msg(this._handle_shutdown, "is_shutdown");
@@ -476,7 +482,7 @@ or in response to an internal error in the host software."}
 			return this._serial.msgparser.lookup_command(msgformat).Msgid;
 		}
 
-		public float get_constant_float(string name)
+		public double get_constant_float(string name)
 		{
 			return this._serial.msgparser.get_constant_float(name);
 		}
@@ -585,11 +591,11 @@ or in response to an internal error in the host software."}
 
 		public void microcontroller_restart()
 		{
-			if (this._restart_method == "rpi_usb")
+			if (this._restart_method == RestartMethod.Rpi_usb)
 			{
 				this._restart_rpi_usb();
 			}
-			else if (this._restart_method == "command")
+			else if (this._restart_method == RestartMethod.Command)
 			{
 				this._restart_via_command();
 			}

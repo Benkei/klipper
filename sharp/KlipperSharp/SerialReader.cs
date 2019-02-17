@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
+using System.Linq;
 
 namespace KlipperSharp
 {
@@ -16,21 +17,24 @@ namespace KlipperSharp
 
 		private SerialPort serialPort;
 		private bool processRead = true;
-		public MessageParser msgparser;
 		private object _lock = new object();
 		private Thread background_thread;
 		private Dictionary<ValueTuple<string, int>, Action<Dictionary<string, object>>> handlers;
+		public SelectReactor reactor;
 
+		public MessageParser msgparser;
 		public SerialQueue serialqueue;
 
 		public string Port;
 		public int Baud;
 		public command_queue default_cmd_queue = new command_queue();
 
-		public SerialReader(string port, int baud)
+		public SerialReader(SelectReactor reactor, string port, int baud)
 		{
+			this.reactor = reactor;
 			Port = port;
 			Baud = baud;
+			msgparser = new MessageParser();
 			// Message handlers
 			handlers = new Dictionary<ValueTuple<string, int>, Action<Dictionary<string, object>>>()
 			{
@@ -51,13 +55,17 @@ namespace KlipperSharp
 			while (processRead)
 			{
 				serialqueue.pull(out response);
+
 				if (response.len == 0)
 					continue;
 
 				var parameter = msgparser.parse(ref response);
 				parameter["#sent_time"] = response.sent_time;
 				parameter["#receive_time"] = response.receive_time;
-				var hdl = ((string)parameter["#name"], (int)parameter.Get("oid"));
+				var hdl = (parameter.Get<string>("#name"), parameter.Get<int>("oid"));
+
+				logging.Info($"{hdl.Item1}:{hdl.Item2} - {(int)((response.receive_time - response.sent_time) * 1000)} : {(int)(response.sent_time * 1000)}/{(int)(response.receive_time * 1000)}");
+
 				Action<Dictionary<string, object>> callback;
 				lock (_lock)
 				{
@@ -81,7 +89,7 @@ namespace KlipperSharp
 			MemoryStream identify_data = null;
 			while (true)
 			{
-				//var starttime = this.reactor.monotonic();
+				var starttime = reactor.monotonic();
 				try
 				{
 					if (Baud != 0)
@@ -90,6 +98,7 @@ namespace KlipperSharp
 						serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
 						serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
 						serialPort.Encoding = Encoding.ASCII;
+						serialPort.DtrEnable = true;
 						serialPort.Open();
 					}
 					//else
@@ -115,10 +124,11 @@ namespace KlipperSharp
 					Name = nameof(SerialReader),
 					IsBackground = true,
 				};
+				processRead = true;
 				background_thread.Start();
 				// Obtain and load the data dictionary from the firmware
 				var sbs = new SerialBootStrap(this);
-				identify_data = sbs.get_identify_data(/*starttime + 5.0*/ 0);
+				identify_data = sbs.get_identify_data(starttime + 5.0);
 				if (identify_data == null)
 				{
 					logging.Warn("Timeout on serial connect");
@@ -131,15 +141,14 @@ namespace KlipperSharp
 			msgparser.process_identify(identify_data);
 			register_callback(handle_unknown, "#unknown");
 			// Setup baud adjust
-			var mcu_baud = msgparser.get_constant_int("SERIAL_BAUD");
+			var mcu_baud = msgparser.get_constant_float("SERIAL_BAUD");
 			if (mcu_baud != 0)
 			{
 				var baud_adjust = BITS_PER_BYTE / mcu_baud;
-				serialPort.BaudRate = baud_adjust;
 				serialqueue.set_baud_adjust(baud_adjust);
 				//this.ffi_lib.serialqueue_set_baud_adjust(this.serialqueue, baud_adjust);
 			}
-			var receive_window = msgparser.get_constant_int("RECEIVE_WINDOW");
+			var receive_window = (int)msgparser.get_constant_int("RECEIVE_WINDOW");
 			if (receive_window != 0)
 			{
 				serialqueue.set_receive_window(receive_window);
@@ -234,10 +243,12 @@ namespace KlipperSharp
 			serialqueue.send(cmd_queue, cmd, cmd.Length, minclock, reqclock);
 		}
 
-		public void send(object msg, ulong minclock = 0, ulong reqclock = 0)
+		public void send(string msg, ulong minclock = 0, ulong reqclock = 0)
 		{
-			//var cmd = msgparser.create_command(msg);
-			//raw_send(cmd, minclock, reqclock, default_cmd_queue);
+			var buffer = new MemoryStream();
+			var writer = new BinaryWriter(buffer, Encoding.ASCII);
+			msgparser.create_command(msg, writer);
+			raw_send(buffer.ToArray(), minclock, reqclock, default_cmd_queue);
 		}
 
 		public SerialCommand lookup_command(string msgformat, command_queue cq = null)
@@ -286,17 +297,17 @@ namespace KlipperSharp
 		// Default message handlers
 		public void handle_unknown(Dictionary<string, object> parameter)
 		{
-			logging.Warn("Unknown message type %d: %s", parameter["#msgid"], parameter["#msg"]);
+			logging.Warn("Unknown message type {0}: {1}", parameter["#msgid"], parameter["#msg"]);
 		}
 
 		public void handle_output(Dictionary<string, object> parameter)
 		{
-			logging.Info("%s: %s", parameter["#name"], parameter["#msg"]);
+			logging.Info("{0}: {1}", parameter["#name"], parameter["#msg"]);
 		}
 
 		public void handle_default(Dictionary<string, object> parameter)
 		{
-			logging.Warn("got %s", parameter);
+			logging.Warn("got {0}", string.Join("; ", parameter.Select((a) => a.Key + ":" + a.Value)));
 		}
 
 	}
@@ -322,7 +333,7 @@ namespace KlipperSharp
 			serial.raw_send(buffer.ToArray(), minclock, reqclock, cmd_queue);
 		}
 
-		public Dictionary<string, object> send_with_response(object[] data /*= Tuple.Create("<Empty>")*/, string response = null, int response_oid = 0)
+		public Dictionary<string, object> send_with_response(object[] data = null /*= Tuple.Create("<Empty>")*/, string response = null, int response_oid = 0)
 		{
 			var buffer = new MemoryStream();
 			var writer = new BinaryWriter(buffer, Encoding.ASCII);
@@ -334,6 +345,8 @@ namespace KlipperSharp
 
 	public class SerialRetryCommand
 	{
+		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
+
 		public const double TIMEOUT_TIME = 5.0;
 		public const double RETRY_TIME = 0.5;
 		private SerialReader serial;
@@ -342,7 +355,7 @@ namespace KlipperSharp
 		private int oid;
 		private Dictionary<string, object> response;
 		private double min_query_time;
-		private object send_timer;
+		private ReactorTimer send_timer;
 
 		public SerialRetryCommand(SerialReader serial, byte[] cmd, string name, int oid = 0)
 		{
@@ -350,50 +363,51 @@ namespace KlipperSharp
 			this.cmd = cmd;
 			this.name = name;
 			this.oid = oid;
-			response = null;
-			//min_query_time = this.serial.serialQueue.get_monotonic();//this.serial.reactor.monotonic();
+			min_query_time = this.serial.reactor.monotonic();
 			this.serial.register_callback(handle_callback, this.name, this.oid);
-			//this.send_timer = this.serial.reactor.register_timer(this.send_event, this.serial.reactor.NOW);
+			this.send_timer = this.serial.reactor.register_timer(this.send_event, SelectReactor.NOW);
 		}
 
 		public void unregister()
 		{
 			serial.unregister_callback(name, oid);
-			//this.serial.reactor.unregister_timer(this.send_timer);
+			this.serial.reactor.unregister_timer(this.send_timer);
 		}
 
 		public double send_event(double eventtime)
 		{
-			//if (response != null)
-			//{
-			//	return serial.reactor.NEVER;
-			//}
-			//serial.raw_send(cmd, 0, 0, serial.default_cmd_queue);
+			if (response != null)
+			{
+				return SelectReactor.NEVER;
+			}
+			serial.raw_send(cmd, 0, 0, serial.default_cmd_queue);
+			logging.Info($"send {name}");
 			return eventtime + RETRY_TIME;
 		}
 
 		public void handle_callback(Dictionary<string, object> parameter)
 		{
-			double last_sent_time = (double)parameter.Get("#sent_time");
+			double last_sent_time = parameter.Get<double>("#sent_time");
 			if (last_sent_time >= min_query_time)
 			{
 				response = parameter;
 			}
+			logging.Info($"handle {name} {last_sent_time} {min_query_time}");
 		}
 
 		public Dictionary<string, object> get_response()
 		{
-			//double eventtime = serial.reactor.monotonic();
-			//while (response == null)
-			//{
-			//	eventtime = serial.reactor.pause(eventtime + 0.05);
-			//	if (eventtime > min_query_time + TIMEOUT_TIME)
-			//	{
-			//		unregister();
-			//		throw new Exception($"Timeout on wait for '{name}' response");
-			//	}
-			//}
-			//unregister();
+			double eventtime = serial.reactor.monotonic();
+			while (response == null)
+			{
+				eventtime = serial.reactor.pause(eventtime + 0.05);
+				if (eventtime > min_query_time + TIMEOUT_TIME)
+				{
+					unregister();
+					throw new Exception($"Timeout on wait for '{name}' response");
+				}
+			}
+			unregister();
 			return response;
 		}
 	}
@@ -407,63 +421,69 @@ namespace KlipperSharp
 		private SerialReader serial;
 		private MemoryStream identify_data;
 		private SerialCommand identify_cmd;
-		private object send_timer;
+		private ReactorTimer send_timer;
 
 		public SerialBootStrap(SerialReader serial)
 		{
+			logging.Info("start load identify_data");
 			this.serial = serial;
 			identify_data = new MemoryStream();
 			identify_cmd = this.serial.lookup_command("identify offset=%u count=%c");
 			this.serial.register_callback(handle_identify, "identify_response");
 			this.serial.register_callback(handle_unknown, "#unknown");
-			//this.send_timer = this.serial.reactor.register_timer(this.send_event, this.serial.reactor.NOW);
+			this.send_timer = this.serial.reactor.register_timer(this.send_event, SelectReactor.NOW);
 		}
 
-		public MemoryStream get_identify_data(int timeout)
+		public MemoryStream get_identify_data(double timeout)
 		{
-			//var eventtime = serial.reactor.monotonic();
-			//while (!is_done && eventtime <= timeout)
-			//{
-			//	eventtime = serial.reactor.pause(eventtime + 0.05);
-			//}
-			//serial.unregister_callback("identify_response");
-			//serial.reactor.unregister_timer(send_timer);
-			//if (!is_done)
-			//{
-			//	return null;
-			//}
+			var eventtime = serial.reactor.monotonic();
+			while (!is_done && eventtime <= timeout)
+			{
+				eventtime = serial.reactor.pause(eventtime + 0.05);
+			}
+			serial.unregister_callback("identify_response");
+			serial.reactor.unregister_timer(send_timer);
+			if (!is_done)
+			{
+				return null;
+			}
+			identify_data.Position = 0;
 			return identify_data;
 		}
 
-		public void handle_identify(Dictionary<string, object> parameter)
+		public void handle_identify(Dictionary<string, object> parameters)
 		{
-			//if (is_done || parameters["offset"] != identify_data.Length)
-			//{
-			//	return;
-			//}
-			//byte[] msgdata = parameters["data"];
-			//if (msgdata == null)
-			//{
-			//	is_done = true;
-			//	return;
-			//}
-			//identify_data.Write(msgdata);
-			//identify_cmd.send(new List<int> { (int)identify_data.Length, 40 });
+			if (is_done || parameters.Get<int>("offset") != identify_data.Length)
+			{
+				return;
+			}
+			byte[] msgdata = parameters.Get<byte[]>("data");
+			if (msgdata == null || msgdata.Length < 40)
+			{
+				if (msgdata != null)
+					identify_data.Write(msgdata);
+				is_done = true;
+				logging.Info("finish load identify_data " + identify_data.Length);
+				return;
+			}
+			identify_data.Write(msgdata);
+			identify_cmd.send(new object[] { (int)identify_data.Length, 40 });
 		}
 
 		public double send_event(double eventtime)
 		{
-			//if (is_done)
-			//{
-			//	return serial.reactor.NEVER;
-			//}
-			//identify_cmd.send(new List<int> { (int)identify_data.Length, 40 });
+			if (is_done)
+			{
+				return SelectReactor.NEVER;
+			}
+			//logging.Info("Load identify_data " + identify_data.Length);
+			identify_cmd.send(new object[] { (int)identify_data.Length, 40 });
 			return eventtime + RETRY_TIME;
 		}
 
 		public void handle_unknown(Dictionary<string, object> parameter)
 		{
-			logging.Debug("Unknown message %d (len %d) while identifying", parameter.Get("#msgid"), ((byte[])parameter.Get("#msg")).Length);
+			logging.Debug("Unknown message {0] (len {1}) while identifying", parameter.Get<int>("#msgid"), parameter.Get<string>("#msg").Length);
 		}
 	}
 

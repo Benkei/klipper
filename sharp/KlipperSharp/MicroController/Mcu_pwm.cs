@@ -78,11 +78,11 @@ namespace KlipperSharp.MicroController
 				this._pwm_max = this._mcu.get_constant_float("PWM_MAX");
 				if (this._is_static)
 				{
-					this._mcu.add_config_cmd(String.Format("set_pwm_out pin=%s cycle_ticks=%d value=%d", this._pin, cycle_ticks, this._start_value * this._pwm_max));
+					this._mcu.add_config_cmd($"set_pwm_out pin={this._pin} cycle_ticks={cycle_ticks} value={this._start_value * this._pwm_max}");
 					return;
 				}
 				this._oid = this._mcu.create_oid();
-				this._mcu.add_config_cmd(String.Format("config_pwm_out oid=%d pin=%s cycle_ticks=%d value=%d\" default_value=%d max_duration=%d\"", this._oid, this._pin, cycle_ticks, this._start_value * this._pwm_max, this._shutdown_value * this._pwm_max, this._mcu.seconds_to_clock(this._max_duration)));
+				this._mcu.add_config_cmd($"config_pwm_out oid={this._oid} pin={this._pin} cycle_ticks={cycle_ticks} value={this._start_value * this._pwm_max} default_value={this._shutdown_value * this._pwm_max} max_duration={this._mcu.seconds_to_clock(this._max_duration)}");
 				this._set_cmd = this._mcu.lookup_command("schedule_pwm_out oid=%c clock=%u value=%hu", cq: cmd_queue);
 			}
 			else
@@ -100,11 +100,11 @@ namespace KlipperSharp.MicroController
 				this._pwm_max = this._mcu.get_constant_float("SOFT_PWM_MAX");
 				if (this._is_static)
 				{
-					this._mcu.add_config_cmd(String.Format("set_digital_out pin=%s value=%d", this._pin, this._start_value >= 0.5));
+					this._mcu.add_config_cmd($"set_digital_out pin={this._pin} value={(this._start_value >= 0.5 ? 1 : 0)}");
 					return;
 				}
 				this._oid = this._mcu.create_oid();
-				this._mcu.add_config_cmd(String.Format("config_soft_pwm_out oid=%d pin=%s cycle_ticks=%d value=%d\" default_value=%d max_duration=%d\"", this._oid, this._pin, cycle_ticks, this._start_value >= 0.5, this._shutdown_value >= 0.5, this._mcu.seconds_to_clock(this._max_duration)));
+				this._mcu.add_config_cmd($"config_soft_pwm_out oid={this._oid} pin={this._pin} cycle_ticks={cycle_ticks} value={(this._start_value >= 0.5 ? 1 : 0)} default_value={(this._shutdown_value >= 0.5 ? 1 : 0)} max_duration={this._mcu.seconds_to_clock(this._max_duration)}");
 				this._set_cmd = this._mcu.lookup_command("schedule_soft_pwm_out oid=%c clock=%u value=%hu", cq: cmd_queue);
 			}
 		}

@@ -68,16 +68,15 @@ namespace KlipperSharp.MicroController
 		public void _build_config()
 		{
 			_oid = _mcu.create_oid();
-			_mcu.add_config_cmd(String.Format("config_end_stop oid=%d pin=%s pull_up=%d stepper_count=%d", _oid, _pin, _pullup, _steppers.Count));
-			_mcu.add_config_cmd(String.Format("end_stop_home oid=%d clock=0 sample_ticks=0 sample_count=0\" rest_ticks=0 pin_value=0\"", _oid), is_init: true);
-			foreach (var _tup_1 in _steppers.Select((_p_1, _p_2) => Tuple.Create(_p_2, _p_1)))
+			_mcu.add_config_cmd($"config_end_stop oid={_oid} pin={_pin} pull_up={(_pullup ? 1 : 0)} stepper_count={_steppers.Count}");
+			_mcu.add_config_cmd($"end_stop_home oid={_oid} clock=0 sample_ticks=0 sample_count=0 rest_ticks=0 pin_value=0", is_init: true);
+			for (int i = 0; i < _steppers.Count; i++)
 			{
-				var i = _tup_1.Item1;
-				var s = _tup_1.Item2;
-				_mcu.add_config_cmd(String.Format("end_stop_set_stepper oid=%d pos=%d stepper_oid=%d", _oid, i, s.get_oid()), is_init: true);
+				var s = _steppers[i];
+				_mcu.add_config_cmd($"end_stop_set_stepper oid={_oid} pos={i} stepper_oid={s.get_oid()}", is_init: true);
 			}
 			var cmd_queue = _mcu.alloc_command_queue();
-			_home_cmd = _mcu.lookup_command("end_stop_home oid=%c clock=%u sample_ticks=%u sample_count=%c\" rest_ticks=%u pin_value=%c\"", cq: cmd_queue);
+			_home_cmd = _mcu.lookup_command("end_stop_home oid=%c clock=%u sample_ticks=%u sample_count=%c rest_ticks=%u pin_value=%c", cq: cmd_queue);
 			_query_cmd = _mcu.lookup_command("end_stop_query oid=%c", cq: cmd_queue);
 			_mcu.register_msg(_handle_end_stop_state, "end_stop_state", _oid);
 		}

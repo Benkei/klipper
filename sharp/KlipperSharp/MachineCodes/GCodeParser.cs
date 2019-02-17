@@ -1,6 +1,7 @@
 ﻿using NLog;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -16,6 +17,10 @@ namespace KlipperSharp.MachineCodes
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
+		public const string cmd_RESTART_help = "Reload config file and restart host software";
+		public const string cmd_FIRMWARE_RESTART_help = "Restart firmware, host, and reload config";
+		public const string cmd_SET_GCODE_OFFSET_help = "Set a virtual offset to g-code positions";
+		public const string cmd_STATUS_help = "Report the printer status";
 		public const double RETRY_TIME = 0.1;
 		public static Regex args_r = new Regex(@"([A-Z_]+|[A-Z*/])");
 		public static Regex m112_r = new Regex(@"^(?:[nN][0-9]+)?\s*[mM]112(?:\s|$)");
@@ -61,21 +66,19 @@ namespace KlipperSharp.MachineCodes
 				"HELP"
 		  };
 		public string[] cmd_G1_aliases = new string[] { "G0" };
+		public string[] cmd_M18_aliases = new string[] { "M84" };
+		public string[] cmd_IGNORE_aliases = new string[] { "G21", "M110", "M21" };
 		public bool cmd_M105_when_not_ready = true;
 		public bool cmd_M112_when_not_ready = true;
 		public bool cmd_M115_when_not_ready = true;
 		public bool cmd_IGNORE_when_not_ready = true;
-		public string[] cmd_IGNORE_aliases = new string[] { "G21", "M110", "M21" };
 		public bool cmd_GET_POSITION_when_not_ready = true;
 		public bool cmd_RESTART_when_not_ready = true;
-		public const string cmd_RESTART_help = "Reload config file and restart host software";
 		public bool cmd_FIRMWARE_RESTART_when_not_ready = true;
-		public const string cmd_FIRMWARE_RESTART_help = "Restart firmware, host, and reload config";
 		public bool cmd_ECHO_when_not_ready = true;
 		public bool cmd_STATUS_when_not_ready = true;
-		public const string cmd_STATUS_help = "Report the printer status";
 		public bool cmd_HELP_when_not_ready = true;
-		public const string cmd_SET_GCODE_OFFSET_help = "Set a virtual offset to g-code positions";
+		public bool cmd_M114_when_not_ready = true;
 
 
 		private Machine printer;
@@ -83,17 +86,16 @@ namespace KlipperSharp.MachineCodes
 		private SelectReactor reactor;
 		private bool is_processing_data;
 		private bool is_fileinput;
-		public bool cmd_M114_when_not_ready = true;
 		private string partial_input;
 		private List<string> pending_commands = new List<string>();
 		private int bytes_read;
 		private List<(double, object)> input_log = new List<(double, object)>(50);
 		private bool is_printer_ready;
-		private Dictionary<object, Action<Dictionary<string, object>>> gcode_handlers;
-		private Dictionary<object, Action<Dictionary<string, object>>> base_gcode_handlers = new Dictionary<object, Action<Dictionary<string, object>>>();
-		private Dictionary<object, Action<Dictionary<string, object>>> ready_gcode_handlers = new Dictionary<object, Action<Dictionary<string, object>>>();
+		private Dictionary<string, Action<Dictionary<string, object>>> gcode_handlers;
+		private Dictionary<string, Action<Dictionary<string, object>>> base_gcode_handlers = new Dictionary<string, Action<Dictionary<string, object>>>();
+		private Dictionary<string, Action<Dictionary<string, object>>> ready_gcode_handlers = new Dictionary<string, Action<Dictionary<string, object>>>();
 		private Dictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)> mux_commands = new Dictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)>();
-		private Dictionary<object, object> gcode_help = new Dictionary<object, object>();
+		private Dictionary<string, string> gcode_help = new Dictionary<string, string>();
 		private bool absolutecoord;
 		private double[] base_position;
 		private double[] last_position;
@@ -109,13 +111,12 @@ namespace KlipperSharp.MachineCodes
 		private double speed;
 		private Dictionary<string, int> axis2pos;
 
-		public string[] cmd_M18_aliases = new string[] { "M84" };
 		private Fan fan;
 		private PrinterExtruder extruder;
 		private bool absoluteextrude;
 		private ReactorFileHandler fd_handle;
 
-		public GCodeParser(Machine printer, object fd)
+		public GCodeParser(Machine printer, Stream fd)
 		{
 			this.printer = printer;
 			this.fd = fd;
@@ -168,7 +169,7 @@ namespace KlipperSharp.MachineCodes
 			};
 		}
 
-		public void register_command(string cmd, Action<Dictionary<string, object>> func, bool when_not_ready = false, object desc = null)
+		public void register_command(string cmd, Action<Dictionary<string, object>> func, bool when_not_ready = false, string desc = null)
 		{
 			if (func == null)
 			{
@@ -1278,11 +1279,11 @@ namespace KlipperSharp.MachineCodes
 				cmdhelp.Add("Printer is not ready - not all commands available.");
 			}
 			cmdhelp.Add("Available extended commands:");
-			foreach (var cmd in this.gcode_handlers.OrderBy(_p_1 => _p_1))
+			foreach (var cmd in this.gcode_handlers.OrderBy((a) => a.Key))
 			{
-				if (this.gcode_help.ContainsKey(cmd))
+				if (this.gcode_help.ContainsKey(cmd.Key))
 				{
-					cmdhelp.Add(String.Format("%-10s: %s", cmd, this.gcode_help[cmd]));
+					cmdhelp.Add(String.Format("%-10s: %s", cmd, this.gcode_help[cmd.Key]));
 				}
 			}
 			this.respond_info(string.Join("\n", cmdhelp));

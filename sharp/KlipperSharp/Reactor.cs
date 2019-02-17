@@ -1,8 +1,10 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace KlipperSharp
 {
@@ -73,8 +75,9 @@ namespace KlipperSharp
 		public const double NOW = 0.0;
 		public const double NEVER = 9999999999999999.0;
 
+		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
+
 		protected bool _process = false;
-		private Thread bg_thread;
 		public Func<double> monotonic;
 		private List<ReactorTimer> _timers;
 		private double _next_timer;
@@ -99,6 +102,7 @@ namespace KlipperSharp
 			// Greenlets
 			_g_dispatch = null;
 			_greenlets = new List<object>();
+			parallelTimerCallback = new Action<ReactorTimer>(ParallelTimer);
 		}
 
 		~SelectReactor()
@@ -149,6 +153,7 @@ namespace KlipperSharp
 			}
 		}
 
+		List<Task> tasks = new List<Task>();
 		double _check_timers(double eventtime)
 		{
 			lock (_timers)
@@ -158,15 +163,28 @@ namespace KlipperSharp
 					return Math.Min(1.0, Math.Max(0.001, _next_timer - eventtime));
 				}
 				_next_timer = NEVER;
-				foreach (var t in _timers)
+
+				parallelTime = eventtime;
+
+				//var result = Parallel.ForEach(_timers, parallelTimerCallback);
+				foreach (var item in _timers)
 				{
-					if (eventtime >= t.waketime)
-					{
-						t.waketime = NEVER;
-						t.waketime = t.callback(eventtime);
-					}
-					_note_time(t);
+					var task = Task.Factory.StartNew(ParallelTimer, item);
+					tasks.Add(task);
 				}
+				Task.WhenAll(tasks);
+				tasks.Clear();
+
+				//foreach (var t in _timers)
+				//{
+				//	if (eventtime >= t.waketime)
+				//	{
+				//		t.waketime = NEVER;
+				//		t.waketime = t.callback(eventtime);
+				//	}
+				//	_note_time(t);
+				//}
+
 				if (eventtime >= _next_timer)
 				{
 					return 0.0;
@@ -175,9 +193,25 @@ namespace KlipperSharp
 			}
 		}
 
+		double parallelTime;
+		Action<ReactorTimer> parallelTimerCallback;
+		void ParallelTimer(object arg)
+		{
+			ReactorTimer t = (ReactorTimer)arg;
+			if (parallelTime >= t.waketime)
+			{
+				t.waketime = NEVER;
+				t.waketime = t.callback(parallelTime);
+			}
+			_note_time(t);
+		}
+
 		// Callbacks
 		public void register_callback(ReactorAction callback, double waketime = NOW)
 		{
+			if (callback == null)
+				throw new ArgumentNullException(nameof(callback));
+
 			new ReactorCallback(this, callback, waketime);
 		}
 
@@ -260,7 +294,8 @@ namespace KlipperSharp
 			//g_next.parent = g.parent;
 			//g.timer = register_timer(g.@switch, waketime);
 			//return g_next.@switch();
-			throw new NotImplementedException();
+			Wait(ref _process, waketime);
+			return monotonic();
 		}
 
 		void _end_greenlet(object g_old)
@@ -329,24 +364,29 @@ namespace KlipperSharp
 				//		break;
 				//	}
 				//}
-
-				while (true)
-				{
-					if (timeout <= 0f)
-						break;
-
-					if (timeout < 0.001f)
-						Thread.SpinWait(10);
-					else if (timeout < 0.050f)
-						Thread.SpinWait(100);
-					else
-						Thread.Sleep(1);
-
-					if (!_process)
-						return;
-				}
+				Wait(ref _process, timeout);
 			}
 			//_g_dispatch = null;
+		}
+
+		void Wait(ref bool running, double nextTrigger)
+		{
+			while (true)
+			{
+				double diff = nextTrigger - monotonic();
+				if (diff <= 0f)
+					break;
+
+				if (diff < 0.001f)
+					Thread.SpinWait(10);
+				else if (diff < 0.050f)
+					Thread.SpinWait(100);
+				else
+					Thread.Sleep(1);
+
+				if (!running)
+					return;
+			}
 		}
 
 		public void run()
@@ -358,13 +398,7 @@ namespace KlipperSharp
 			_process = true;
 			//var g_next = new ReactorGreenlet(new Action(_dispatch_loop));
 			//g_next.@switch();
-			bg_thread = new Thread(_dispatch_loop)
-			{
-				Name = "Reactor",
-				IsBackground = true,
-				Priority = ThreadPriority.AboveNormal,
-			};
-			bg_thread.Start();
+			_dispatch_loop();
 		}
 
 		public void end()

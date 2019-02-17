@@ -11,6 +11,7 @@ using IniParser.Model.Configuration;
 using IniParser.Model;
 using System.Linq;
 using KlipperSharp.MachineCodes;
+using System.Globalization;
 
 namespace KlipperSharp
 {
@@ -59,9 +60,16 @@ namespace KlipperSharp
 		public long getint(string option, long? @default = null, long? minval = null, long? maxval = null)
 		{
 			var raw = this._get_wrapper(option, null);
-			if (!long.TryParse(raw, out long v))
+			if (!long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out long v))
 			{
-				throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+				if (@default.HasValue)
+				{
+					v = @default.Value;
+				}
+				else
+				{
+					throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+				}
 			}
 			if (minval != null && v < minval)
 			{
@@ -83,9 +91,16 @@ namespace KlipperSharp
 			 double? below = null)
 		{
 			var raw = this._get_wrapper(option, null);
-			if (!double.TryParse(raw, out double v))
+			if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out double v))
 			{
-				throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+				if (@default.HasValue)
+				{
+					v = @default.Value;
+				}
+				else
+				{
+					throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+				}
 			}
 			if (minval != null && v < minval)
 			{
@@ -110,6 +125,23 @@ namespace KlipperSharp
 		{
 			var raw = this._get_wrapper(option, null);
 			return raw == "1";
+		}
+		public TEnum getEnum<TEnum>(string option, TEnum? @default = null) where TEnum : struct
+		{
+			var c = this.get(option, null);
+			TEnum v;
+			if (!Enum.TryParse(c, true, out v))
+			{
+				if (@default.HasValue)
+				{
+					v = @default.Value;
+				}
+				else
+				{
+					throw new Exception(String.Format("Choice '%s' for option '%s' in section '%s'\" is not a valid choice\"", c, option, this.section));
+				}
+			}
+			return v;
 		}
 
 		public T getchoice<T>(string option, Dictionary<string, T> choices, string @default = null)
@@ -179,7 +211,6 @@ namespace KlipperSharp
 		public MachineConfig(Machine printer)
 		{
 			this.printer = printer;
-			this.autosave = null;
 			var gcode = this.printer.lookup_object<GCodeParser>("gcode");
 			gcode.register_command("SAVE_CONFIG", cmd_SAVE_CONFIG, desc: cmd_SAVE_CONFIG_help);
 		}
@@ -241,7 +272,7 @@ namespace KlipperSharp
 			{
 				var line = lines[lineno];
 				var pruned_line = comment_r.Match(line).Value.TrimEnd();
-				if (pruned_line == null)
+				if (string.IsNullOrEmpty(pruned_line))
 				{
 					continue;
 				}
@@ -337,12 +368,8 @@ namespace KlipperSharp
 
 		public void log_config(ConfigWrapper config)
 		{
-			var lines = new List<object> {
-					 "===== Config file =====",
-					 this._build_config_string(config),
-					 "======================="
-				};
-			this.printer.set_rollover_info("config", string.Join("\n", lines));
+			var lines = $"===== Config file =====\n{this._build_config_string(config)}\n=======================";
+			this.printer.set_rollover_info("config", lines);
 		}
 
 		// Autosave functions
