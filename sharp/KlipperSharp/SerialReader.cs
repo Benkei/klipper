@@ -56,7 +56,7 @@ namespace KlipperSharp
 			QueueMessage response;
 			while (processRead)
 			{
-				serialqueue.pull(out response);
+				serialqueue.pull(out response, 2000);
 
 				if (response.len == 0)
 					continue;
@@ -263,10 +263,10 @@ namespace KlipperSharp
 		}
 
 		// Command sending
-		public void raw_send(byte[] cmd, ulong minclock, ulong reqclock, command_queue cmd_queue)
+		public void raw_send(ReadOnlySpan<byte> cmd, ulong minclock, ulong reqclock, command_queue cmd_queue)
 		{
 			//this.ffi_lib.serialqueue_send(this.serialqueue, cmd_queue, cmd, cmd.Count, minclock, reqclock);
-			serialqueue.send(cmd_queue, cmd, cmd.Length, minclock, reqclock);
+			serialqueue.send(cmd_queue, cmd, minclock, reqclock);
 		}
 
 		public void send(string msg, ulong minclock = 0, ulong reqclock = 0)

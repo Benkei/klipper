@@ -255,7 +255,7 @@ namespace KlipperSharp
 					return ret;
 
 				uint* msg = stackalloc uint[] { sc.queue_step_msgid, sc.oid, move.interval, move.count, (uint)move.add };
-				var qm = SerialQueue.RawMessage.CreateAndEncode(msg, 5);
+				var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 5));
 				qm.min_clock = qm.req_clock = sc.last_step_clock;
 				int addfactor = move.count * (move.count - 1) / 2;
 				ulong ticks = (ulong)(move.add * addfactor + move.interval * move.count);
@@ -279,7 +279,7 @@ namespace KlipperSharp
 		static int stepcompress_flush_far(ref stepcompress sc, ulong abs_step_clock)
 		{
 			uint* msg = stackalloc uint[] { sc.queue_step_msgid, sc.oid, (uint)(abs_step_clock - sc.last_step_clock), 1, 0 };
-			var qm = SerialQueue.RawMessage.CreateAndEncode(msg, 5);
+			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 5));
 			qm.min_clock = sc.last_step_clock;
 			sc.last_step_clock = qm.req_clock = abs_step_clock;
 			if (sc.homing_clock != 0)
@@ -299,7 +299,7 @@ namespace KlipperSharp
 			if (ret != 0)
 				return ret;
 			uint* msg = stackalloc uint[] { sc.set_next_step_dir_msgid, sc.oid, (uint)sdir ^ (uint)sc.invert_sdir };
-			var qm = SerialQueue.RawMessage.CreateAndEncode(msg, 3);
+			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 3));
 			qm.req_clock = sc.homing_clock != 0 ? 0 : sc.last_step_clock;
 			sc.msg_queue.Enqueue(qm);
 			return 0;
@@ -333,7 +333,7 @@ namespace KlipperSharp
 			if (ret != 0)
 				return ret;
 
-			var qm = SerialQueue.RawMessage.CreateAndEncode(data, len);
+			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(data, len));
 			qm.req_clock = sc.homing_clock != 0 ? 0 : sc.last_step_clock;
 			sc.msg_queue.Enqueue(qm);
 			return 0;

@@ -97,7 +97,7 @@ namespace KlipperSharpTest
 					msg.WriteByte(1);
 					msg.encode(res);
 					msg.encode((byte)50);
-					ser.send(cq, msg.ToArray(), (int)msg.Length);
+					ser.send(cq, msg.ToArray());
 				}
 
 			}

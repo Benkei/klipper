@@ -56,9 +56,7 @@ namespace KlipperSharp
 		double retransmitTimer = PR_NEVER;
 		double commandTimer = PR_NEVER;
 
-		MemoryStream sendBuffer = new MemoryStream(
-			new byte[Marshal.SizeOf<RawMessage>()],
-			0, Marshal.SizeOf<RawMessage>(), true, true);
+		MemoryStream sendBuffer = new MemoryStream(new byte[sizeof(RawMessage)], 0, sizeof(RawMessage), true, true);
 
 		// Input reading
 		//struct pollreactor pr;
@@ -124,36 +122,23 @@ namespace KlipperSharp
 			[FieldOffset(1 + MESSAGE_MAX + 8)]
 			public double receive_time;
 
-			public static RawMessage Create(byte[] data, byte len)
+			public static RawMessage Create(ReadOnlySpan<byte> data)
 			{
 				RawMessage qm = new RawMessage();
-				fixed (byte* pData = data)
-					Buffer.MemoryCopy(pData, qm.msg, SerialQueue.MESSAGE_MAX, len);
-				qm.len = len;
-				return qm;
-			}
-			public static RawMessage Create(byte* data, byte len)
-			{
-				RawMessage qm = new RawMessage();
-				Buffer.MemoryCopy(data, qm.msg, SerialQueue.MESSAGE_MAX, len);
-				qm.len = len;
+				data.CopyTo(new Span<byte>(qm.msg, MESSAGE_MAX));
+				qm.len = (byte)data.Length;
 				return qm;
 			}
 			// Allocate a queue_message and fill it with a series of encoded vlq integers
-			public static RawMessage CreateAndEncode(uint[] data, int len)
-			{
-				fixed (uint* pData = data)
-					return CreateAndEncode(pData, len);
-			}
-			public static RawMessage CreateAndEncode(uint* data, int len)
+			public static RawMessage CreateAndEncode(ReadOnlySpan<uint> data)
 			{
 				RawMessage qm = new RawMessage();
 				int i;
 				byte* p = qm.msg;
-				for (i = 0; i < len; i++)
+				for (i = 0; i < data.Length; i++)
 				{
 					p = Encode_int(p, (int)data[i]);
-					if (p > &qm.msg[SerialQueue.MESSAGE_PAYLOAD_MAX])
+					if (p > &qm.msg[MESSAGE_PAYLOAD_MAX])
 						goto fail;
 				}
 				qm.len = (byte)(p - qm.msg);
@@ -242,17 +227,16 @@ namespace KlipperSharp
 
 		// Schedule the transmission of a message on the serial port at a
 		// given time and priority.
-		public void send(command_queue cq, byte[] msg, int len, ulong min_clock = 0, ulong req_clock = 0)
+		public void send(command_queue cq, ReadOnlySpan<byte> msg, ulong min_clock = 0, ulong req_clock = 0)
 		{
-			RawMessage qm = RawMessage.Create(msg, (byte)len);
+			RawMessage qm = RawMessage.Create(msg);
 			qm.min_clock = min_clock;
 			qm.req_clock = req_clock;
 
-			send_batch(cq, new[] { qm });
+			send_batch(cq, new Span<RawMessage>(&qm, 1));
 		}
 
-		// Add a batch of messages to the given command_queue
-		public void send_batch(command_queue cq, RawMessage[] msgs)
+		public void send_batch(command_queue cq, Span<RawMessage> msgs)
 		{
 			// Make sure min_clock is set in list and calculate total bytes
 			int len = 0;
@@ -296,18 +280,18 @@ namespace KlipperSharp
 		}
 
 		// Like serialqueue_send() but also builds the message to be sent
-		public void encode_and_send(command_queue cq, uint[] data, int len, ulong min_clock = 0, ulong req_clock = 0)
+		public void encode_and_send(command_queue cq, ReadOnlySpan<uint> data, ulong min_clock = 0, ulong req_clock = 0)
 		{
-			RawMessage qm = RawMessage.CreateAndEncode(data, len);
+			RawMessage qm = RawMessage.CreateAndEncode(data);
 			qm.min_clock = min_clock;
 			qm.req_clock = req_clock;
 
-			send_batch(cq, new[] { qm });
+			send_batch(cq, new Span<RawMessage>(&qm, 1));
 		}
 
 		// Return a message read from the serial port (or wait for one if none
 		// available)
-		public void pull(out QueueMessage pqm)
+		public bool pull(out QueueMessage pqm, int timeout = -1)
 		{
 			//pthread_mutex_lock(&sq->lock);
 			lock (_lock)
@@ -318,10 +302,10 @@ namespace KlipperSharp
 					//if (pollreactor_is_exit(&sq->pr))
 					//    goto exit;
 					receive_waiting = true;
-					if (!Monitor.Wait(_lock, 1000))
+					if (!Monitor.Wait(_lock, timeout))
 					{
 						pqm = new QueueMessage();
-						return;
+						return false;
 					}
 					//int ret = pthread_cond_wait(&sq->cond, &sq->lock);
 					//if (ret)
@@ -342,7 +326,7 @@ namespace KlipperSharp
 				//debug_queue_add(&sq->old_receive, qm);
 
 				//pthread_mutex_unlock(&sq->lock);
-				return;
+				return true;
 
 				//exit:
 				//	pqm = new queue_message();
@@ -508,7 +492,7 @@ namespace KlipperSharp
 			if (length > MESSAGE_MIN)
 			{
 				// Add message to receive queue
-				RawMessage qm = RawMessage.Create(input_buf, (byte)length);
+				RawMessage qm = RawMessage.Create(new ReadOnlySpan<byte>(input_buf, 0, length));
 				qm.sent_time = (rseq > retransmit_seq ? last_receive_sent_time : 0.0);
 				qm.receive_time = HighResolutionTime.Now;//get_monotonic(); // must be time post read()
 				qm.receive_time -= baud_adjust * length;
