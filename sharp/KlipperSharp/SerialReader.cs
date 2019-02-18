@@ -6,6 +6,7 @@ using System.IO.Ports;
 using System.Text;
 using System.Threading;
 using System.Linq;
+using System.Collections.Concurrent;
 
 namespace KlipperSharp
 {
@@ -20,6 +21,7 @@ namespace KlipperSharp
 		private object _lock = new object();
 		private Thread background_thread;
 		private Dictionary<ValueTuple<string, int>, Action<Dictionary<string, object>>> handlers;
+		private ConcurrentDictionary<ValueTuple<string, int>, object> waitHandlers = new ConcurrentDictionary<(string, int), object>();
 		public SelectReactor reactor;
 
 		public MessageParser msgparser;
@@ -64,7 +66,7 @@ namespace KlipperSharp
 				parameter["#receive_time"] = response.receive_time;
 				var hdl = (parameter.Get<string>("#name"), parameter.Get<int>("oid"));
 
-				logging.Info($"{hdl.Item1}:{hdl.Item2} - {(int)((response.receive_time - response.sent_time) * 1000)} : {(int)(response.sent_time * 1000)}/{(int)(response.receive_time * 1000)}");
+				logging.Info($"{hdl.Item1}:{hdl.Item2} - {(float)((response.receive_time - response.sent_time) * 1000)} : {(float)(response.sent_time * 1000)}/{(float)(response.receive_time * 1000)}");
 
 				Action<Dictionary<string, object>> callback;
 				lock (_lock)
@@ -79,6 +81,7 @@ namespace KlipperSharp
 				{
 					logging.Error(ex, $"Exception in serial callback '{hdl.Item1}'");
 				}
+				signalWait(hdl.Item1, hdl.Item2);
 			}
 		}
 
@@ -236,6 +239,29 @@ namespace KlipperSharp
 			}
 		}
 
+		Func<(string, int), object> factory = (a) => new object();
+		public bool wait(string name, int oid, int timeout = -1)
+		{
+			object sync = waitHandlers.GetOrAdd((name, oid), factory);
+			lock (sync)
+			{
+				return Monitor.Wait(sync, timeout);
+			}
+		}
+
+		void signalWait(string name, int oid)
+		{
+			object sync;
+			if (!waitHandlers.TryGetValue((name, oid), out sync))
+			{
+				return;
+			}
+			lock (sync)
+			{
+				Monitor.PulseAll(sync);
+			}
+		}
+
 		// Command sending
 		public void raw_send(byte[] cmd, ulong minclock, ulong reqclock, command_queue cmd_queue)
 		{
@@ -325,7 +351,7 @@ namespace KlipperSharp
 			this.cmd = cmd;
 		}
 
-		public void send(object[] data = null/* = Tuple.Create("<Empty>")*/, ulong minclock = 0, ulong reqclock = 0)
+		public void send(object[] data = null, ulong minclock = 0, ulong reqclock = 0)
 		{
 			var buffer = new MemoryStream();
 			var writer = new BinaryWriter(buffer, Encoding.ASCII);
@@ -333,7 +359,7 @@ namespace KlipperSharp
 			serial.raw_send(buffer.ToArray(), minclock, reqclock, cmd_queue);
 		}
 
-		public Dictionary<string, object> send_with_response(object[] data = null /*= Tuple.Create("<Empty>")*/, string response = null, int response_oid = 0)
+		public Dictionary<string, object> send_with_response(object[] data = null, string response = null, int response_oid = 0)
 		{
 			var buffer = new MemoryStream();
 			var writer = new BinaryWriter(buffer, Encoding.ASCII);
@@ -395,17 +421,26 @@ namespace KlipperSharp
 			logging.Info($"handle {name} {last_sent_time} {min_query_time}");
 		}
 
+		//public Dictionary<string, object> get_response()
+		//{
+		//	double eventtime = serial.reactor.monotonic();
+		//	while (response == null)
+		//	{
+		//		eventtime = serial.reactor.pause(eventtime + 0.05);
+		//		if (eventtime > min_query_time + TIMEOUT_TIME)
+		//		{
+		//			unregister();
+		//			throw new Exception($"Timeout on wait for '{name}' response");
+		//		}
+		//	}
+		//	unregister();
+		//	return response;
+		//}
 		public Dictionary<string, object> get_response()
 		{
-			double eventtime = serial.reactor.monotonic();
-			while (response == null)
+			if (!this.serial.wait(name, oid, (int)TIMEOUT_TIME * 1000))
 			{
-				eventtime = serial.reactor.pause(eventtime + 0.05);
-				if (eventtime > min_query_time + TIMEOUT_TIME)
-				{
-					unregister();
-					throw new Exception($"Timeout on wait for '{name}' response");
-				}
+				throw new Exception($"Timeout on wait for '{name}' response");
 			}
 			unregister();
 			return response;

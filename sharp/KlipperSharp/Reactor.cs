@@ -12,13 +12,22 @@ namespace KlipperSharp
 
 	public class ReactorTimer
 	{
-		public readonly ReactorAction callback;
-		public double waketime;
+		internal readonly ReactorAction callback;
+		internal double waketime;
+		internal readonly object syncLock = new object();
 
 		public ReactorTimer(ReactorAction callback, double waketime)
 		{
 			this.callback = callback;
 			this.waketime = waketime;
+		}
+
+		public bool Wait(int timeout = -1)
+		{
+			lock (syncLock)
+			{
+				return Monitor.Wait(syncLock, timeout);
+			}
 		}
 	}
 
@@ -202,6 +211,10 @@ namespace KlipperSharp
 			{
 				t.waketime = NEVER;
 				t.waketime = t.callback(parallelTime);
+				lock (t.syncLock)
+				{
+					Monitor.PulseAll(t.syncLock);
+				}
 			}
 			_note_time(t);
 		}
@@ -294,7 +307,7 @@ namespace KlipperSharp
 			//g_next.parent = g.parent;
 			//g.timer = register_timer(g.@switch, waketime);
 			//return g_next.@switch();
-			Wait(ref _process, waketime);
+			Wait(ref _process, monotonic() + waketime);
 			return monotonic();
 		}
 
@@ -364,7 +377,7 @@ namespace KlipperSharp
 				//		break;
 				//	}
 				//}
-				Wait(ref _process, timeout);
+				Wait(ref _process, eventtime + timeout);
 			}
 			//_g_dispatch = null;
 		}
@@ -377,12 +390,19 @@ namespace KlipperSharp
 				if (diff <= 0f)
 					break;
 
-				if (diff < 0.001f)
+				if (diff < 0.005f)
 					Thread.SpinWait(10);
 				else if (diff < 0.050f)
 					Thread.SpinWait(100);
 				else
 					Thread.Sleep(1);
+
+				//if (diff < 0.001f)
+				//	Thread.SpinWait(10);
+				//else if (diff < 0.050f)
+				//	Thread.SpinWait(100);
+				//else
+				//	Thread.Sleep(1);
 
 				if (!running)
 					return;
