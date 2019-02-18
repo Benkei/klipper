@@ -257,7 +257,7 @@ Printer is shutdown
 			catch (Exception ex)
 			{
 				logging.Error("Config error");
-				this._set_state(String.Format("{0}{1}", ex, message_restart));
+				this._set_state($"{ex}{message_restart}");
 				return SelectReactor.NEVER;
 			}
 			//catch (Exception ex)

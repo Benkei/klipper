@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,6 +7,8 @@ namespace KlipperSharp
 {
 	public class ClockSync
 	{
+		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
+
 		public const double RTT_AGE = 1E-05 / (60.0 * 60.0);
 		public const double DECAY = 1.0 / 30.0;
 		public const double TRANSMIT_EXTRA = 0.001;
@@ -105,19 +108,19 @@ namespace KlipperSharp
 			}
 			this.last_clock = clock;
 			// Check if this is the best round-trip-time seen so far
-			var sent_time = (double)parameters["#sent_time"];
+			var sent_time = parameters.Get<double>("#sent_time");
 			if (sent_time != 0)
 			{
 				return;
 			}
-			var receive_time = (double)parameters["#receive_time"];
+			var receive_time = parameters.Get<double>("#receive_time");
 			var half_rtt = 0.5 * (receive_time - sent_time);
 			var aged_rtt = (sent_time - min_rtt_time) * RTT_AGE;
 			if (half_rtt < min_half_rtt + aged_rtt)
 			{
 				min_half_rtt = half_rtt;
 				min_rtt_time = sent_time;
-				//logging.debug("new minimum rtt %.3f: hrtt=%.6f freq=%d", sent_time, half_rtt, this.clock_est[2]);
+				logging.Debug("new minimum rtt {0}: hrtt={1} freq={2}", sent_time, half_rtt, this.clock_est.Item3);
 			}
 			// Filter out samples that are extreme outliers
 			var exp_clock = (sent_time - time_avg) * clock_est.Item3 + clock_avg;
@@ -126,10 +129,12 @@ namespace KlipperSharp
 			{
 				if (clock > exp_clock && sent_time < last_prediction_time + 10.0)
 				{
-					//logging.debug("Ignoring clock sample %.3f:\" freq=%d diff=%d stddev=%.3f\"", sent_time, this.clock_est[2], clock - exp_clock, math.sqrt(this.prediction_variance));
+					logging.Debug("Ignoring clock sample {0}: freq={1} diff={2} stddev={3}",
+						sent_time, this.clock_est.Item3, clock - exp_clock, Math.Sqrt(this.prediction_variance));
 					return;
 				}
-				//logging.info("Resetting prediction variance %.3f:\" freq=%d diff=%d stddev=%.3f\"", sent_time, this.clock_est[2], clock - exp_clock, math.sqrt(this.prediction_variance));
+				logging.Info("Resetting prediction variance {0}: freq={1} diff={2} stddev={3}",
+					sent_time, this.clock_est.Item3, clock - exp_clock, Math.Sqrt(this.prediction_variance));
 				prediction_variance = Math.Pow(0.001 * mcu_freq, 2);
 			}
 			else
@@ -145,12 +150,12 @@ namespace KlipperSharp
 			clock_avg += DECAY * diff_clock;
 			clock_covariance = (1.0 - DECAY) * (clock_covariance + diff_sent_time * diff_clock * DECAY);
 			// Update prediction from linear regression
-			var new_freq = clock_covariance / (double)time_variance;
+			var new_freq = clock_covariance / time_variance;
 			var pred_stddev = Math.Sqrt(prediction_variance);
 			serial.set_clock_est(new_freq, time_avg + TRANSMIT_EXTRA, (ulong)(clock_avg - 3.0 * pred_stddev));
 			clock_est = (time_avg + min_half_rtt, clock_avg, new_freq);
-			//logging.debug("regr %.3f: freq=%.3f d=%d(%.3f)",
-			//              sent_time, new_freq, clock - exp_clock, pred_stddev)
+			logging.Debug("regr {0}: freq={1} d={2}({3})",
+							  sent_time, new_freq, clock - exp_clock, pred_stddev);
 			// clock frequency conversions
 		}
 
@@ -208,19 +213,7 @@ namespace KlipperSharp
 			var sample_time = _tup_1.Item1;
 			var clock = _tup_1.Item2;
 			var freq = _tup_1.Item3;
-			return String.Format($"clocksync state: mcu_freq=%d last_clock=%d\" clock_est=(%.3f %d %.3f) min_half_rtt=%.6f min_rtt_time=%.3f\"\" time_avg=%.3f(%.3f) clock_avg=%.3f(%.3f)\"\" pred_variance=%.3f\"",
-								this.mcu_freq,
-								this.last_clock,
-								sample_time,
-								clock,
-								freq,
-								this.min_half_rtt,
-								this.min_rtt_time,
-								this.time_avg,
-								this.time_variance,
-								this.clock_avg,
-								this.clock_covariance,
-								this.prediction_variance);
+			return $"clocksync state: mcu_freq={this.mcu_freq} last_clock={this.last_clock} clock_est=({sample_time} {clock} {freq}) min_half_rtt={this.min_half_rtt} min_rtt_time={this.min_rtt_time} time_avg={this.time_avg}({this.time_variance}) clock_avg={this.clock_avg}({this.clock_covariance}) pred_variance={this.prediction_variance}";
 		}
 
 		public virtual string stats(double eventtime)
@@ -258,7 +251,7 @@ namespace KlipperSharp
 		{
 			base.connect(serial);
 			this.clock_adj = (0.0, this.mcu_freq);
-			var curtime = HighResolutionTime.Now;//this.reactor.monotonic();
+			var curtime = this.reactor.monotonic();
 			var main_print_time = this.main_sync.estimated_print_time(curtime);
 			var local_print_time = this.estimated_print_time(curtime);
 			this.clock_adj = (main_print_time - local_print_time, this.mcu_freq);
@@ -302,7 +295,7 @@ namespace KlipperSharp
 			var _tup_1 = this.clock_adj;
 			var adjusted_offset = _tup_1.Item1;
 			var adjusted_freq = _tup_1.Item2;
-			return String.Format("%s clock_adj=(%.3f %.3f)", base.dump_debug(), adjusted_offset, adjusted_freq);
+			return $"{base.dump_debug()} clock_adj=({adjusted_offset} {adjusted_freq})";
 		}
 
 		public override string stats(double eventtime)
@@ -310,7 +303,7 @@ namespace KlipperSharp
 			var _tup_1 = this.clock_adj;
 			var adjusted_offset = _tup_1.Item1;
 			var adjusted_freq = _tup_1.Item2;
-			return String.Format("%s adj=%d", base.stats(eventtime), adjusted_freq);
+			return $"{base.stats(eventtime)} adj={adjusted_freq}";
 		}
 
 		public override (double, double) calibrate_clock(double print_time, double eventtime)
