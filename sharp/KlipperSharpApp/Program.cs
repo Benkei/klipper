@@ -28,9 +28,11 @@ namespace KlipperSharpApp
 			public string Dictionary { get; set; }
 		}
 
-
 		static void Main(string[] args)
 		{
+			Console.WriteLine($"GC: " + System.Runtime.GCSettings.LatencyMode);
+			System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
+
 			Options options = null;
 			Parser.Default
 				.ParseArguments<Options>(args)
@@ -41,7 +43,6 @@ namespace KlipperSharpApp
 			{
 				//error
 			}
-
 
 			//var usage = "%prog [options] <config file>";
 			//var opts = optparse.OptionParser(usage);
@@ -93,7 +94,7 @@ namespace KlipperSharpApp
 			var logfile = new FileTarget("logfile") { FileName = "file.txt" };
 			var logconsole = new ConsoleTarget("logconsole");
 
-			config.AddRule(LogLevel.Info, LogLevel.Fatal, logconsole);
+			config.AddRule(LogLevel.Debug, LogLevel.Fatal, logconsole);
 			config.AddRule(LogLevel.Debug, LogLevel.Fatal, logfile);
 
 			LogManager.Configuration = config;
