@@ -174,16 +174,21 @@ namespace KlipperSharp
 				_next_timer = NEVER;
 
 				parallelTime = eventtime;
+			}
 
-				//var result = Parallel.ForEach(_timers, parallelTimerCallback);
-				foreach (var item in _timers)
-				{
-					var task = Task.Factory.StartNew(ParallelTimer, item);
-					tasks.Add(task);
-				}
-				Task.WhenAll(tasks);
-				tasks.Clear();
+			//var result = Parallel.ForEach(_timers, parallelTimerCallback);
+			foreach (var item in _timers)
+			{
+				var task = Task.Factory.StartNew(ParallelTimer, item);
+				//tasks.Add(task);
+			}
+			//var taskWhen = Task.WhenAll(tasks);
+			//taskWhen.Wait();
 
+			//tasks.Clear();
+
+			lock (_timers)
+			{
 				//foreach (var t in _timers)
 				//{
 				//	if (eventtime >= t.waketime)
