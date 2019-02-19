@@ -113,7 +113,7 @@ namespace KlipperSharp
 			}
 			catch (/*EndstopError*/ Exception e)
 			{
-				error = String.Format("Error during homing move: %s", e);
+				error = $"Error during homing move: {e}";
 			}
 			var move_end_print_time = this.toolhead.get_last_move_time();
 			this.toolhead.reset_print_time(print_time);
@@ -129,7 +129,7 @@ namespace KlipperSharp
 				{
 					if (error == null)
 					{
-						error = String.Format("Failed to home %s: %s", name, e);
+						error = $"Failed to home {name}: {e}";
 					}
 				}
 			}
@@ -175,7 +175,7 @@ namespace KlipperSharp
 						{
 							throw /*EndstopError*/new Exception("Probe triggered prior to movement");
 						}
-						throw /*EndstopError*/new Exception(String.Format("Endstop %s still triggered after retract", name));
+						throw /*EndstopError*/new Exception($"Endstop {name} still triggered after retract");
 					}
 				}
 			}

@@ -68,16 +68,16 @@ namespace KlipperSharp
 				}
 				else
 				{
-					throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+					throw new Exception($"Unable to parse option '{option}' in section '{this.section}'");
 				}
 			}
 			if (minval != null && v < minval)
 			{
-				throw new Exception(String.Format("Option '%s' in section '%s' must have minimum of %s", option, this.section, minval));
+				throw new Exception($"Option '{option}' in section '{this.section}' must have minimum of {minval}");
 			}
 			if (maxval != null && v > maxval)
 			{
-				throw new Exception(String.Format("Option '%s' in section '%s' must have maximum of %s", option, this.section, maxval));
+				throw new Exception($"Option '{option}' in section '{this.section}' must have maximum of {maxval}");
 			}
 			return v;
 		}
@@ -99,24 +99,24 @@ namespace KlipperSharp
 				}
 				else
 				{
-					throw new Exception(String.Format("Unable to parse option '%s' in section '%s'", option, this.section));
+					throw new Exception($"Unable to parse option '{option}' in section '{this.section}'");
 				}
 			}
 			if (minval != null && v < minval)
 			{
-				throw new Exception(String.Format("Option '%s' in section '%s' must have minimum of %s", option, this.section, minval));
+				throw new Exception($"Option '{option}' in section '{this.section}' must have minimum of {minval}");
 			}
 			if (maxval != null && v > maxval)
 			{
-				throw new Exception(String.Format("Option '%s' in section '%s' must have maximum of %s", option, this.section, maxval));
+				throw new Exception($"Option '{option}' in section '{this.section}' must have maximum of {maxval}");
 			}
 			if (above != null && v <= above)
 			{
-				throw new Exception(String.Format("Option '%s' in section '%s' must be above %s", option, this.section, above));
+				throw new Exception($"Option '{option}' in section '{this.section}' must be above {above}");
 			}
 			if (below != null && v >= below)
 			{
-				throw new Exception(String.Format("Option '%s' in section '%s' must be below %s", option, this.section, below));
+				throw new Exception($"Option '{option}' in section '{this.section}' must be below {below}");
 			}
 			return v;
 		}
@@ -138,7 +138,7 @@ namespace KlipperSharp
 				}
 				else
 				{
-					throw new Exception(String.Format("Choice '%s' for option '%s' in section '%s'\" is not a valid choice\"", c, option, this.section));
+					throw new ArgumentException($"Enum '{c}' for option '{option}' in section '{this.section}' is not a valid enum");
 				}
 			}
 			return v;
@@ -149,7 +149,7 @@ namespace KlipperSharp
 			var c = this.get(option, @default);
 			if (!choices.ContainsKey(c))
 			{
-				throw new Exception(String.Format("Choice '%s' for option '%s' in section '%s'\" is not a valid choice\"", c, option, this.section));
+				throw new Exception($"Choice '{c}' for option '{option}' in section '{this.section}' is not a valid choice");
 			}
 			return choices[c];
 		}
@@ -224,7 +224,7 @@ namespace KlipperSharp
 			}
 			catch
 			{
-				var msg = String.Format("Unable to open config file %s", filename);
+				var msg = $"Unable to open config file {filename}";
 				logging.Error(msg);
 				throw new Exception(msg);
 			}
@@ -353,14 +353,14 @@ namespace KlipperSharp
 				var sectionName = section.SectionName.ToLowerInvariant();
 				if (!valid_sections.Contains(sectionName) && !objects.ContainsKey(sectionName))
 				{
-					throw new Exception(String.Format("Section '%s' is not a valid config section", sectionName));
+					throw new Exception($"Section '{sectionName}' is not a valid config section");
 				}
 				foreach (var option in section.Keys)
 				{
 					var optionName = option.KeyName.ToLowerInvariant();
 					if (!access_tracking.Contains((sectionName, optionName)))
 					{
-						throw new Exception(String.Format("Option '%s' is not valid in section '%s'", option, sectionName));
+						throw new Exception($"Option '{option}' is not valid in section '{sectionName}'");
 					}
 				}
 			}
@@ -380,7 +380,7 @@ namespace KlipperSharp
 				this.autosave.fileconfig.Sections.AddSection(section);
 			}
 			this.autosave.fileconfig.Sections[section][option] = value;
-			logging.Info("save_config: set [%s] %s = %s", section, option, value);
+			logging.Info("save_config: set [{0}] {1} = {2}", section, option, value);
 		}
 
 		public void remove_section(string section)
@@ -433,7 +433,7 @@ namespace KlipperSharp
 				temp_name = cfgname.Substring(0, cfgname.Length - 4) + "_autosave.cfg";
 			}
 			// Create new config file with temporary name and swap with main config
-			logging.Info("SAVE_CONFIG to '%s' (backup in '%s')", cfgname, backup_name);
+			logging.Info("SAVE_CONFIG to '{0}' (backup in '{1}')", cfgname, backup_name);
 			try
 			{
 				File.WriteAllText(temp_name, data);

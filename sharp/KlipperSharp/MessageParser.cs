@@ -212,7 +212,7 @@ namespace KlipperSharp
 				}
 				result.Add(v);
 			}
-			return string.Format(Debugformat, "");
+			return string.Format(Debugformat, result.ToArray());
 		}
 	}
 	public class OutputFormat : BaseFormat

@@ -53,7 +53,7 @@ namespace KlipperSharp
 			this.name = config.get_name();
 			var shared_heater = config.get("shared_heater", null);
 			var pheater = this.printer.lookup_object<PrinterHeaters>("heater");
-			var gcode_id = String.Format("T%d", extruder_num);
+			var gcode_id = $"T{extruder_num}";
 			if (shared_heater == null)
 			{
 				this.heater = pheater.setup_heater(config, gcode_id);
@@ -70,7 +70,7 @@ namespace KlipperSharp
 			var def_max_extrude_ratio = def_max_cross_section / this.filament_area;
 			var max_cross_section = config.getfloat("max_extrude_cross_section", def_max_cross_section, above: 0.0);
 			this.max_extrude_ratio = max_cross_section / this.filament_area;
-			logging.Info("Extruder max_extrude_ratio=%.6f", this.max_extrude_ratio);
+			logging.Info("Extruder max_extrude_ratio={0:0.0000}", this.max_extrude_ratio);
 			var toolhead = this.printer.lookup_object<ToolHead>("toolhead");
 			var _tup_1 = toolhead.get_max_velocity();
 			var max_velocity = _tup_1.Item1;
@@ -141,8 +141,7 @@ namespace KlipperSharp
 				// Extrude only move (or retraction move) - limit accel and velocity
 				if (Math.Abs(move.axes_d[3]) > this.max_e_dist)
 				{
-					throw new Exception(String.Format("Extrude only move too long (%.3fmm vs %.3fmm)\n\"See the 'max_extrude_only_distance' config\"\" option for details\"",
-						move.axes_d[3], this.max_e_dist));
+					throw new Exception($"Extrude only move too long ({move.axes_d[3]:0.000}mm vs {this.max_e_dist:0.000}mm)See the 'max_extrude_only_distance' config option for details");
 				}
 				var inv_extrude_r = 1.0 / Math.Abs(move.extrude_r);
 				move.limit_speed(this.max_e_velocity * inv_extrude_r, this.max_e_accel * inv_extrude_r);
@@ -156,9 +155,8 @@ namespace KlipperSharp
 					return;
 				}
 				var area = move.axes_d[3] * this.filament_area / move.move_d;
-				logging.Debug("Overextrude: %s vs %s (area=%.3f dist=%.3f)", move.extrude_r, this.max_extrude_ratio, area, move.move_d);
-				throw new Exception(String.Format("Move exceeds maximum extrusion (%.3fmm^2 vs %.3fmm^2)\n\"See the 'max_extrude_cross_section' config option for details\"",
-					area, this.max_extrude_ratio * this.filament_area));
+				logging.Debug("Overextrude: {0} vs {1} (area={2:0.000} dist={3:0.000})", move.extrude_r, this.max_extrude_ratio, area, move.move_d);
+				throw new Exception($"Move exceeds maximum extrusion ({area:0.000}mm^2 vs {this.max_extrude_ratio * this.filament_area:0.000}mm^2) See the 'max_extrude_cross_section' config option for details");
 			}
 		}
 
@@ -311,8 +309,8 @@ namespace KlipperSharp
 			var pressure_advance_lookahead_time = gcode.get_float("ADVANCE_LOOKAHEAD_TIME", parameters, this.pressure_advance_lookahead_time, minval: 0.0);
 			this.pressure_advance = pressure_advance;
 			this.pressure_advance_lookahead_time = pressure_advance_lookahead_time;
-			var msg = String.Format("pressure_advance: %.6f\n\"pressure_advance_lookahead_time: %.6f\"", pressure_advance, pressure_advance_lookahead_time);
-			this.printer.set_rollover_info(this.name, String.Format("%s: %s", this.name, msg));
+			var msg = $"pressure_advance: {pressure_advance:0.000}\npressure_advance_lookahead_time: {pressure_advance_lookahead_time:0.000}";
+			this.printer.set_rollover_info(this.name, $"{this.name}: {msg}");
 			gcode.respond_info(msg);
 		}
 

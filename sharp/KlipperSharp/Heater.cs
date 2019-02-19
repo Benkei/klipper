@@ -92,7 +92,7 @@ namespace KlipperSharp
 			}
 			this.mcu_pwm.setup_max_duration(MAX_HEAT_TIME);
 			// Load additional modules
-			printer.try_load_module(config, String.Format("verify_heater %s", this.name));
+			printer.try_load_module(config, $"verify_heater {this.name}");
 			printer.try_load_module(config, "pid_calibrate");
 		}
 
@@ -110,7 +110,7 @@ namespace KlipperSharp
 			var pwm_time = read_time + this.pwm_delay;
 			this.next_pwm_time = pwm_time + 0.75 * MAX_HEAT_TIME;
 			this.last_pwm_value = value;
-			logging.Debug("%s: pwm=%.3f@%.3f (from %.3f@%.3f [%.3f])", this.name, value, pwm_time, this.last_temp, this.last_temp_time, this.target_temp);
+			logging.Debug("{0}: pwm={1:0.000}@{2:0.000} (from {3:0.000}@{4:0.000} [{5:0.000}])", this.name, value, pwm_time, this.last_temp, this.last_temp_time, this.target_temp);
 			this.mcu_pwm.set_pwm(pwm_time, value);
 		}
 
@@ -150,7 +150,7 @@ namespace KlipperSharp
 		{
 			if (degrees != 0 && (degrees < this.min_temp || degrees > this.max_temp))
 			{
-				throw new Exception(String.Format("Requested temperature (%.1f) out of range (%.1f:%.1f)", degrees, this.min_temp, this.max_temp));
+				throw new Exception($"Requested temperature ({degrees:0.00}) out of range ({this.min_temp:0.00}:{this.max_temp:0.00})");
 			}
 			lock (_lock)
 			{
@@ -207,7 +207,7 @@ namespace KlipperSharp
 				var last_temp = this.last_temp;
 				var last_pwm_value = this.last_pwm_value;
 				var is_active = target_temp != 0 || last_temp > 50.0;
-				return (is_active, String.Format("%s: target=%.0f temp=%.1f pwm=%.3f", this.name, target_temp, last_temp, last_pwm_value));
+				return (is_active, $"{this.name}: target={target_temp:0} temp={last_temp:0.00} pwm={last_pwm_value:0.000}");
 			}
 		}
 
@@ -379,7 +379,7 @@ namespace KlipperSharp
 			}
 			if (this.heaters.ContainsKey(heater_name))
 			{
-				throw new Exception(String.Format("Heater %s already registered", heater_name));
+				throw new Exception($"Heater {heater_name} already registered");
 			}
 			// Setup sensor
 			var sensor = this.setup_sensor(config);
@@ -398,7 +398,7 @@ namespace KlipperSharp
 			}
 			if (!this.heaters.ContainsKey(heater_name))
 			{
-				throw new Exception(String.Format("Unknown heater '%s'", heater_name));
+				throw new Exception($"Unknown heater '{heater_name}'");
 			}
 			return this.heaters[heater_name];
 		}
@@ -411,7 +411,7 @@ namespace KlipperSharp
 			var sensor_type = config.get("sensor_type");
 			if (!this.sensors.ContainsKey(sensor_type))
 			{
-				throw new Exception(String.Format("Unknown temperature sensor '%s'", sensor_type));
+				throw new Exception($"Unknown temperature sensor '{sensor_type}'");
 			}
 			return this.sensors[sensor_type](config);
 		}

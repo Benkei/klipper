@@ -100,7 +100,7 @@ Printer is shutdown
 		{
 			if (objects.ContainsValue(obj))
 			{
-				throw new Exception(string.Format("Printer object '{0}' already created", name));
+				throw new Exception($"Printer object '{name}' already created");
 			}
 			objects[name] = obj;
 		}
@@ -111,7 +111,7 @@ Printer is shutdown
 			{
 				return this.objects[name] as T;
 			}
-			throw new Exception(string.Format("Unknown config object '{0}'", name));
+			throw new Exception($"Unknown config object '{name}'");
 		}
 
 		public T lookup_object<T>(string name, T @default = null) where T : class
@@ -339,7 +339,7 @@ Printer is shutdown
 				return;
 			}
 			is_shutdown = true;
-			_set_state(string.Format("%s%s", msg, message_shutdown));
+			_set_state($"{msg}{message_shutdown}");
 			foreach (var cb in event_handlers.Get("klippy:shutdown"))
 			{
 				try

@@ -103,7 +103,7 @@ namespace KlipperSharp
 			}
 			catch (Exception ex)
 			{
-				var msg = String.Format("Error loading kinematics '%s'", kin_name);
+				var msg = $"Error loading kinematics '{kin_name}'";
 				logging.Error(msg);
 				throw new Exception(msg, ex);
 			}
@@ -345,7 +345,7 @@ namespace KlipperSharp
 			}
 			var buffer_time = this.print_time - this.mcu.estimated_print_time(eventtime);
 			var is_active = buffer_time > -60.0 || !this.sync_print_time;
-			return (is_active, String.Format("print_time=%.3f buffer_time=%.3f print_stall=%d", this.print_time, Math.Max(buffer_time, 0.0), this.print_stall));
+			return (is_active, $"print_time={this.print_time:0.00} buffer_time={Math.Max(buffer_time, 0.0)} print_stall={this.print_stall}");
 		}
 
 		public (double, double, double) check_busy(double eventtime)
@@ -421,9 +421,8 @@ namespace KlipperSharp
 			this.max_accel = Math.Min(max_accel, this.config_max_accel);
 			this.square_corner_velocity = Math.Min(square_corner_velocity, this.config_square_corner_velocity);
 			this._calc_junction_deviation();
-			var msg = String.Format("max_velocity: %.6f\n\"max_accel: %.6f\n\"\"max_accel_to_decel: %.6f\n\"\"square_corner_velocity: %.6f\"",
-				max_velocity, max_accel, this.requested_accel_to_decel, square_corner_velocity);
-			this.printer.set_rollover_info("toolhead", String.Format("toolhead: %s", msg));
+			var msg = $"max_velocity: {max_velocity:0.000}\nmax_accel: {max_accel:0.000}\nmax_accel_to_decel: {this.requested_accel_to_decel:0.000}\nsquare_corner_velocity: {square_corner_velocity:0.000}";
+			this.printer.set_rollover_info("toolhead", $"toolhead: {msg}");
 			gcode.respond_info(msg);
 		}
 

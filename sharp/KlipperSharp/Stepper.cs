@@ -219,7 +219,7 @@ namespace KlipperSharp
 			}
 			if (this.position_endstop < this.position_min || this.position_endstop > this.position_max)
 			{
-				throw new Exception(String.Format("position_endstop in section '%s' must be between\" position_min and position_max\"", config.get_name()));
+				throw new Exception($"position_endstop in section '{config.get_name()}' must be between position_min and position_max");
 			}
 			// Homing mechanics
 			this.homing_speed = config.getfloat("homing_speed", 5.0, above: 0.0);
@@ -239,7 +239,7 @@ namespace KlipperSharp
 				}
 				else
 				{
-					throw new Exception(String.Format("Unable to infer homing_positive_dir in section '%s'", config.get_name()));
+					throw new Exception($"Unable to infer homing_positive_dir in section '{config.get_name()}'");
 				}
 			}
 		}

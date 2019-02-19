@@ -158,11 +158,11 @@ or in response to an internal error in the host software."}
 				return;
 			this._is_shutdown = true;
 			var msg = this._shutdown_msg = (string)parameters["#msg"];
-			logging.Info("MCU '%s' %s: %s %s %s", this._name, parameters["#name"], this._shutdown_msg, this._clocksync.dump_debug(), this._serial.dump_debug());
-			var prefix = string.Format("MCU '%s' shutdown: ", this._name);
+			logging.Info("MCU '{0}' {1}: {2} {3} {4}", this._name, parameters["#name"], this._shutdown_msg, this._clocksync.dump_debug(), this._serial.dump_debug());
+			var prefix = $"MCU '{this._name}' shutdown: ";
 			if ((string)parameters["#name"] == "is_shutdown")
 			{
-				prefix = string.Format("Previous MCU '%s' shutdown: ", this._name);
+				prefix = $"Previous MCU '{this._name}' shutdown: ";
 			}
 
 			this._printer.invoke_async_shutdown(prefix + msg + error_help(msg));
@@ -176,7 +176,7 @@ or in response to an internal error in the host software."}
 			{
 				return;
 			}
-			logging.Info("Attempting automated MCU '%s' restart: %s", this._name, reason);
+			logging.Info("Attempting automated MCU '{0}' restart: {1}", this._name, reason);
 			this._printer.request_exit("firmware_restart");
 			this._reactor.pause(this._reactor.monotonic() + 2.0);
 			throw new Exception($"Attempt MCU '{this._name}' restart failed");
@@ -298,11 +298,11 @@ or in response to an internal error in the host software."}
 			var config_parameters = get_config_cmd.send_with_response(null, "config");
 			if (this._is_shutdown)
 			{
-				throw new Exception(String.Format("MCU '%s' error during config: %s", this._name, this._shutdown_msg));
+				throw new Exception($"MCU '{this._name}' error during config: {this._shutdown_msg}");
 			}
 			if (config_parameters.Get("is_shutdown") == null)
 			{
-				throw new Exception(String.Format("Can not update MCU '%s' config as it is shutdown", this._name));
+				throw new Exception($"Can not update MCU '{this._name}' config as it is shutdown");
 			}
 			return config_parameters;
 		}
@@ -322,7 +322,7 @@ or in response to an internal error in the host software."}
 				config_parameters = this._send_get_config();
 				if (config_parameters.Get("is_config") == null && !this.is_fileoutput())
 				{
-					throw new Exception(string.Format("Unable to configure MCU '%s'", this._name));
+					throw new Exception($"Unable to configure MCU '{this._name}'");
 				}
 			}
 			else
@@ -330,7 +330,7 @@ or in response to an internal error in the host software."}
 				var start_reason = (string)this._printer.get_start_args().Get("start_reason");
 				if (start_reason == "firmware_restart")
 				{
-					throw new Exception(String.Format("Failed automated reset of MCU '%s'", this._name));
+					throw new Exception($"Failed automated reset of MCU '{this._name}'");
 				}
 				// Already configured - send init commands
 				this._send_config((int)config_parameters.Get("crc"));
@@ -548,7 +548,7 @@ or in response to an internal error in the host software."}
 
 		public void _restart_arduino()
 		{
-			logging.Info("Attempting MCU '%s' reset", this._name);
+			logging.Info("Attempting MCU '{0}' reset", this._name);
 			this._disconnect();
 			serialhdl.arduino_reset(this._serialport, this._reactor);
 		}
@@ -557,13 +557,13 @@ or in response to an internal error in the host software."}
 		{
 			if (this._reset_cmd == null && this._config_reset_cmd == null || !this._clocksync.is_active())
 			{
-				logging.Info("Unable to issue reset command on MCU '%s'", this._name);
+				logging.Info("Unable to issue reset command on MCU '{0}'", this._name);
 				return;
 			}
 			if (this._reset_cmd == null)
 			{
 				// Attempt reset via config_reset command
-				logging.Info("Attempting MCU '%s' config_reset command", this._name);
+				logging.Info("Attempting MCU '{0}' config_reset command", this._name);
 				this._is_shutdown = true;
 				this._shutdown(force: true);
 				this._reactor.pause(this._reactor.monotonic() + 0.015);
@@ -572,7 +572,7 @@ or in response to an internal error in the host software."}
 			else
 			{
 				// Attempt reset via reset command
-				logging.Info("Attempting MCU '%s' reset command", this._name);
+				logging.Info("Attempting MCU '{0}' reset command", this._name);
 				this._reset_cmd.send();
 			}
 			this._reactor.pause(this._reactor.monotonic() + 0.015);
@@ -581,7 +581,7 @@ or in response to an internal error in the host software."}
 
 		public void _restart_rpi_usb()
 		{
-			logging.Info("Attempting MCU '%s' reset via rpi usb power", this._name);
+			logging.Info("Attempting MCU '{0}' reset via rpi usb power", this._name);
 			this._disconnect();
 			//chelper.run_hub_ctrl(0);
 			this._reactor.pause(this._reactor.monotonic() + 2.0);
@@ -629,7 +629,7 @@ or in response to an internal error in the host software."}
 			var ret = Stepcompress.steppersync_flush(this._steppersync, (ulong)clock);
 			if (ret != 0)
 			{
-				throw new Exception(String.Format("Internal error in MCU '%s' stepcompress", this._name));
+				throw new Exception($"Internal error in MCU '{this._name}' stepcompress");
 			}
 		}
 
@@ -648,14 +648,13 @@ or in response to an internal error in the host software."}
 				return;
 			}
 			this._is_timeout = true;
-			logging.Info("Timeout with MCU '%s' (eventtime=%f)", this._name, eventtime);
-			this._printer.invoke_shutdown(String.Format("Lost communication with MCU '%s'", this._name));
+			logging.Info("Timeout with MCU '{0}' (eventtime={1})", this._name, eventtime);
+			this._printer.invoke_shutdown($"Lost communication with MCU '{this._name}'");
 		}
 
 		public object stats(double eventtime)
 		{
-			var msg = String.Format("%s: mcu_awake=%.03f mcu_task_avg=%.06f mcu_task_stddev=%.06f",
-				this._name, this._mcu_tick_awake, this._mcu_tick_avg, this._mcu_tick_stddev);
+			var msg = $"{this._name}: mcu_awake={this._mcu_tick_awake} mcu_task_avg={this._mcu_tick_avg} mcu_task_stddev={this._mcu_tick_stddev}";
 			return (false, string.Join(" ", msg, this._serial.stats(eventtime), this._clocksync.stats(eventtime)));
 		}
 
