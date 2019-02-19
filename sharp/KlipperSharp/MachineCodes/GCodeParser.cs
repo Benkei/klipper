@@ -185,7 +185,7 @@ namespace KlipperSharp.MachineCodes
 			}
 			if (this.ready_gcode_handlers.ContainsKey(cmd))
 			{
-				throw new Exception(String.Format("gcode command %s already registered", cmd));
+				throw new Exception($"gcode command {cmd} already registered");
 			}
 
 			if (!(cmd.Length >= 2 && !char.IsUpper(cmd[0]) && char.IsDigit(cmd[1])))
@@ -222,11 +222,11 @@ namespace KlipperSharp.MachineCodes
 			var prev_values = _tup_1.Item2;
 			if (prev_key != key)
 			{
-				throw new Exception(String.Format("mux command %s %s %s may have only one key (%s)", cmd, key, value, prev_key));
+				throw new Exception($"mux command {cmd} {key} {value} may have only one key ({prev_key})");
 			}
 			if (prev_values.ContainsKey(value))
 			{
-				throw new Exception(String.Format("mux command %s %s %s already registered (%s)", cmd, key, value, prev_values));
+				throw new Exception($"mux command {cmd} {key} {value} already registered ({prev_values})");
 			}
 			prev_values[value] = func;
 		}
@@ -245,7 +245,7 @@ namespace KlipperSharp.MachineCodes
 
 		public (bool, string) stats(double eventtime)
 		{
-			return (false, string.Format("gcodein=%d", this.bytes_read));
+			return (false, $"gcodein={this.bytes_read}");
 		}
 
 		public Dictionary<string, object> get_status(double eventtime)
@@ -325,15 +325,14 @@ namespace KlipperSharp.MachineCodes
 		public void dump_debug()
 		{
 			var @out = new List<string>();
-			@out.Add(String.Format("Dumping gcode input %d blocks", this.input_log.Count));
+			@out.Add($"Dumping gcode input {this.input_log.Count} blocks");
 			foreach (var _tup_1 in this.input_log)
 			{
 				var eventtime = _tup_1.Item1;
 				var data = _tup_1.Item2;
-				@out.Add(String.Format("Read %f: %s", eventtime, data));
+				@out.Add($"Read {eventtime}: {data}");
 			}
-			@out.Add(String.Format("gcode state: absolutecoord=%s absoluteextrude=%s\" base_position=%s last_position=%s homing_position=%s\"\" speed_factor=%s extrude_factor=%s speed=%s\"",
-				this.absolutecoord, this.absoluteextrude, this.base_position, this.last_position, this.homing_position, this.speed_factor, this.extrude_factor, this.speed));
+			@out.Add($"gcode state: absolutecoord={this.absolutecoord} absoluteextrude={this.absoluteextrude} base_position={this.base_position} last_position={this.last_position} homing_position={this.homing_position} speed_factor={this.speed_factor} extrude_factor={this.extrude_factor} speed={this.speed}");
 			logging.Info(string.Join("\n", @out));
 		}
 
@@ -388,7 +387,7 @@ namespace KlipperSharp.MachineCodes
 				}
 				catch
 				{
-					var msg = String.Format("Internal error on command:\"%s\"", cmd);
+					var msg = $"Internal error on command:'{cmd}'";
 					logging.Error(msg);
 
 					this.printer.invoke_shutdown(msg);
@@ -529,7 +528,7 @@ namespace KlipperSharp.MachineCodes
 
 		public void run_script(string script)
 		{
-			var commands = new List<string>(script.Split("\n"));
+			var commands = new List<string>(script.Split('\n'));
 			double curtime = 0;
 			while (true)
 			{
@@ -590,19 +589,19 @@ namespace KlipperSharp.MachineCodes
 		public void respond_info(string msg)
 		{
 			logging.Debug(msg);
-			var lines = (from l in (msg.Trim().Split("\n")) select l.Trim());
+			var lines = (from l in (msg.Trim().Split('\n')) select l.Trim());
 			this.respond("// " + string.Join("\n// ", lines));
 		}
 
 		public void respond_error(string msg)
 		{
 			logging.Warn(msg);
-			var lines = msg.Trim().Split("\n");
+			var lines = msg.Trim().Split('\n');
 			if (lines.Length > 1)
 			{
-				this.respond_info(string.Join("\n", lines));
+				this.respond_info(string.Join('\n', lines));
 			}
-			this.respond(String.Format("!! %s", lines[0].Trim()));
+			this.respond($"!! {lines[0].Trim()}");
 			if (this.is_fileinput)
 			{
 				this.printer.request_exit("error_exit");
@@ -611,7 +610,7 @@ namespace KlipperSharp.MachineCodes
 
 		public void _respond_state(object state)
 		{
-			this.respond_info(String.Format("Klipper state: %s", state));
+			this.respond_info($"Klipper state: {state}");
 		}
 
 		// Parameter parsing helpers
@@ -619,7 +618,7 @@ namespace KlipperSharp.MachineCodes
 		{
 			if (!parameters.ContainsKey(name))
 			{
-				throw new Exception(String.Format("Error on '%s': missing %s", parameters.Get("#original"), name));
+				throw new Exception($"Error on '{parameters.Get("#original")}': missing {name}");
 			}
 			return parameters[name] as string;
 		}
@@ -643,11 +642,11 @@ namespace KlipperSharp.MachineCodes
 			}
 			if (minval != null && value < minval)
 			{
-				throw new ArgumentOutOfRangeException(String.Format("Error on '%s': %s must have minimum of %s", parameters.Get("#original"), name, minval));
+				throw new ArgumentOutOfRangeException($"Error on '{parameters.Get("#original")}': {name} must have minimum of {minval}");
 			}
 			if (maxval != null && value > maxval)
 			{
-				throw new ArgumentOutOfRangeException(String.Format("Error on '%s': %s must have maximum of %s", parameters.Get("#original"), name, maxval));
+				throw new ArgumentOutOfRangeException($"Error on '{parameters.Get("#original")}': {name} must have maximum of {maxval}");
 			}
 			return value;
 		}
@@ -665,19 +664,19 @@ namespace KlipperSharp.MachineCodes
 			}
 			if (minval != null && value < minval)
 			{
-				throw new ArgumentOutOfRangeException(String.Format("Error on '%s': %s must have minimum of %s", parameters.Get("#original"), name, minval));
+				throw new ArgumentOutOfRangeException($"Error on '{parameters.Get("#original")}': {name} must have minimum of {minval}");
 			}
 			if (maxval != null && value > maxval)
 			{
-				throw new ArgumentOutOfRangeException(String.Format("Error on '%s': %s must have maximum of %s", parameters.Get("#original"), name, maxval));
+				throw new ArgumentOutOfRangeException($"Error on '{parameters.Get("#original")}': {name} must have maximum of {maxval}");
 			}
 			if (above != null && value <= above)
 			{
-				throw new ArgumentOutOfRangeException(String.Format("Error on '%s': %s must be above %s", parameters.Get("#original"), name, above));
+				throw new ArgumentOutOfRangeException($"Error on '{parameters.Get("#original")}': {name} must be above {above}");
 			}
 			if (below != null && value >= below)
 			{
-				throw new ArgumentOutOfRangeException(String.Format("Error on '%s': %s must be below %s", parameters.Get("#original"), name, below));
+				throw new ArgumentOutOfRangeException($"Error on '{parameters.Get("#original")}': {name} must be below {below}");
 			}
 			return value;
 		}
@@ -719,7 +718,7 @@ namespace KlipperSharp.MachineCodes
 						var _tup_1 = heater.get_temp(eventtime);
 						var cur = _tup_1.Item1;
 						var target = _tup_1.Item2;
-						@out.Add(String.Format("%s:%.1f /%.1f", heater.gcode_id, cur, target));
+						@out.Add($"{heater.gcode_id}:{cur} /{target}");
 					}
 				}
 			}
@@ -748,7 +747,7 @@ namespace KlipperSharp.MachineCodes
 		public void set_temp(Dictionary<string, object> parameters, bool is_bed = false, bool wait = false)
 		{
 			var temp = this.get_float("S", parameters, 0.0);
-			Heater heater = null;
+			Heater heater;
 			if (is_bed)
 			{
 				heater = this.heater.get_heater_by_gcode_id("B");
@@ -756,7 +755,7 @@ namespace KlipperSharp.MachineCodes
 			else if (parameters.ContainsKey("T"))
 			{
 				var index = this.get_int("T", parameters, minval: 0);
-				heater = this.heater.get_heater_by_gcode_id(String.Format("T%d", index));
+				heater = this.heater.get_heater_by_gcode_id($"T{index}");
 			}
 			else
 			{
@@ -829,7 +828,7 @@ namespace KlipperSharp.MachineCodes
 					return;
 				}
 			}
-			this.respond_info(String.Format("Unknown command:\"%s\"", cmd));
+			this.respond_info($"Unknown command:'{cmd}'");
 		}
 
 		public void cmd_Tn(Dictionary<string, object> parameters)
@@ -861,7 +860,7 @@ namespace KlipperSharp.MachineCodes
 		public void cmd_mux(Dictionary<string, object> parameters)
 		{
 			string key_param;
-			var _tup_1 = this.mux_commands[parameters["#command"] as string];
+			var _tup_1 = this.mux_commands[parameters.Get<string>("#command")];
 			var key = _tup_1.Item1;
 			var values = _tup_1.Item2;
 			if (values.ContainsKey(null))
@@ -874,7 +873,7 @@ namespace KlipperSharp.MachineCodes
 			}
 			if (!values.ContainsKey(key_param))
 			{
-				throw new Exception(String.Format("The value '%s' is not valid for %s", key_param, key));
+				throw new Exception($"The value '{key_param}' is not valid for {key}");
 			}
 			values[key_param](parameters);
 		}
@@ -922,14 +921,14 @@ namespace KlipperSharp.MachineCodes
 					var speed = double.Parse((string)parameters["F"]);
 					if (speed <= 0.0)
 					{
-						throw new Exception(String.Format("Invalid speed in '%s'", parameters["#original"]));
+						throw new Exception($"Invalid speed in '{parameters["#original"]}'");
 					}
 					this.speed = speed;
 				}
 			}
 			catch (Exception ex)
 			{
-				throw new Exception(String.Format("Unable to parse move '%s'", parameters["#original"]), ex);
+				throw new Exception($"Unable to parse move '{parameters["#original"]}'", ex);
 			}
 			try
 			{
@@ -1061,7 +1060,7 @@ namespace KlipperSharp.MachineCodes
 			var p = (from item in this.last_position.Zip(this.base_position, (lp, bp) => (lp, bp))
 						select (item.lp - item.bp)).ToList();
 			p[3] /= this.extrude_factor;
-			this.respond(String.Format("X:%.3f Y:%.3f Z:%.3f E:%.3f", p[0], p[1], p[2], p[3]));
+			this.respond($"X:{p[0]} Y:{p[1]} Z:{p[2]} E:{p[3]}");
 		}
 
 		public void cmd_M220(Dictionary<string, object> parameters)
@@ -1192,30 +1191,30 @@ namespace KlipperSharp.MachineCodes
 			var steppers = kin.get_steppers();
 
 			var mcu_pos = string.Join(" ", (from s in steppers
-													  select String.Format("%s:%d", s.get_name(), s.get_mcu_position())));
+													  select $"{s.get_name()}:{s.get_mcu_position()}"));
 			var stepper_pos = string.Join(" ", (from s in steppers
-															select String.Format("%s:%.6f", s.get_name(), s.get_commanded_position())));
+															select $"{s.get_name()}:{s.get_commanded_position()}"));
 			var kinematic_pos = string.Join(" ", (from _tup_1 in "XYZE".Zip(kin.calc_position(), (a, v) => (a, v))
 															  let a = _tup_1.Item1
 															  let v = _tup_1.Item2
-															  select String.Format("%s:%.6f", a, v)));
+															  select $"{a}:{v}"));
 			var toolhead_pos = string.Join(" ", (from _tup_2 in "XYZE".Zip(this.toolhead.get_position(), (a, v) => (a, v))
 															 let a = _tup_2.Item1
 															 let v = _tup_2.Item2
-															 select String.Format("%s:%.6f", a, v)));
+															 select $"{a}:{v}"));
 			var gcode_pos = string.Join(" ", (from _tup_3 in "XYZE".Zip(this.last_position, (a, v) => (a, v))
 														 let a = _tup_3.Item1
 														 let v = _tup_3.Item2
-														 select String.Format("%s:%.6f", a, v)));
+														 select $"{a}:{v}"));
 			var base_pos = string.Join(" ", (from _tup_4 in "XYZE".Zip(this.base_position, (a, v) => (a, v))
 														let a = _tup_4.Item1
 														let v = _tup_4.Item2
-														select String.Format("%s:%.6f", a, v)));
+														select $"{a}:{v}"));
 			var homing_pos = string.Join(" ", (from _tup_5 in "XYZ".Zip(this.homing_position, (a, v) => (a, v))
 														  let a = _tup_5.Item1
 														  let v = _tup_5.Item2
-														  select String.Format("%s:%.6f", a, v)));
-			this.respond_info(String.Format("mcu: %s\n\"stepper: %s\n\"\"kinematic: %s\n\"\"toolhead: %s\n\"\"gcode: %s\n\"\"gcode base: %s\n\"\"gcode homing: %s\"", mcu_pos, stepper_pos, kinematic_pos, toolhead_pos, gcode_pos, base_pos, homing_pos));
+														  select $"{a}:{v}"));
+			this.respond_info($"mcu: {mcu_pos}\nstepper: {stepper_pos}\nkinematic: {kinematic_pos}\ntoolhead: {toolhead_pos}\ngcode: {gcode_pos}\ngcode base: {base_pos}\ngcode homing: {homing_pos}");
 		}
 
 		public void request_restart(string result)
@@ -1256,7 +1255,7 @@ namespace KlipperSharp.MachineCodes
 
 		public void cmd_ECHO(Dictionary<string, object> parameters)
 		{
-			this.respond_info(parameters["#original"] as string);
+			this.respond_info(parameters.Get<string>("#original"));
 		}
 
 		public void cmd_STATUS(Dictionary<string, object> parameters)
@@ -1283,10 +1282,10 @@ namespace KlipperSharp.MachineCodes
 			{
 				if (this.gcode_help.ContainsKey(cmd.Key))
 				{
-					cmdhelp.Add(String.Format("%-10s: %s", cmd, this.gcode_help[cmd.Key]));
+					cmdhelp.Add($"{cmd.Key}: {this.gcode_help[cmd.Key]}");
 				}
 			}
-			this.respond_info(string.Join("\n", cmdhelp));
+			this.respond_info(string.Join('\n', cmdhelp));
 		}
 	}
 
