@@ -142,14 +142,13 @@ or in response to an internal error in the host software."}
 		// Serial callbacks
 		public void _handle_mcu_stats(Dictionary<string, object> parameters)
 		{
+			logging.Debug("Mcu stats c:{0} sum:{1} sumsq:{2}", parameters.Get<int>("count"), parameters.Get<int>("sum"), parameters.Get<int>("sumsq"));
 			var count = parameters.Get<int>("count");
 			var tick_sum = parameters.Get<int>("sum");
 			var c = 1.0 / (count * this._mcu_freq);
 			this._mcu_tick_avg = tick_sum * c;
 			var tick_sumsq = parameters.Get<int>("sumsq") * this._stats_sumsq_base;
-
 			this._mcu_tick_stddev = c * Math.Sqrt(count * tick_sumsq - Math.Pow(tick_sum, 2));
-
 			this._mcu_tick_awake = tick_sum / this._mcu_freq;
 		}
 
@@ -159,7 +158,7 @@ or in response to an internal error in the host software."}
 				return;
 			this._is_shutdown = true;
 			var msg = this._shutdown_msg = (string)parameters["#msg"];
-			logging.Info("MCU '%s' %s: %s\n%s\n%s", this._name, parameters["#name"], this._shutdown_msg, this._clocksync.dump_debug(), this._serial.dump_debug());
+			logging.Info("MCU '%s' %s: %s %s %s", this._name, parameters["#name"], this._shutdown_msg, this._clocksync.dump_debug(), this._serial.dump_debug());
 			var prefix = string.Format("MCU '%s' shutdown: ", this._name);
 			if ((string)parameters["#name"] == "is_shutdown")
 			{
