@@ -83,7 +83,7 @@ namespace KlipperSharp
 			{
 				freq = this.mcu_freq;
 			}
-			serial.set_clock_est(freq, HighResolutionTime.Now/*this.reactor.monotonic()*/, 0);
+			serial.set_clock_est(freq, this.reactor.monotonic(), 0);
 		}
 
 		// MCU clock querying (_handle_clock is invoked from background thread)

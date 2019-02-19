@@ -132,9 +132,9 @@ namespace KlipperSharp.MicroController
 			var mcu_pos = mcu_pos_dist / this._step_dist;
 			if (mcu_pos >= 0.0)
 			{
-				return Convert.ToInt32(mcu_pos + 0.5);
+				return (int)(mcu_pos + 0.5);
 			}
-			return Convert.ToInt32(mcu_pos - 0.5);
+			return (int)(mcu_pos - 0.5);
 		}
 
 		public stepper_kinematics set_stepper_kinematics(stepper_kinematics sk)

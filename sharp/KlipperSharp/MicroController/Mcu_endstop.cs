@@ -133,7 +133,7 @@ namespace KlipperSharp.MicroController
 		public bool _check_busy(double eventtime, double home_end_time = 0.0)
 		{
 			// Check if need to send an end_stop_query command
-			var last_sent_time = (double)_last_state.Get("#sent_time", -1.0);
+			var last_sent_time = _last_state.Get("#sent_time", -1.0);
 			if (last_sent_time >= _min_query_time || _mcu.is_fileoutput())
 			{
 				if (!_homing)
@@ -189,7 +189,7 @@ namespace KlipperSharp.MicroController
 			{
 				eventtime = _mcu.pause(eventtime + 0.1);
 			}
-			return (bool)_last_state.Get("pin", _invert) ^ _invert;
+			return _last_state.Get("pin", _invert) ^ _invert;
 		}
 	}
 }

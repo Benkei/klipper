@@ -87,13 +87,8 @@ namespace KlipperSharp.MicroController
 			}
 			else
 			{
-				if (!new List<object> {
-						  0.0,
-						  1.0
-					 }.Contains(this._start_value) || !new List<object> {
-						  0.0,
-						  1.0
-					 }.Contains(this._shutdown_value))
+				if (this._start_value != 0.0 || this._start_value != 1.0
+					|| this._shutdown_value != 0.0 || this._shutdown_value != 1.0)
 				{
 					throw new Exception("start and shutdown values must be 0.0 or 1.0 on soft pwm");
 				}
