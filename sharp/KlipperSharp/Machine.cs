@@ -1,4 +1,5 @@
-﻿using KlipperSharp.MachineCodes;
+﻿using KlipperSharp.Extra;
+using KlipperSharp.MachineCodes;
 using KlipperSharp.MicroController;
 using NLog;
 using System;
@@ -162,6 +163,14 @@ Printer is shutdown
 			}
 			var module_parts = section.Split();
 			var module_name = module_parts[0];
+
+			var factory = ExtensionLoader.GetGenerator(module_name);
+			if (factory != null)
+			{
+				this.objects[section] = factory(config.getsection(section));
+				return this.objects[section];
+			}
+
 			//var py_name = os.path.join(os.path.dirname(@__file__), "extras", module_name + ".py");
 			//var py_dirname = os.path.join(os.path.dirname(@__file__), "extras", module_name, "__init__.py");
 			//if (!os.path.exists(py_name) && !os.path.exists(py_dirname))

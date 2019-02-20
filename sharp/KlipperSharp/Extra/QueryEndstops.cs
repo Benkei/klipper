@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace KlipperSharp
+namespace KlipperSharp.Extra
 {
 	public class QueryEndstops
 	{

@@ -3,8 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace KlipperSharp
+namespace KlipperSharp.Extra
 {
+	[Extension("fan")]
 	public class Fan
 	{
 		public const double FAN_MIN_TIME = 0.1;
@@ -14,6 +15,13 @@ namespace KlipperSharp
 		private double max_power;
 		private double kick_start_time;
 		private Mcu_pwm mcu_fan;
+
+
+		[ExtensionGenerator]
+		public static object LoadConfig(ConfigWrapper config)
+		{
+			return new Fan(config);
+		}
 
 		public Fan(ConfigWrapper config, double default_shutdown_speed = 0.0)
 		{
@@ -25,7 +33,7 @@ namespace KlipperSharp
 			this.mcu_fan = ppins.setup_pin<Mcu_pwm>("pwm", config.get("pin")) as Mcu_pwm;
 			this.mcu_fan.setup_max_duration(0.0);
 			var cycle_time = config.getfloat("cycle_time", 0.01, above: 0.0);
-			var hardware_pwm = (bool)config.getboolean("hardware_pwm", false);
+			var hardware_pwm = config.getboolean("hardware_pwm", false);
 			this.mcu_fan.setup_cycle_time(cycle_time, hardware_pwm);
 			var shutdown_speed = config.getfloat("shutdown_speed", default_shutdown_speed, minval: 0.0, maxval: 1.0);
 			this.mcu_fan.setup_start_value(0.0, Math.Max(0.0, Math.Min(this.max_power, shutdown_speed)));
