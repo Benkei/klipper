@@ -123,7 +123,7 @@ namespace KlipperSharp
 			}
 		}
 
-		public void _calc_print_time()
+		private void _calc_print_time()
 		{
 			var curtime = this.reactor.monotonic();
 			var est_print_time = this.mcu.estimated_print_time(curtime);
@@ -146,7 +146,7 @@ namespace KlipperSharp
 			return this.print_time;
 		}
 
-		public void _flush_lookahead(bool must_sync = false)
+		private void _flush_lookahead(bool must_sync = false)
 		{
 			var sync_print_time = this.sync_print_time;
 			this.move_queue.flush();
@@ -181,7 +181,7 @@ namespace KlipperSharp
 			this.print_time = Math.Max(min_print_time, est_print_time);
 		}
 
-		public void _check_stall()
+		private void _check_stall()
 		{
 			double est_print_time;
 			var eventtime = this.reactor.monotonic();
@@ -220,7 +220,7 @@ namespace KlipperSharp
 			this.need_check_stall = est_print_time + this.buffer_time_high + 0.1;
 		}
 
-		public double _flush_handler(double eventtime)
+		private double _flush_handler(double eventtime)
 		{
 			try
 			{
@@ -378,7 +378,7 @@ namespace KlipperSharp
 			};
 		}
 
-		public void _handle_shutdown()
+		private void _handle_shutdown()
 		{
 			this.move_queue.reset();
 			this.reset_print_time();
@@ -402,7 +402,7 @@ namespace KlipperSharp
 			return Math.Min(this.max_velocity, Math.Sqrt(8.0 * this.junction_deviation * this.max_accel));
 		}
 
-		public void _calc_junction_deviation()
+		private void _calc_junction_deviation()
 		{
 			var scv2 = Math.Pow(this.square_corner_velocity, 2);
 			this.junction_deviation = scv2 * (Math.Sqrt(2.0) - 1.0) / this.max_accel;
