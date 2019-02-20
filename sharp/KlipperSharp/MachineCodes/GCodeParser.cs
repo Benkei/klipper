@@ -14,6 +14,18 @@ namespace KlipperSharp.MachineCodes
 		void move(List<double> newpos, double speed);
 	}
 
+
+	[Serializable]
+	public class GCodeException : Exception
+	{
+		public GCodeException() { }
+		public GCodeException(string message) : base(message) { }
+		public GCodeException(string message, Exception inner) : base(message, inner) { }
+		protected GCodeException(
+		 System.Runtime.Serialization.SerializationInfo info,
+		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+	}
+
 	public partial class GCodeParser
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();

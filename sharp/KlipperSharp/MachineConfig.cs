@@ -15,6 +15,18 @@ using System.Globalization;
 
 namespace KlipperSharp
 {
+
+	[Serializable]
+	public class ConfigException : Exception
+	{
+		public ConfigException() { }
+		public ConfigException(string message) : base(message) { }
+		public ConfigException(string message, Exception inner) : base(message, inner) { }
+		protected ConfigException(
+		 System.Runtime.Serialization.SerializationInfo info,
+		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+	}
+
 	public class ConfigWrapper
 	{
 		private Machine printer;
@@ -44,12 +56,13 @@ namespace KlipperSharp
 
 		string _get_wrapper(string option, string @default)
 		{
-			if (@default != null && !options.ContainsKey(option))
+			bool contKey = options != null && options.ContainsKey(option);
+			if (@default != null && !contKey)
 			{
 				return @default;
 			}
 			this.access_tracking.Add((this.section.ToLowerInvariant(), option.ToLowerInvariant()));
-			return options[option];
+			return options?[option];
 		}
 
 		public string get(string option, string @default = null)

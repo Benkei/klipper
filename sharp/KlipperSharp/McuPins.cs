@@ -5,6 +5,18 @@ using System.Text.RegularExpressions;
 
 namespace KlipperSharp
 {
+
+	[Serializable]
+	public class PinsException : Exception
+	{
+		public PinsException() { }
+		public PinsException(string message) : base(message) { }
+		public PinsException(string message, Exception inner) : base(message, inner) { }
+		protected PinsException(
+		 System.Runtime.Serialization.SerializationInfo info,
+		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+	}
+
 	/// <summary>
 	/// Pin name to pin number definitions
 	/// Hardware pin names
