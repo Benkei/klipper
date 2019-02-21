@@ -1,4 +1,5 @@
-﻿using System;
+﻿using KlipperSharp.PulseGeneration;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -17,11 +18,11 @@ namespace KlipperSharp.MicroController
 		private double _min_stop_interval;
 		private int _reset_cmd_id;
 		private stepcompress _stepqueue;
-		private stepper_kinematics _stepper_kinematics;
+		private KinematicBase _stepper_kinematics;
 		private itersolve_gen_steps_callback _itersolve_gen_steps;
 		private SerialCommand _get_position_cmd;
 
-		public delegate bool itersolve_gen_steps_callback(ref stepper_kinematics sk, ref move m);
+		public delegate bool itersolve_gen_steps_callback(ref KinematicBase sk, ref move m);
 
 		public Mcu_stepper(Mcu mcu, PinParams pin_parameters)
 		{
@@ -71,10 +72,19 @@ namespace KlipperSharp.MicroController
 			this._step_dist = step_dist;
 		}
 
-		public void setup_itersolve(string alloc_func, params object[] parameters)
+		public void setup_itersolve(KinematicType type, params object[] parameters)
 		{
-			//stepper_kinematics sk = alloc_func(parameters);
-			stepper_kinematics sk = new stepper_kinematics();
+			KinematicBase sk;
+			switch (type)
+			{
+				case KinematicType.cartesian: sk = KinematicCartesian.cartesian_stepper_alloc((string)parameters[0]); break;
+				case KinematicType.corexy: sk = KinematicCoreXY.corexy_stepper_alloc((string)parameters[0]); break;
+				case KinematicType.delta: sk = KinematicDelta.delta_stepper_alloc((double)parameters[0], (double)parameters[1], (double)parameters[2]); break;
+				case KinematicType.extruder: sk = KinematicStepper.extruder_stepper_alloc(); break;
+				case KinematicType.polar: sk = KinematicPolar.polar_stepper_alloc((string)parameters[0]); break;
+				case KinematicType.winch: sk = KinematicWinch.winch_stepper_alloc((double)parameters[0], (double)parameters[1], (double)parameters[2]); break;
+				default: throw new ArgumentOutOfRangeException();
+			}
 			this.set_stepper_kinematics(sk);
 		}
 
@@ -137,7 +147,7 @@ namespace KlipperSharp.MicroController
 			return (int)(mcu_pos - 0.5);
 		}
 
-		public stepper_kinematics set_stepper_kinematics(stepper_kinematics sk)
+		public KinematicBase set_stepper_kinematics(KinematicBase sk)
 		{
 			var old_sk = this._stepper_kinematics;
 			this._stepper_kinematics = sk;
@@ -155,7 +165,7 @@ namespace KlipperSharp.MicroController
 			//var was_ignore = this._itersolve_gen_steps != this._ffi_lib.itersolve_gen_steps;
 			if (ignore_move)
 			{
-				this._itersolve_gen_steps = (ref stepper_kinematics sk, ref move m) => false;
+				this._itersolve_gen_steps = (ref KinematicBase sk, ref move m) => false;
 			}
 			else
 			{

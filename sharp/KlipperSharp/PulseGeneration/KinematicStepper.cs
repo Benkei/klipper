@@ -2,22 +2,21 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace KlipperSharp
+namespace KlipperSharp.PulseGeneration
 {
 	public class KinematicStepper
 	{
-		public static stepper_kinematics extruder_stepper_alloc()
+		class KinStepper : KinematicBase
 		{
-			//stepper_kinematics sk = malloc(sizeof(*sk));
-			//memset(sk, 0, sizeof(*sk));
-			stepper_kinematics sk = new stepper_kinematics();
-			sk.calc_position = extruder_calc_position;
-			return sk;
+			public override double calc_position(ref move m, double move_time)
+			{
+				return m.start_pos.x + Itersolve.move_get_distance(ref m, move_time);
+			}
 		}
 
-		public static double extruder_calc_position(ref stepper_kinematics sk, ref move m, double move_time)
+		public static KinematicBase extruder_stepper_alloc()
 		{
-			return m.start_pos.x + Itersolve.move_get_distance(ref m, move_time);
+			return new KinStepper();
 		}
 
 		// Populate a 'struct move' with an extruder velocity trapezoid

@@ -1,4 +1,5 @@
 ﻿using KlipperSharp.MicroController;
+using KlipperSharp.PulseGeneration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -62,8 +63,8 @@ namespace KlipperSharp
 		private Mcu_stepper mcu_stepper;
 		private Func<double> get_step_dist;
 		public Action<move> step_itersolve;
-		public Action<string, object[]> setup_itersolve;
-		private Func<stepper_kinematics, stepper_kinematics> set_stepper_kinematics;
+		public Action<KinematicType, object[]> setup_itersolve;
+		private Func<KinematicBase, KinematicBase> set_stepper_kinematics;
 		private Func<bool, object> set_ignore_move;
 		private Func<List<double>, double> calc_position_from_coord;
 		public Action<List<double>> set_position;
@@ -316,11 +317,11 @@ namespace KlipperSharp
 			}
 		}
 
-		public void setup_itersolve(string alloc_func, params object[] parameters)
+		public void setup_itersolve(KinematicType type, params object[] parameters)
 		{
 			foreach (var stepper in this.steppers)
 			{
-				stepper.setup_itersolve(alloc_func, parameters);
+				stepper.setup_itersolve(type, parameters);
 			}
 		}
 

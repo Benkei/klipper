@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace KlipperSharp
+namespace KlipperSharp.PulseGeneration
 {
 	public delegate void move_fill_callback(ref move m, double print_time, double accel_t, double cruise_t, double decel_t, double start_pos_x,
 													  double start_pos_y, double start_pos_z, double axes_d_x, double axes_d_y, double axes_d_z, double start_v,
@@ -93,9 +93,8 @@ namespace KlipperSharp
 		 ****************************************************************/
 
 		// Find step using "false position" method
-		public static timepos itersolve_find_step(ref stepper_kinematics sk, ref move m, ref timepos low, ref timepos high, double target)
+		public static timepos itersolve_find_step(ref KinematicBase sk, ref move m, ref timepos low, ref timepos high, double target)
 		{
-			sk_callback calc_position = sk.calc_position;
 			timepos best_guess = high;
 			low.position -= target;
 			high.position -= target;
@@ -112,7 +111,7 @@ namespace KlipperSharp
 				if (Math.Abs(guess_time - best_guess.time) <= 0.000000001)
 					break;
 				best_guess.time = guess_time;
-				best_guess.position = calc_position(ref sk, ref m, guess_time);
+				best_guess.position = sk.calc_position(ref m, guess_time);
 				double guess_position = best_guess.position - target;
 				int guess_sign = Math.Sign(guess_position);
 				if (guess_sign == high_sign)
@@ -130,10 +129,9 @@ namespace KlipperSharp
 		}
 
 		// Generate step times for a stepper during a move
-		public static bool itersolve_gen_steps(ref stepper_kinematics sk, ref move m)
+		public static bool itersolve_gen_steps(ref KinematicBase sk, ref move m)
 		{
 			stepcompress sc = sk.sc;
-			sk_callback calc_position = sk.calc_position;
 			double half_step = 0.5 * sk.step_dist;
 			double mcu_freq = Stepcompress.stepcompress_get_mcu_freq(ref sc);
 			timepos last = new timepos() { time = 0.0, position = sk.commanded_pos }, low = last, high = last;
@@ -150,7 +148,7 @@ namespace KlipperSharp
 					if (high.time >= m.move_t)
 						// At end of move
 						break;
-					NewMethod(sk, ref m, calc_position, last, ref low, ref high, ref seek_time_delta);
+					NewMethod(sk, ref m, last, ref low, ref high, ref seek_time_delta);
 					continue;
 				}
 				bool next_sdir = dist > 0.0;
@@ -163,14 +161,14 @@ namespace KlipperSharp
 						if (high.time >= m.move_t)
 							// At end of move
 							break;
-						NewMethod(sk, ref m, calc_position, last, ref low, ref high, ref seek_time_delta);
+						NewMethod(sk, ref m, last, ref low, ref high, ref seek_time_delta);
 						continue;
 					}
 					if (last.time >= low.time && high.time > last.time)
 					{
 						// Must seek new low range to avoid re-finding previous time
 						high.time = (last.time + high.time) * .5;
-						high.position = calc_position(ref sk, ref m, high.time);
+						high.position = sk.calc_position(ref m, high.time);
 						continue;
 					}
 					ret = Stepcompress.queue_append_set_next_step_dir(ref qa, next_sdir);
@@ -197,7 +195,7 @@ namespace KlipperSharp
 					if (high.time >= m.move_t)
 						// At end of move
 						break;
-					NewMethod(sk, ref m, calc_position, last, ref low, ref high, ref seek_time_delta);
+					NewMethod(sk, ref m, last, ref low, ref high, ref seek_time_delta);
 					continue;
 				}
 			}
@@ -206,8 +204,8 @@ namespace KlipperSharp
 			return false;
 		}
 
-		private static void NewMethod(stepper_kinematics sk,
-			ref move m, sk_callback calc_position, timepos last,
+		private static void NewMethod(KinematicBase sk,
+			ref move m, timepos last,
 			ref timepos low, ref timepos high, ref double seek_time_delta)
 		{
 			// Need to increase next step search range
@@ -216,28 +214,28 @@ namespace KlipperSharp
 			seek_time_delta += seek_time_delta;
 			if (high.time > m.move_t)
 				high.time = m.move_t;
-			high.position = calc_position(ref sk, ref m, high.time);
+			high.position = sk.calc_position(ref m, high.time);
 		}
 
-		public static void itersolve_set_stepcompress(ref stepper_kinematics sk, ref stepcompress sc, double step_dist)
+		public static void itersolve_set_stepcompress(ref KinematicBase sk, ref stepcompress sc, double step_dist)
 		{
 			sk.sc = sc;
 			sk.step_dist = step_dist;
 		}
 
-		public static double itersolve_calc_position_from_coord(ref stepper_kinematics sk, double x, double y, double z)
+		public static double itersolve_calc_position_from_coord(ref KinematicBase sk, double x, double y, double z)
 		{
 			move m = new move();
 			move_fill(ref m, 0.0, 0.0, 1.0, 0.0, x, y, z, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0);
-			return sk.calc_position(ref sk, ref m, 0.0);
+			return sk.calc_position(ref m, 0.0);
 		}
 
-		public static void itersolve_set_commanded_pos(ref stepper_kinematics sk, double pos)
+		public static void itersolve_set_commanded_pos(ref KinematicBase sk, double pos)
 		{
 			sk.commanded_pos = pos;
 		}
 
-		public static double itersolve_get_commanded_pos(ref stepper_kinematics sk)
+		public static double itersolve_get_commanded_pos(ref KinematicBase sk)
 		{
 			return sk.commanded_pos;
 		}
@@ -271,17 +269,6 @@ namespace KlipperSharp
 		public move_accel accel, decel;
 		public coord start_pos, axes_r;
 	}
-
-	public class stepper_kinematics
-	{
-		public double step_dist, commanded_pos;
-		public stepcompress sc;
-		public sk_callback calc_position;
-	}
-
-
-	//typedef double (* sk_callback) (struct stepper_kinematics * sk, struct move * m, double move_time);
-	public delegate double sk_callback(ref stepper_kinematics sk, ref move m, double move_time);
 
 
 }

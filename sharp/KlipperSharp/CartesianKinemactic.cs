@@ -27,7 +27,7 @@ namespace KlipperSharp
 			for (int i = 0; i < axis.Length; i++)
 			{
 				rails[i] = PrinterRail.LookupMultiRail(config.getsection("stepper_" + axis[i]));
-				rails[i].setup_itersolve("cartesian_stepper_alloc", axis[i]);
+				rails[i].setup_itersolve(KinematicType.cartesian, axis[i]);
 			}
 			// Setup boundary checks
 			var _tup_2 = toolhead.get_max_velocity();
@@ -51,7 +51,7 @@ namespace KlipperSharp
 				var dc_axis = (string)dc_config.getchoice("axis", new Dictionary<string, object> { { "x", "x" }, { "y", "y" } });
 				this.dual_carriage_axis = new Dictionary<string, int> { { "x", 0 }, { "y", 1 } }[dc_axis];
 				var dc_rail = PrinterRail.LookupMultiRail(dc_config);
-				dc_rail.setup_itersolve("cartesian_stepper_alloc", dc_axis);
+				dc_rail.setup_itersolve( KinematicType.cartesian, dc_axis);
 				dc_rail.set_max_jerk(max_halt_velocity, max_accel);
 				this.dual_carriage_rails = new List<PrinterRail> { this.rails[this.dual_carriage_axis], dc_rail };
 				this.printer.lookup_object<GCodeParser>("gcode")

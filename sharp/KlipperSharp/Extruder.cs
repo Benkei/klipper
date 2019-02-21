@@ -1,4 +1,5 @@
 ﻿using KlipperSharp.MachineCodes;
+using KlipperSharp.PulseGeneration;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -88,7 +89,7 @@ namespace KlipperSharp
 			// Setup iterative solver
 			this.cmove = Itersolve.move_alloc();
 			this.extruder_move_fill = KinematicStepper.extruder_move_fill;
-			this.stepper.setup_itersolve("extruder_stepper_alloc", null);
+			this.stepper.setup_itersolve(KinematicType.extruder, null);
 			// Setup SET_PRESSURE_ADVANCE command
 			var gcode = this.printer.lookup_object<GCodeParser>("gcode");
 			if (new[] { "extruder", "extruder0" }.Contains(this.name))

@@ -18,7 +18,7 @@ using System.Text;
 // This code is written in C (instead of python) for processing
 // efficiency - the repetitive integer math is vastly faster in C.
 
-namespace KlipperSharp
+namespace KlipperSharp.PulseGeneration
 {
 	public unsafe class Stepcompress
 	{
