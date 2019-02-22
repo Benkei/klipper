@@ -186,11 +186,6 @@ namespace KlipperSharp
 			// Queues
 			need_kick_clock = MAX_CLOCK;
 
-			//serialPort = new SerialPort(port, baud);
-			//serialPort.ReadTimeout = SerialPort.InfiniteTimeout;
-			//serialPort.WriteTimeout = SerialPort.InfiniteTimeout;
-			//serialPort.Encoding = Encoding.ASCII;
-			//serialPort.DtrEnable = true;
 			this.background_thread = new Thread(_bg_thread)
 			{
 				Name = nameof(SerialQueue),
@@ -221,7 +216,14 @@ namespace KlipperSharp
 			processRead = false;
 			if (!background_thread.Join(1000))
 			{
-				background_thread.Abort();
+				try
+				{
+					background_thread.Abort();
+				}
+				catch (PlatformNotSupportedException ex)
+				{
+					logging.Info(ex.Message, ex);
+				}
 			}
 		}
 
@@ -425,7 +427,16 @@ namespace KlipperSharp
 				return;
 			}
 			waitFirstPacket = false;
-			var ret = serialPort.Read(input_buf, input_pos, 4096 - input_pos);
+			int ret;
+			try
+			{
+				ret = serialPort.Read(input_buf, input_pos, 4096 - input_pos);
+			}
+			catch (TimeoutException ex)
+			{
+				logging.Info(ex.Message, ex);
+				return;
+			}
 			if (ret <= 0)
 			{
 				//report_errno("read", ret);
