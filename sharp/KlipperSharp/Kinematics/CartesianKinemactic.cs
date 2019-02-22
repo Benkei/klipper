@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Linq;
 
-namespace KlipperSharp
+namespace KlipperSharp.Kinematics
 {
 	public class CartesianKinemactic : BaseKinematic
 	{

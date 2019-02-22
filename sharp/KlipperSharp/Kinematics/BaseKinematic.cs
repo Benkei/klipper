@@ -2,8 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
-namespace KlipperSharp
+namespace KlipperSharp.Kinematics
 {
 	public class KinematicFactory
 	{
@@ -35,12 +36,12 @@ namespace KlipperSharp
 			return new List<PrinterStepper>();
 		}
 
-		public virtual List<double> calc_position()
+		public virtual Vector3 calc_position()
 		{
-			return new List<double> { 0, 0, 0 };
+			return Vector3.Zero;
 		}
 
-		public virtual void set_position(List<double> newpos, List<int> homing_axes)
+		public virtual void set_position(Vector3 newpos, List<int> homing_axes)
 		{
 		}
 
