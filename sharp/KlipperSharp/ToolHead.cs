@@ -1,10 +1,12 @@
-﻿using KlipperSharp.MachineCodes;
+﻿using KlipperSharp.Kinematics;
+using KlipperSharp.MachineCodes;
 using KlipperSharp.MicroController;
 using KlipperSharp.PulseGeneration;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace KlipperSharp
 {
@@ -19,7 +21,7 @@ namespace KlipperSharp
 		private List<Mcu> all_mcus;
 		private Mcu mcu;
 		private MoveQueue move_queue;
-		private List<double> commanded_pos;
+		private Vector4 commanded_pos; // XYZ E
 		public double max_velocity;
 		public double max_accel;
 		private double requested_accel_to_decel;
@@ -52,7 +54,7 @@ namespace KlipperSharp
 			this.all_mcus = (from mcus in this.printer.lookup_objects<Mcu>(module: "mcu") select mcus.modul as Mcu).ToList();
 			this.mcu = this.all_mcus[0];
 			this.move_queue = new MoveQueue();
-			this.commanded_pos = new List<double> { 0.0, 0.0, 0.0, 0.0 };
+			this.commanded_pos = Vector4.Zero;
 			this.printer.register_event_handler("klippy:shutdown", _handle_shutdown);
 			// Velocity and acceleration control
 			this.max_velocity = config.getfloat("max_velocity", above: 0.0);
@@ -237,22 +239,21 @@ namespace KlipperSharp
 		}
 
 		// Movement commands
-		public List<double> get_position()
+		public Vector4 get_position()
 		{
-			return this.commanded_pos.ToList();
+			return this.commanded_pos;
 		}
 
-		public void set_position(List<double> newpos, List<int> homing_axes = null)
+		public void set_position(Vector4 newpos, List<int> homing_axes = null)
 		{
 			this._flush_lookahead();
-			this.commanded_pos.Clear();
-			this.commanded_pos.AddRange(newpos);
-			this.kin.set_position(newpos, homing_axes);
+			this.commanded_pos = newpos;
+			this.kin.set_position(new Vector3(newpos.X, newpos.Y, newpos.Z), homing_axes);
 		}
 
-		public void move(List<double> newpos, double speed)
+		public void move(Vector4 newpos, double speed)
 		{
-			var move = new Move(this, this.commanded_pos, newpos, speed);
+			var move = new Move(this, commanded_pos, newpos, speed);
 			if (move.move_d == 0)
 			{
 				return;
@@ -261,12 +262,11 @@ namespace KlipperSharp
 			{
 				this.kin.check_move(move);
 			}
-			if (move.axes_d[3] != 0)
+			if (move.axes_d.W != 0)
 			{
 				this.extruder.check_move(move);
 			}
-			this.commanded_pos.Clear();
-			this.commanded_pos.AddRange(move.end_pos);
+			this.commanded_pos = move.end_pos;
 			this.move_queue.add_move(move);
 			if (this.print_time > this.need_check_stall)
 			{
@@ -318,7 +318,7 @@ namespace KlipperSharp
 			var extrude_pos = extruder.set_active(last_move_time, true);
 			this.extruder = extruder;
 			this.move_queue.set_extruder(extruder);
-			this.commanded_pos[3] = extrude_pos;
+			this.commanded_pos.W = (float)extrude_pos;
 		}
 
 		public BaseExtruder get_extruder()

@@ -131,31 +131,31 @@ namespace KlipperSharp
 
 		public override void check_move(Move move)
 		{
-			move.extrude_r = move.axes_d[3] / move.move_d;
+			move.extrude_r = move.axes_d.W / move.move_d;
 			move.extrude_max_corner_v = 0.0;
 			if (!this.heater.can_extrude)
 			{
-				throw new Exception("Extrude below minimum temp\n\"See the 'min_extrude_temp' config option for details\"");
+				throw new Exception("Extrude below minimum temp\nSee the 'min_extrude_temp' config option for details");
 			}
 			if (!move.is_kinematic_move || move.extrude_r < 0.0)
 			{
 				// Extrude only move (or retraction move) - limit accel and velocity
-				if (Math.Abs(move.axes_d[3]) > this.max_e_dist)
+				if (Math.Abs(move.axes_d.W) > this.max_e_dist)
 				{
-					throw new Exception($"Extrude only move too long ({move.axes_d[3]:0.000}mm vs {this.max_e_dist:0.000}mm)See the 'max_extrude_only_distance' config option for details");
+					throw new Exception($"Extrude only move too long ({move.axes_d.W:0.000}mm vs {this.max_e_dist:0.000}mm)See the 'max_extrude_only_distance' config option for details");
 				}
 				var inv_extrude_r = 1.0 / Math.Abs(move.extrude_r);
 				move.limit_speed(this.max_e_velocity * inv_extrude_r, this.max_e_accel * inv_extrude_r);
 			}
 			else if (move.extrude_r > this.max_extrude_ratio)
 			{
-				if (move.axes_d[3] <= this.nozzle_diameter * this.max_extrude_ratio)
+				if (move.axes_d.W <= this.nozzle_diameter * this.max_extrude_ratio)
 				{
 					// Permit extrusion if amount extruded is tiny
 					move.extrude_r = this.max_extrude_ratio;
 					return;
 				}
-				var area = move.axes_d[3] * this.filament_area / move.move_d;
+				var area = move.axes_d.W * this.filament_area / move.move_d;
 				logging.Debug("Overextrude: {0} vs {1} (area={2:0.000} dist={3:0.000})", move.extrude_r, this.max_extrude_ratio, area, move.move_d);
 				throw new Exception($"Move exceeds maximum extrusion ({area:0.000}mm^2 vs {this.max_extrude_ratio * this.filament_area:0.000}mm^2) See the 'max_extrude_cross_section' config option for details");
 			}
@@ -163,8 +163,8 @@ namespace KlipperSharp
 
 		public override double calc_junction(Move prev_move, Move move)
 		{
-			var extrude = move.axes_d[3];
-			var prev_extrude = prev_move.axes_d[3];
+			var extrude = move.axes_d.W;
+			var prev_extrude = prev_move.axes_d.W;
 			if (extrude != 0 || prev_extrude != 0)
 			{
 				if (extrude == 0 || prev_extrude == 0)
@@ -249,7 +249,7 @@ namespace KlipperSharp
 				this.stepper.motor_enable(print_time, true);
 				this.need_motor_enable = false;
 			}
-			var axis_d = move.axes_d[3];
+			var axis_d = (double)move.axes_d.W;
 			var axis_r = axis_d / move.move_d;
 			var accel = move.accel * axis_r;
 			var start_v = move.start_v * axis_r;
@@ -261,11 +261,11 @@ namespace KlipperSharp
 			var extra_accel_v = 0.0;
 			var start_pos = this.extrude_pos;
 			double extra_decel_v = 0;
-			if (axis_d >= 0.0 && (move.axes_d[0] != 0 || move.axes_d[1] != 0) && this.pressure_advance != 0)
+			if (axis_d >= 0.0 && (move.axes_d.X != 0 || move.axes_d.Y != 0) && this.pressure_advance != 0)
 			{
 				// Calculate extra_accel_v
 				var pressure_advance = this.pressure_advance * move.extrude_r;
-				var prev_pressure_d = start_pos - move.start_pos[3];
+				var prev_pressure_d = start_pos - move.start_pos.W;
 				if (accel_t != 0)
 				{
 					npd = move.cruise_v * pressure_advance;

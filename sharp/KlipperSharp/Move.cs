@@ -1,21 +1,34 @@
-﻿using KlipperSharp.PulseGeneration;
+﻿// toolhead.py
+//# Code for coordinating events on the printer toolhead
+//#
+//# Copyright (C) 2016-2018  Kevin O'Connor <kevin@koconnor.net>
+//#
+//# This file may be distributed under the terms of the GNU GPLv3 license.
+
+using KlipperSharp.PulseGeneration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 
 namespace KlipperSharp
 {
+	//# Common suffixes: _d is distance (in mm), _v is velocity (in
+	//# mm/second), _v2 is velocity squared (mm^2/s^2), _t is time (in
+	//# seconds), _r is ratio (scalar between 0.0 and 1.0)
+
+	//# Class to track each move request
 	public class Move
 	{
 		private ToolHead toolhead;
-		public double[] start_pos;
+		public Vector4 start_pos;
 		public move cmove;
 		public bool is_kinematic_move;
-		public List<double> axes_d;
+		public Vector4 axes_d;
 		internal double accel;
 		public double move_d;
-		public double[] end_pos;
+		public Vector4 end_pos;
 		internal double min_move_t;
 		internal double max_start_v2;
 		public double max_cruise_v2;
@@ -34,23 +47,23 @@ namespace KlipperSharp
 		internal double extrude_r;
 		internal double extrude_max_corner_v;
 
-		public Move(ToolHead toolhead, List<double> start_pos, List<double> end_pos, double speed)
+		public Move(ToolHead toolhead, Vector4 start_pos, Vector4 end_pos, double speed)
 		{
 			this.toolhead = toolhead;
-			this.start_pos = new[] { start_pos[0], start_pos[1], start_pos[2], start_pos[3] };
-			this.end_pos = new[] { end_pos[0], end_pos[1], end_pos[2], end_pos[3] };
+			this.start_pos = start_pos;
+			this.end_pos = end_pos;
 			this.accel = toolhead.max_accel;
 			var velocity = Math.Min(speed, toolhead.max_velocity);
 			this.cmove = toolhead.cmove;
 			this.is_kinematic_move = true;
-			this.axes_d = (from i in new[] { 0, 1, 2, 3 } select (end_pos[i] - start_pos[i])).ToList();
-			this.move_d = Math.Sqrt((from d in axes_d.GetRange(0, 3) select (d * d)).Sum());
-			if (move_d < 1E-09)
+			this.axes_d = end_pos - start_pos;
+			this.move_d = axes_d.Length(); //Math.Sqrt((from d in axes_d.GetRange(0, 3) select (d * d)).Sum());
+			if (move_d < 0.000000001)
 			{
 				// Extrude only move
-				this.end_pos = new[] { start_pos[0], start_pos[1], start_pos[2], end_pos[3] };
-				axes_d[0] = 0.0;
-				this.move_d = Math.Abs(axes_d[3]);
+				this.end_pos = start_pos;
+				axes_d.X = 0.0f;
+				this.move_d = Math.Abs(axes_d.W);
 				this.accel = 99999999.9;
 				velocity = speed;
 				this.is_kinematic_move = false;
@@ -92,7 +105,7 @@ namespace KlipperSharp
 			// https://onehossshay.wordpress.com/2011/09/24/improving_grbl_cornering_algorithm/
 			var axes_d = this.axes_d;
 			var prev_axes_d = prev_move.axes_d;
-			var junction_cos_theta = -(axes_d[0] * prev_axes_d[0] + axes_d[1] * prev_axes_d[1] + axes_d[2] * prev_axes_d[2]) / (this.move_d * prev_move.move_d);
+			var junction_cos_theta = -(axes_d.X * prev_axes_d.X + axes_d.Y * prev_axes_d.Y + axes_d.Z * prev_axes_d.Z) / (this.move_d * prev_move.move_d);
 			if (junction_cos_theta > 0.999999)
 			{
 				return;
@@ -144,12 +157,12 @@ namespace KlipperSharp
 			{
 				this.toolhead.move_fill(ref this.cmove, next_move_time,
 					this.accel_t, this.cruise_t, this.decel_t,
-					this.start_pos[0], this.start_pos[1], this.start_pos[2],
-					this.axes_d[0], this.axes_d[1], this.axes_d[2],
+					this.start_pos.X, this.start_pos.Y, this.start_pos.Z,
+					this.axes_d.X, this.axes_d.Y, this.axes_d.Z,
 					this.start_v, this.cruise_v, this.accel);
 				this.toolhead.kin.move(next_move_time, this);
 			}
-			if (this.axes_d[3] != 0)
+			if (this.axes_d.W != 0)
 			{
 				this.toolhead.extruder.move(next_move_time, this);
 			}

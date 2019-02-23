@@ -3,6 +3,7 @@ using KlipperSharp.PulseGeneration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace KlipperSharp
 {
@@ -66,8 +67,8 @@ namespace KlipperSharp
 		public Action<KinematicType, object[]> setup_itersolve;
 		private Func<KinematicBase, KinematicBase> set_stepper_kinematics;
 		private Func<bool, object> set_ignore_move;
-		private Func<List<double>, double> calc_position_from_coord;
-		public Action<List<double>> set_position;
+		private Func<Vector3, double> calc_position_from_coord;
+		public Action<Vector3> set_position;
 		public Func<double> get_commanded_position;
 		public Action<double> set_commanded_position;
 		public Func<int> get_mcu_position;
@@ -341,7 +342,7 @@ namespace KlipperSharp
 			}
 		}
 
-		public void set_position(List<double> coord)
+		public void set_position(Vector3 coord)
 		{
 			foreach (var stepper in this.steppers)
 			{

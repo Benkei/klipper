@@ -2,9 +2,26 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace KlipperSharp
 {
+	[Serializable]
+	public class EndstopException : Exception
+	{
+		public EndstopException() { }
+		public EndstopException(string message) : base(message) { }
+		public EndstopException(string message, Exception inner) : base(message, inner) { }
+		protected EndstopException(
+		 System.Runtime.Serialization.SerializationInfo info,
+		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+
+		public static EndstopException EndstopMoveError(Vector4 pos, string msg = "Move out of range")
+		{
+			return new EndstopException($"{msg}: {pos.X:0.000} {pos.Y:0.000} {pos.Z:0.000} [{pos.W:0.000}]");
+		}
+	}
+
 	public class Homing
 	{
 		public const double HOMING_STEP_DELAY = 0.00000025;
@@ -40,26 +57,24 @@ namespace KlipperSharp
 			return this.changed_axes;
 		}
 
-		public List<double> _fill_coord(List<double> coord)
+		Vector4 _fill_coord(in (double?, double?, double?, double?) coord)
 		{
+			Vector4 result;
 			// Fill in any None entries in 'coord' with current toolhead position
 			var thcoord = this.toolhead.get_position();
-			for (int i = 0; i < coord.Count; i++)
-			{
-				//if (coord[i] != 0)
-				{
-					thcoord[i] = coord[i];
-				}
-			}
-			return thcoord;
+			result.X = (float)(coord.Item1 ?? thcoord.X);
+			result.Y = (float)(coord.Item2 ?? thcoord.Y);
+			result.Z = (float)(coord.Item3 ?? thcoord.Z);
+			result.W = (float)(coord.Item4 ?? thcoord.W);
+			return result;
 		}
 
-		public void set_homed_position(List<double> pos)
+		public void set_homed_position(in (double?, double?, double?, double?) pos)
 		{
 			this.toolhead.set_position(this._fill_coord(pos));
 		}
 
-		public double _get_homing_speed(double speed, List<(Mcu_endstop endstop, string name)> endstops)
+		double _get_homing_speed(double speed, List<(Mcu_endstop endstop, string name)> endstops)
 		{
 			// Round the requested homing speed so that it is an even
 			// number of ticks per step.
@@ -71,7 +86,7 @@ namespace KlipperSharp
 		}
 
 		public void homing_move(
-			 List<double> movepos,
+			 Vector4 movepos,
 			 List<(Mcu_endstop endstop, string name)> endstops,
 			 double speed,
 			 double dwell_t = 0.0,
@@ -135,7 +150,8 @@ namespace KlipperSharp
 			}
 			if (probe_pos)
 			{
-				this.set_homed_position(new List<double>(this.toolhead.get_kinematics().calc_position()) { 0 });
+				var pos = this.toolhead.get_kinematics().calc_position();
+				this.set_homed_position((pos.X, pos.Y, pos.Z, null));
 			}
 			else
 			{
@@ -149,7 +165,7 @@ namespace KlipperSharp
 				{
 					mcu_endstop.home_finalize();
 				}
-				catch (/*EndstopError*/ Exception e)
+				catch (EndstopException e)
 				{
 					if (error == null)
 					{
@@ -159,7 +175,7 @@ namespace KlipperSharp
 			}
 			if (error != null)
 			{
-				throw /*EndstopError*/new Exception(error);
+				throw new EndstopException(error);
 			}
 			// Check if some movement occurred
 			if (verify_movement)
@@ -173,22 +189,26 @@ namespace KlipperSharp
 					{
 						if (probe_pos)
 						{
-							throw /*EndstopError*/new Exception("Probe triggered prior to movement");
+							throw new EndstopException("Probe triggered prior to movement");
 						}
-						throw /*EndstopError*/new Exception($"Endstop {name} still triggered after retract");
+						throw new EndstopException($"Endstop {name} still triggered after retract");
 					}
 				}
 			}
 		}
 
-		public void home_rails(List<PrinterRail> rails, List<double> forcepos, List<double> movepos, double? limit_speed = null)
+		public void home_rails(List<PrinterRail> rails,
+			(double?, double?, double?, double?) _forcepos,
+			(double?, double?, double?, double?) _movepos,
+			double? limit_speed = null)
 		{
 			// Alter kinematics class to think printer is at forcepos
-			var homing_axes = (from axis in Enumerable.Range(0, 3)
-									 where forcepos[axis] != 0
-									 select axis).ToList();
-			forcepos = this._fill_coord(forcepos);
-			movepos = this._fill_coord(movepos);
+			var homing_axes = new List<int>(3);
+			if (_forcepos.Item1.HasValue) homing_axes.Add(0);
+			if (_forcepos.Item2.HasValue) homing_axes.Add(1);
+			if (_forcepos.Item3.HasValue) homing_axes.Add(2);
+			var forcepos = this._fill_coord(_forcepos);
+			var movepos = this._fill_coord(_movepos);
 			this.toolhead.set_position(forcepos, homing_axes: homing_axes);
 			// Determine homing speed
 			var endstops = (from rail in rails
@@ -204,9 +224,8 @@ namespace KlipperSharp
 			homing_speed = this._get_homing_speed(homing_speed, endstops);
 			var second_homing_speed = Math.Min(hi.second_homing_speed, max_velocity);
 			// Calculate a CPU delay when homing a large axis
-			var axes_d = (from item in movepos.Zip(forcepos, (mp, fp) => (mp, fp))
-							  select (item.mp - item.fp)).ToList();
-			var est_move_d = Math.Abs(axes_d[0]) + Math.Abs(axes_d[1]) + Math.Abs(axes_d[2]);
+			var axes_d = movepos - forcepos;
+			var est_move_d = Math.Abs(axes_d.X) + Math.Abs(axes_d.Y) + Math.Abs(axes_d.Z);
 			var est_steps = (from item in endstops
 								  let es = item.endstop
 								  let n = item.name
@@ -219,14 +238,12 @@ namespace KlipperSharp
 			if (hi.retract_dist != 0)
 			{
 				// Retract
-				var move_d = Math.Sqrt((from d in axes_d.GetRange(0, 3) select (d * d)).Sum());
+				var move_d = axes_d.Length();
 				var retract_r = Math.Min(1.0, hi.retract_dist / move_d);
-				var retractpos = (from item in movepos.Zip(axes_d, (mp, ad) => (mp, ad))
-										select (item.mp - item.ad * retract_r)).ToList();
+				var retractpos = movepos - axes_d * (float)retract_r;
 				this.toolhead.move(retractpos, homing_speed);
 				// Home again
-				forcepos = (from item in retractpos.Zip(axes_d, (rp, ad) => (rp, ad))
-								select (item.rp - item.ad * retract_r)).ToList();
+				forcepos = retractpos - axes_d * (float)retract_r;
 				this.toolhead.set_position(forcepos);
 				this.homing_move(movepos, endstops, second_homing_speed, verify_movement: this.verify_retract);
 			}
@@ -238,7 +255,7 @@ namespace KlipperSharp
 				var adjustpos = this.toolhead.get_kinematics().calc_position();
 				foreach (var axis in homing_axes)
 				{
-					movepos[axis] = adjustpos[axis];
+					movepos.Set(axis, adjustpos.Get(axis));
 				}
 				this.toolhead.set_position(movepos);
 			}
@@ -251,7 +268,7 @@ namespace KlipperSharp
 			{
 				this.toolhead.get_kinematics().home(this);
 			}
-			catch (/*EndstopError*/ Exception)
+			catch (EndstopException)
 			{
 				this.toolhead.motor_off();
 				throw;

@@ -4,14 +4,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace KlipperSharp.MachineCodes
 {
 	public interface ITransform
 	{
-		List<double> get_position();
-		void move(List<double> newpos, double speed);
+		Vector4 get_position();
+		void move(Vector4 newpos, double speed);
 	}
 
 
@@ -110,14 +111,14 @@ namespace KlipperSharp.MachineCodes
 		private Dictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)> mux_commands = new Dictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)>();
 		private Dictionary<string, string> gcode_help = new Dictionary<string, string>();
 		private bool absolutecoord;
-		private double[] base_position;
-		private double[] last_position;
-		private double[] homing_position;
+		private Vector4 base_position;
+		private Vector4 last_position;
+		private Vector4 homing_position;
 		private double speed_factor;
 		private double extrude_factor;
 		private ITransform move_transform;
-		private Action<List<double>, double> move_with_transform;
-		private Func<List<double>> position_with_transform;
+		private Action<Vector4, double> move_with_transform;
+		private Func<Vector4> position_with_transform;
 		private bool need_ack;
 		private ToolHead toolhead;
 		private PrinterHeaters heater;
@@ -162,13 +163,13 @@ namespace KlipperSharp.MachineCodes
 			}
 			// G-Code coordinate manipulation
 			this.absolutecoord = true;
-			this.base_position = new double[] { 0.0, 0.0, 0.0, 0.0 };
-			this.last_position = new double[] { 0.0, 0.0, 0.0, 0.0 };
-			this.homing_position = new double[] { 0.0, 0.0, 0.0, 0.0 };
+			this.base_position = Vector4.Zero;
+			this.last_position = Vector4.Zero;
+			this.homing_position = Vector4.Zero;
 			this.speed_factor = 1.0 / 60.0;
 			this.extrude_factor = 1.0;
 			this.move_transform = null;
-			this.position_with_transform = () => new List<double> { 0.0, 0.0, 0.0, 0.0 };
+			this.position_with_transform = () => Vector4.Zero;
 			// G-Code state
 			this.need_ack = false;
 			this.toolhead = null;
@@ -265,21 +266,21 @@ namespace KlipperSharp.MachineCodes
 		{
 			var busy = this.is_processing_data;
 			return new Dictionary<string, object> {
-					 { "speed_factor", this.speed_factor * 60.0},
-					 { "speed", this.speed},
-					 { "extrude_factor", this.extrude_factor},
-					 { "busy", busy},
-					 { "last_xpos", this.last_position[0]},
-					 { "last_ypos", this.last_position[1]},
-					 { "last_zpos", this.last_position[2]},
-					 { "last_epos", this.last_position[3]},
-					 { "base_xpos", this.base_position[0]},
-					 { "base_ypos", this.base_position[1]},
-					 { "base_zpos", this.base_position[2]},
-					 { "base_epos", this.base_position[3]},
-					 { "homing_xpos", this.homing_position[0]},
-					 { "homing_ypos", this.homing_position[1]},
-					 { "homing_zpos", this.homing_position[2]}
+					 { "speed_factor", this.speed_factor * 60.0 },
+					 { "speed", this.speed },
+					 { "extrude_factor", this.extrude_factor },
+					 { "busy", busy },
+					 { "last_xpos", this.last_position.X },
+					 { "last_ypos", this.last_position.Y },
+					 { "last_zpos", this.last_position.Z },
+					 { "last_epos", this.last_position.W },
+					 { "base_xpos", this.base_position.X },
+					 { "base_ypos", this.base_position.Y },
+					 { "base_zpos", this.base_position.Z },
+					 { "base_epos", this.base_position.W },
+					 { "homing_xpos", this.homing_position.X },
+					 { "homing_ypos", this.homing_position.Y },
+					 { "homing_zpos", this.homing_position.Z }
 			};
 		}
 
@@ -332,7 +333,7 @@ namespace KlipperSharp.MachineCodes
 
 		public void reset_last_position()
 		{
-			this.last_position = this.position_with_transform().ToArray();
+			this.last_position = this.position_with_transform();
 		}
 
 		public void dump_debug()
@@ -866,7 +867,7 @@ namespace KlipperSharp.MachineCodes
 			this.extruder = e;
 			this.reset_last_position();
 			this.extrude_factor = 1.0;
-			this.base_position[3] = this.last_position[3];
+			this.base_position.W = this.last_position.W;
 			this.run_script_from_command(this.extruder.get_activate_gcode(true));
 		}
 
@@ -893,45 +894,56 @@ namespace KlipperSharp.MachineCodes
 
 		public void cmd_G1(Dictionary<string, object> parameters)
 		{
-			double v;
 			// Move
 			try
 			{
-				foreach (var axis in "XYZ")
+				double v;
+				object value;
+				Vector4 vec = new Vector4();
+				if (parameters.TryGetValue("X", out value))
 				{
-					if (parameters.ContainsKey(axis.ToString()))
-					{
-						v = double.Parse((string)parameters[axis.ToString()]);
-						var pos = this.axis2pos[axis.ToString()];
-						if (!this.absolutecoord)
-						{
-							// value relative to position of last move
-							this.last_position[pos] += v;
-						}
-						else
-						{
-							// value relative to base coordinate position
-							this.last_position[pos] = v + this.base_position[pos];
-						}
-					}
+					vec.X = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
 				}
-				if (parameters.ContainsKey("E"))
+				if (parameters.TryGetValue("Y", out value))
 				{
-					v = double.Parse((string)parameters["E"]) * this.extrude_factor;
-					if (!this.absolutecoord || !this.absoluteextrude)
-					{
-						// value relative to position of last move
-						this.last_position[3] += v;
-					}
-					else
-					{
-						// value relative to base coordinate position
-						this.last_position[3] = v + this.base_position[3];
-					}
+					vec.Y = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
 				}
-				if (parameters.ContainsKey("F"))
+				if (parameters.TryGetValue("Z", out value))
 				{
-					var speed = double.Parse((string)parameters["F"]);
+					vec.Z = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
+				}
+
+				if (!this.absolutecoord)
+				{
+					// value relative to position of last move
+					this.last_position += vec;
+				}
+				else
+				{
+					// value relative to base coordinate position
+					this.last_position = vec + this.base_position;
+				}
+
+				if (parameters.TryGetValue("E", out value))
+				{
+					vec.W = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
+					vec.W *= (float)extrude_factor;
+				}
+
+				if (!this.absolutecoord || !this.absoluteextrude)
+				{
+					// value relative to position of last move
+					this.last_position.W += vec.W;
+				}
+				else
+				{
+					// value relative to base coordinate position
+					this.last_position.W = vec.W + this.base_position.W;
+				}
+
+				if (parameters.TryGetValue("F", out value))
+				{
+					var speed = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
 					if (speed <= 0.0)
 					{
 						throw new Exception($"Invalid speed in '{parameters["#original"]}'");
@@ -945,7 +957,7 @@ namespace KlipperSharp.MachineCodes
 			}
 			try
 			{
-				this.move_with_transform(new List<double>(this.last_position), this.speed * this.speed_factor);
+				this.move_with_transform(this.last_position, this.speed * this.speed_factor);
 			}
 			catch (Exception)
 			{
@@ -981,7 +993,9 @@ namespace KlipperSharp.MachineCodes
 			}
 			if (axes.Count != 0)
 			{
-				axes = new List<int> { 0, 1, 2 };
+				axes.Add(0);
+				axes.Add(1);
+				axes.Add(2);
 			}
 			var homing_state = new Homing(this.printer);
 			if (this.is_fileinput)
@@ -998,7 +1012,7 @@ namespace KlipperSharp.MachineCodes
 			}
 			foreach (var axis in homing_state.get_axes())
 			{
-				this.base_position[axis] = this.homing_position[axis];
+				this.base_position.Set(axis, this.homing_position.Get(axis));
 			}
 			this.reset_last_position();
 		}
@@ -1058,22 +1072,20 @@ namespace KlipperSharp.MachineCodes
 				{
 					offset *= this.extrude_factor;
 				}
-				this.base_position[p] = this.last_position[p] - offset;
+				this.base_position.Set(p, last_position.Get(p) - offset);
 			}
 			if (offsets.Count == 0)
 			{
-				this.last_position.CopyTo(this.base_position, 0);
-				//this.base_position = this.last_position.ToList();
+				this.base_position = this.last_position;
 			}
 		}
 
 		public void cmd_M114(Dictionary<string, object> parameters)
 		{
 			// Get Current Position
-			var p = (from item in this.last_position.Zip(this.base_position, (lp, bp) => (lp, bp))
-						select (item.lp - item.bp)).ToList();
-			p[3] /= this.extrude_factor;
-			this.respond($"X:{p[0]} Y:{p[1]} Z:{p[2]} E:{p[3]}");
+			var p = this.last_position - this.base_position;
+			p.W /= (float)this.extrude_factor;
+			this.respond($"X:{p.X} Y:{p.Y} Z:{p.Z} E:{p.W}");
 		}
 
 		public void cmd_M220(Dictionary<string, object> parameters)
@@ -1087,9 +1099,9 @@ namespace KlipperSharp.MachineCodes
 		{
 			// Set extrude factor override percentage
 			var new_extrude_factor = this.get_float("S", parameters, 100.0, above: 0.0) / 100.0;
-			var last_e_pos = this.last_position[3];
-			var e_value = (last_e_pos - this.base_position[3]) / this.extrude_factor;
-			this.base_position[3] = last_e_pos - e_value * new_extrude_factor;
+			var last_e_pos = this.last_position.W;
+			var e_value = (last_e_pos - this.base_position.W) / this.extrude_factor;
+			this.base_position.W = (float)(last_e_pos - e_value * new_extrude_factor);
 			this.extrude_factor = new_extrude_factor;
 		}
 
@@ -1106,17 +1118,17 @@ namespace KlipperSharp.MachineCodes
 				}
 				else if (parameters.ContainsKey(axis + "_ADJUST"))
 				{
-					offset = this.homing_position[pos];
+					offset = this.homing_position.Get(pos);
 					offset += this.get_float(axis + "_ADJUST", parameters);
 				}
 				else
 				{
 					continue;
 				}
-				var delta = offset - this.homing_position[pos];
-				this.last_position[pos] += delta;
-				this.base_position[pos] += delta;
-				this.homing_position[pos] = offset;
+				var delta = offset - this.homing_position.Get(pos);
+				this.last_position.Set(pos, last_position.Get(pos) + delta);
+				this.base_position.Set(pos, base_position.Get(pos) + delta);
+				this.homing_position.Set(pos, offset);
 			}
 		}
 
@@ -1128,8 +1140,8 @@ namespace KlipperSharp.MachineCodes
 			{
 				var p = item.Key;
 				var offset = item.Value;
-				this.base_position[p] -= this.homing_position[p] + offset;
-				this.homing_position[p] = -offset;
+				this.base_position.Set(p, base_position.Get(p) - (this.homing_position.Get(p) + offset));
+				this.homing_position.Set(p, homing_position.Get(p) - (-offset));
 			}
 		}
 
@@ -1207,27 +1219,25 @@ namespace KlipperSharp.MachineCodes
 													  select $"{s.get_name()}:{s.get_mcu_position()}"));
 			var stepper_pos = string.Join(" ", (from s in steppers
 															select $"{s.get_name()}:{s.get_commanded_position()}"));
-			var kinematic_pos = string.Join(" ", (from _tup_1 in "XYZE".Zip(kin.calc_position(), (a, v) => (a, v))
-															  let a = _tup_1.Item1
-															  let v = _tup_1.Item2
-															  select $"{a}:{v}"));
-			var toolhead_pos = string.Join(" ", (from _tup_2 in "XYZE".Zip(this.toolhead.get_position(), (a, v) => (a, v))
-															 let a = _tup_2.Item1
-															 let v = _tup_2.Item2
-															 select $"{a}:{v}"));
-			var gcode_pos = string.Join(" ", (from _tup_3 in "XYZE".Zip(this.last_position, (a, v) => (a, v))
-														 let a = _tup_3.Item1
-														 let v = _tup_3.Item2
-														 select $"{a}:{v}"));
-			var base_pos = string.Join(" ", (from _tup_4 in "XYZE".Zip(this.base_position, (a, v) => (a, v))
-														let a = _tup_4.Item1
-														let v = _tup_4.Item2
-														select $"{a}:{v}"));
-			var homing_pos = string.Join(" ", (from _tup_5 in "XYZ".Zip(this.homing_position, (a, v) => (a, v))
-														  let a = _tup_5.Item1
-														  let v = _tup_5.Item2
-														  select $"{a}:{v}"));
+			var kinematic_pos = Vector3Format(kin.calc_position());
+			var toolhead_pos = Vector4Format(toolhead.get_position());
+			var gcode_pos = Vector4Format(last_position);
+			var base_pos = Vector4Format(base_position);
+			var homing_pos = Vector3Format(homing_position);
 			this.respond_info($"mcu: {mcu_pos}\nstepper: {stepper_pos}\nkinematic: {kinematic_pos}\ntoolhead: {toolhead_pos}\ngcode: {gcode_pos}\ngcode base: {base_pos}\ngcode homing: {homing_pos}");
+		}
+
+		private static string Vector4Format(in Vector4 v)
+		{
+			return $"X:{v.X} Z:{v.Y} Z:{v.Z} E:{v.W}";
+		}
+		private static string Vector3Format(in Vector4 v)
+		{
+			return $"X:{v.X} Z:{v.Y} Z:{v.Z}";
+		}
+		private static string Vector3Format(in Vector3 v)
+		{
+			return $"X:{v.X} Z:{v.Y} Z:{v.Z}";
 		}
 
 		public void request_restart(string result)

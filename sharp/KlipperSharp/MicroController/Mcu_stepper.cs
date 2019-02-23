@@ -1,6 +1,7 @@
 ﻿using KlipperSharp.PulseGeneration;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text;
 
 namespace KlipperSharp.MicroController
@@ -112,13 +113,13 @@ namespace KlipperSharp.MicroController
 			return this._step_dist;
 		}
 
-		public double calc_position_from_coord(List<double> coord)
+		public double calc_position_from_coord(Vector3 coord)
 		{
-			return Itersolve.itersolve_calc_position_from_coord(ref this._stepper_kinematics, coord[0], coord[1], coord[2]);
+			return Itersolve.itersolve_calc_position_from_coord(ref this._stepper_kinematics, coord.X, coord.Y, coord.Z);
 			//return this._ffi_lib.itersolve_calc_position_from_coord(this._stepper_kinematics, coord[0], coord[1], coord[2]);
 		}
 
-		public void set_position(List<double> coord)
+		public void set_position(Vector3 coord)
 		{
 			this.set_commanded_position(this.calc_position_from_coord(coord));
 		}

@@ -76,7 +76,7 @@ namespace KlipperSharp.Kinematics
 		{
 			// XXX - homing not implemented
 			homing_state.set_axes(new List<int> { 0, 1, 2 });
-			homing_state.set_homed_position(new List<double> { 0.0, 0.0, 0.0 });
+			homing_state.set_homed_position((0.0, 0.0, 0.0, null));
 		}
 
 		public override void motor_off(double print_time)

@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text;
 
 namespace KlipperSharp
 {
-	static class Utils
+	public static class Utils
 	{
 		public static TReturn Get<TReturn>(this Dictionary<string, object> dict, string key, TReturn defaults = default(TReturn))
 		{
@@ -47,6 +48,49 @@ namespace KlipperSharp
 			}
 
 			return args[idx + 1];
+		}
+
+		public static double Get(this in Vector4 v, int index)
+		{
+			switch (index)
+			{
+				case 0: return v.X;
+				case 1: return v.Y;
+				case 2: return v.Z;
+				case 3: return v.W;
+			}
+			throw new ArgumentOutOfRangeException(nameof(index));
+		}
+		public static double Get(this in Vector3 v, int index)
+		{
+			switch (index)
+			{
+				case 0: return v.X;
+				case 1: return v.Y;
+				case 2: return v.Z;
+			}
+			throw new ArgumentOutOfRangeException(nameof(index));
+		}
+		public static void Set(this ref Vector4 v, int index, double value)
+		{
+			switch (index)
+			{
+				case 0: v.X = (float)value; break;
+				case 1: v.Y = (float)value; break;
+				case 2: v.Z = (float)value; break;
+				case 3: v.W = (float)value; break;
+			}
+			throw new ArgumentOutOfRangeException(nameof(index));
+		}
+		public static void Set(this ref Vector3 v, int index, double value)
+		{
+			switch (index)
+			{
+				case 0: v.X = (float)value; break;
+				case 1: v.Y = (float)value; break;
+				case 2: v.Z = (float)value; break;
+			}
+			throw new ArgumentOutOfRangeException(nameof(index));
 		}
 	}
 }
