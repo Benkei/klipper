@@ -246,9 +246,9 @@ namespace KlipperSharp
 			}
 		}
 
-		public (double, double) get_range()
+		public Vector2 get_range()
 		{
-			return (this.position_min, this.position_max);
+			return new Vector2((float)this.position_min, (float)this.position_max);
 		}
 
 		public struct Homing_info
@@ -274,12 +274,12 @@ namespace KlipperSharp
 
 		public List<PrinterStepper> get_steppers()
 		{
-			return this.steppers.ToList();
+			return this.steppers;
 		}
 
 		public List<(Mcu_endstop endstop, string name)> get_endstops()
 		{
-			return this.endstops.ToList();
+			return this.endstops;
 		}
 
 		public void add_extra_stepper(ConfigWrapper config)

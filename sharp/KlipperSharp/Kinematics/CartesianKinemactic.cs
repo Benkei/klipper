@@ -87,8 +87,7 @@ namespace KlipperSharp.Kinematics
 				rail.set_position(newpos);
 				if (homing_axes.Contains(i))
 				{
-					this.limits[i].X = (float)rail.get_range().Item1;
-					this.limits[i].Y = (float)rail.get_range().Item2;
+					this.limits[i] = rail.get_range();
 				}
 			}
 		}
@@ -97,8 +96,8 @@ namespace KlipperSharp.Kinematics
 		{
 			// Determine movement
 			var _tup_1 = rail.get_range();
-			var position_min = _tup_1.Item1;
-			var position_max = _tup_1.Item2;
+			var position_min = _tup_1.X;
+			var position_max = _tup_1.Y;
 			var hi = rail.get_homing_info();
 			var homepos = new List<double?> { null, null, null, null };
 			homepos[axis] = hi.position_endstop;
@@ -239,8 +238,7 @@ namespace KlipperSharp.Kinematics
 			toolhead.set_position(new Vector4(this.calc_position(), extruder_pos));
 			if (this.limits[dc_axis].X <= this.limits[dc_axis].Y)
 			{
-				this.limits[dc_axis].X = (float)dc_rail.get_range().Item1;
-				this.limits[dc_axis].Y = (float)dc_rail.get_range().Item2;
+				this.limits[dc_axis] = dc_rail.get_range();
 			}
 			this.need_motor_enable = true;
 		}
