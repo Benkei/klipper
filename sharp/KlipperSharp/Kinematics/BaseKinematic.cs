@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace KlipperSharp.Kinematics
 {
-	public class KinematicFactory
+	public static class KinematicFactory
 	{
 		public static BaseKinematic load_kinematics(KinematicType type, ToolHead toolhead, ConfigWrapper config)
 		{
@@ -25,40 +25,20 @@ namespace KlipperSharp.Kinematics
 		}
 	}
 
-	public class BaseKinematic
+	public abstract class BaseKinematic
 	{
-		//public BaseKinematic(ToolHead toolhead, MachineConfig config)
-		//{
-		//}
+		public abstract List<PrinterStepper> get_steppers(string flags = "");
 
-		public virtual List<PrinterStepper> get_steppers(string flags = "")
-		{
-			return new List<PrinterStepper>();
-		}
+		public abstract Vector3 calc_position();
 
-		public virtual Vector3 calc_position()
-		{
-			return Vector3.Zero;
-		}
+		public abstract void set_position(Vector3 newpos, List<int> homing_axes);
 
-		public virtual void set_position(Vector3 newpos, List<int> homing_axes)
-		{
-		}
+		public abstract void home(Homing homing_state);
 
-		public virtual void home(Homing homing_state)
-		{
-		}
+		public abstract void motor_off(double print_time);
 
-		public virtual void motor_off(double print_time)
-		{
-		}
+		public abstract void check_move(Move move);
 
-		public virtual void check_move(Move move)
-		{
-		}
-
-		public virtual void move(double print_time, Move move)
-		{
-		}
+		public abstract void move(double print_time, Move move);
 	}
 }

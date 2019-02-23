@@ -62,7 +62,7 @@ namespace KlipperSharp
 		private string name;
 		private bool need_motor_enable;
 		private Mcu_stepper mcu_stepper;
-		private Func<double> get_step_dist;
+		public Func<double> get_step_dist;
 		public Action<move> step_itersolve;
 		public Action<KinematicType, object[]> setup_itersolve;
 		private Func<KinematicBase, KinematicBase> set_stepper_kinematics;

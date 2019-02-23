@@ -353,6 +353,7 @@ namespace KlipperSharp
 		}
 	}
 
+	// Dummy extruder class used when a printer has no extruder at all
 	public class DummyExtruder : BaseExtruder
 	{
 

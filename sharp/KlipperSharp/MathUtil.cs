@@ -10,6 +10,31 @@ namespace KlipperSharp
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
+		public static double ToRadians(double angle)
+		{
+			return (Math.PI / 180) * angle;
+		}
+
+		public static T Min<T>(in T arg0, in T arg1, in T arg2, in T arg3) where T : IComparable<T>
+		{
+			T res = arg0.CompareTo(arg1) < 0 ? arg0 : arg1;
+			res = res.CompareTo(arg2) < 0 ? res : arg2;
+			res = res.CompareTo(arg3) < 0 ? res : arg3;
+			return res;
+		}
+		public static T Min<T>(in T arg0, in T arg1, in T arg2) where T : IComparable<T>
+		{
+			T res = arg0.CompareTo(arg1) < 0 ? arg0 : arg1;
+			res = res.CompareTo(arg2) < 0 ? res : arg2;
+			return res;
+		}
+		public static T Max<T>(in T arg0, in T arg1, in T arg2) where T : IComparable<T>
+		{
+			T res = arg0.CompareTo(arg1) > 0 ? arg0 : arg1;
+			res = res.CompareTo(arg2) > 0 ? res : arg2;
+			return res;
+		}
+
 		// Helper code that implements coordinate descent
 		/*
 		public static object coordinate_descent(Dictionary<string, object> adj_params, Dictionary<string, object> parameters,
@@ -129,7 +154,7 @@ namespace KlipperSharp
 		//#####################################################################
 		public static Vector3 matrix_cross(Vector3 m1, Vector3 m2)
 		{
-			return new Vector3 (
+			return new Vector3(
 				m1.Y * m2.Z - m1.Z * m2.Y,
 				m1.Z * m2.X - m1.X * m2.Z,
 				m1.X * m2.Y - m1.Y * m2.X
@@ -148,7 +173,7 @@ namespace KlipperSharp
 
 		public static Vector3 matrix_add(Vector3 m1, Vector3 m2)
 		{
-			return new Vector3 (
+			return new Vector3(
 				m1.X + m2.X,
 				m1.Y + m2.Y,
 				m1.Z + m2.Z
