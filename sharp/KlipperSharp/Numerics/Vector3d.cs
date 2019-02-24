@@ -300,7 +300,7 @@ namespace KlipperSharp
 		/// <param name="left">The first vector to add.</param>
 		/// <param name="right">The second vector to add.</param>
 		/// <param name="result">When the method completes, contains the sum of the two vectors.</param>
-		public static void Add(ref Vector3d left, ref Vector3d right, out Vector3d result)
+		public static void Add(in Vector3d left, in Vector3d right, out Vector3d result)
 		{
 			result = new Vector3d(left.X + right.X, left.Y + right.Y, left.Z + right.Z);
 		}
@@ -322,7 +322,7 @@ namespace KlipperSharp
 		/// <param name="left">The input vector</param>
 		/// <param name="right">The scalar value to be added to elements</param>
 		/// <param name="result">The vector with added scalar for each element.</param>
-		public static void Add(ref Vector3d left, ref double right, out Vector3d result)
+		public static void Add(in Vector3d left, in double right, out Vector3d result)
 		{
 			result = new Vector3d(left.X + right, left.Y + right, left.Z + right);
 		}
@@ -344,7 +344,7 @@ namespace KlipperSharp
 		/// <param name="left">The first vector to subtract.</param>
 		/// <param name="right">The second vector to subtract.</param>
 		/// <param name="result">When the method completes, contains the difference of the two vectors.</param>
-		public static void Subtract(ref Vector3d left, ref Vector3d right, out Vector3d result)
+		public static void Subtract(in Vector3d left, in Vector3d right, out Vector3d result)
 		{
 			result = new Vector3d(left.X - right.X, left.Y - right.Y, left.Z - right.Z);
 		}
@@ -366,7 +366,7 @@ namespace KlipperSharp
 		/// <param name="left">The input vector</param>
 		/// <param name="right">The scalar value to be subtraced from elements</param>
 		/// <param name="result">The vector with subtracted scalar for each element.</param>
-		public static void Subtract(ref Vector3d left, ref double right, out Vector3d result)
+		public static void Subtract(in Vector3d left, in double right, out Vector3d result)
 		{
 			result = new Vector3d(left.X - right, left.Y - right, left.Z - right);
 		}
@@ -388,7 +388,7 @@ namespace KlipperSharp
 		/// <param name="left">The scalar value to be subtraced from elements</param>
 		/// <param name="right">The input vector.</param>
 		/// <param name="result">The vector with subtracted scalar for each element.</param>
-		public static void Subtract(ref double left, ref Vector3d right, out Vector3d result)
+		public static void Subtract(in double left, in Vector3d right, out Vector3d result)
 		{
 			result = new Vector3d(left - right.X, left - right.Y, left - right.Z);
 		}
@@ -410,7 +410,7 @@ namespace KlipperSharp
 		/// <param name="value">The vector to scale.</param>
 		/// <param name="scale">The amount by which to scale the vector.</param>
 		/// <param name="result">When the method completes, contains the scaled vector.</param>
-		public static void Multiply(ref Vector3d value, double scale, out Vector3d result)
+		public static void Multiply(in Vector3d value, double scale, out Vector3d result)
 		{
 			result = new Vector3d(value.X * scale, value.Y * scale, value.Z * scale);
 		}
@@ -432,7 +432,7 @@ namespace KlipperSharp
 		/// <param name="left">The first vector to multiply.</param>
 		/// <param name="right">The second vector to multiply.</param>
 		/// <param name="result">When the method completes, contains the multiplied vector.</param>
-		public static void Multiply(ref Vector3d left, ref Vector3d right, out Vector3d result)
+		public static void Multiply(in Vector3d left, in Vector3d right, out Vector3d result)
 		{
 			result = new Vector3d(left.X * right.X, left.Y * right.Y, left.Z * right.Z);
 		}
@@ -454,7 +454,7 @@ namespace KlipperSharp
 		/// <param name="value">The vector to scale.</param>
 		/// <param name="scale">The amount by which to scale the vector.</param>
 		/// <param name="result">When the method completes, contains the scaled vector.</param>
-		public static void Divide(ref Vector3d value, double scale, out Vector3d result)
+		public static void Divide(in Vector3d value, double scale, out Vector3d result)
 		{
 			result = new Vector3d(value.X / scale, value.Y / scale, value.Z / scale);
 		}
@@ -476,7 +476,7 @@ namespace KlipperSharp
 		/// <param name="scale">The amount by which to scale the vector.</param>
 		/// <param name="value">The vector to scale.</param>
 		/// <param name="result">When the method completes, contains the scaled vector.</param>
-		public static void Divide(double scale, ref Vector3d value, out Vector3d result)
+		public static void Divide(double scale, in Vector3d value, out Vector3d result)
 		{
 			result = new Vector3d(scale / value.X, scale / value.Y, scale / value.Z);
 		}
@@ -497,7 +497,7 @@ namespace KlipperSharp
 		/// </summary>
 		/// <param name="value">The vector to negate.</param>
 		/// <param name="result">When the method completes, contains a vector facing in the opposite direction.</param>
-		public static void Negate(ref Vector3d value, out Vector3d result)
+		public static void Negate(in Vector3d value, out Vector3d result)
 		{
 			result = new Vector3d(-value.X, -value.Y, -value.Z);
 		}
@@ -517,7 +517,7 @@ namespace KlipperSharp
 		/// </summary>
 		/// <param name="value">Input vector</param>
 		/// <param name="result">When the method completes, contains a vector with each component being the absolute value of the input component</param>
-		public static void Abs(ref Vector3d value, out Vector3d result)
+		public static void Abs(in Vector3d value, out Vector3d result)
 		{
 			result = new Vector3d(value.X > 0.0f ? value.X : -value.X,
 				 value.Y > 0.0f ? value.Y : -value.Y,
@@ -546,7 +546,7 @@ namespace KlipperSharp
 		/// <param name="amount1">Barycentric coordinate b2, which expresses the weighting factor toward vertex 2 (specified in <paramref name="value2"/>).</param>
 		/// <param name="amount2">Barycentric coordinate b3, which expresses the weighting factor toward vertex 3 (specified in <paramref name="value3"/>).</param>
 		/// <param name="result">When the method completes, contains the 3D Cartesian coordinates of the specified point.</param>
-		public static void Barycentric(ref Vector3d value1, ref Vector3d value2, ref Vector3d value3, double amount1, double amount2, out Vector3d result)
+		public static void Barycentric(in Vector3d value1, in Vector3d value2, in Vector3d value3, double amount1, double amount2, out Vector3d result)
 		{
 			result = new Vector3d((value1.X + (amount1 * (value2.X - value1.X))) + (amount2 * (value3.X - value1.X)),
 				 (value1.Y + (amount1 * (value2.Y - value1.Y))) + (amount2 * (value3.Y - value1.Y)),
@@ -565,7 +565,7 @@ namespace KlipperSharp
 		public static Vector3d Barycentric(Vector3d value1, Vector3d value2, Vector3d value3, double amount1, double amount2)
 		{
 			Vector3d result;
-			Barycentric(ref value1, ref value2, ref value3, amount1, amount2, out result);
+			Barycentric(in value1, in value2, in value3, amount1, amount2, out result);
 			return result;
 		}
 
@@ -576,7 +576,7 @@ namespace KlipperSharp
 		/// <param name="min">The minimum value.</param>
 		/// <param name="max">The maximum value.</param>
 		/// <param name="result">When the method completes, contains the clamped value.</param>
-		public static void Clamp(ref Vector3d value, ref Vector3d min, ref Vector3d max, out Vector3d result)
+		public static void Clamp(in Vector3d value, in Vector3d min, in Vector3d max, out Vector3d result)
 		{
 			double x = value.X;
 			x = (x > max.X) ? max.X : x;
@@ -603,7 +603,7 @@ namespace KlipperSharp
 		public static Vector3d Clamp(Vector3d value, Vector3d min, Vector3d max)
 		{
 			Vector3d result;
-			Clamp(ref value, ref min, ref max, out result);
+			Clamp(in value, in min, in max, out result);
 			return result;
 		}
 
@@ -613,7 +613,7 @@ namespace KlipperSharp
 		/// <param name="left">First source vector.</param>
 		/// <param name="right">Second source vector.</param>
 		/// <param name="result">When the method completes, contains he cross product of the two vectors.</param>
-		public static void Cross(ref Vector3d left, ref Vector3d right, out Vector3d result)
+		public static void Cross(in Vector3d left, in Vector3d right, out Vector3d result)
 		{
 			result = new Vector3d(
 				 (left.Y * right.Z) - (left.Z * right.Y),
@@ -630,7 +630,7 @@ namespace KlipperSharp
 		public static Vector3d Cross(Vector3d left, Vector3d right)
 		{
 			Vector3d result;
-			Cross(ref left, ref right, out result);
+			Cross(in left, in right, out result);
 			return result;
 		}
 
@@ -641,10 +641,10 @@ namespace KlipperSharp
 		/// <param name="value2">The second vector.</param>
 		/// <param name="result">When the method completes, contains the distance between the two vectors.</param>
 		/// <remarks>
-		/// <see cref="Vector3d.DistanceSquared(ref Vector3d, ref Vector3d, out double)"/> may be preferred when only the relative distance is needed
+		/// <see cref="Vector3d.DistanceSquared(in Vector3d, in Vector3d, out double)"/> may be preferred when only the relative distance is needed
 		/// and speed is of the essence.
 		/// </remarks>
-		public static void Distance(ref Vector3d value1, ref Vector3d value2, out double result)
+		public static void Distance(in Vector3d value1, in Vector3d value2, out double result)
 		{
 			double x = value1.X - value2.X;
 			double y = value1.Y - value2.Y;
@@ -685,7 +685,7 @@ namespace KlipperSharp
 		/// involves two square roots, which are computationally expensive. However, using distance squared 
 		/// provides the same information and avoids calculating two square roots.
 		/// </remarks>
-		public static void DistanceSquared(ref Vector3d value1, ref Vector3d value2, out double result)
+		public static void DistanceSquared(in Vector3d value1, in Vector3d value2, out double result)
 		{
 			double x = value1.X - value2.X;
 			double y = value1.Y - value2.Y;
@@ -725,7 +725,7 @@ namespace KlipperSharp
 		/// <returns><c>true</c> if left and right are near another 3D, <c>false</c> otherwise</returns>
 		public static bool NearEqual(Vector3d left, Vector3d right, Vector3d epsilon)
 		{
-			return NearEqual(ref left, ref right, ref epsilon);
+			return NearEqual(in left, in right, in epsilon);
 		}
 
 		/// <summary>
@@ -735,7 +735,7 @@ namespace KlipperSharp
 		/// <param name="right">The right vector.</param>
 		/// <param name="epsilon">The epsilon.</param>
 		/// <returns><c>true</c> if left and right are near another 3D, <c>false</c> otherwise</returns>
-		public static bool NearEqual(ref Vector3d left, ref Vector3d right, ref Vector3d epsilon)
+		public static bool NearEqual(in Vector3d left, in Vector3d right, in Vector3d epsilon)
 		{
 			return MathUtil.WithinEpsilon(left.X, right.X, epsilon.X) &&
 					  MathUtil.WithinEpsilon(left.Y, right.Y, epsilon.Y) &&
@@ -748,7 +748,7 @@ namespace KlipperSharp
 		/// <param name="left">First source vector.</param>
 		/// <param name="right">Second source vector.</param>
 		/// <param name="result">When the method completes, contains the dot product of the two vectors.</param>
-		public static void Dot(ref Vector3d left, ref Vector3d right, out double result)
+		public static void Dot(in Vector3d left, in Vector3d right, out double result)
 		{
 			result = (left.X * right.X) + (left.Y * right.Y) + (left.Z * right.Z);
 		}
@@ -769,7 +769,7 @@ namespace KlipperSharp
 		/// </summary>
 		/// <param name="value">The vector to normalize.</param>
 		/// <param name="result">When the method completes, contains the normalized vector.</param>
-		public static void Normalize(ref Vector3d value, out Vector3d result)
+		public static void Normalize(in Vector3d value, out Vector3d result)
 		{
 			result = value;
 			result.Normalize();
@@ -796,7 +796,7 @@ namespace KlipperSharp
 		/// <remarks>
 		/// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
 		/// </remarks>
-		public static void Lerp(ref Vector3d start, ref Vector3d end, double amount, out Vector3d result)
+		public static void Lerp(in Vector3d start, in Vector3d end, double amount, out Vector3d result)
 		{
 			result.X = MathUtil.Lerp(start.X, end.X, amount);
 			result.Y = MathUtil.Lerp(start.Y, end.Y, amount);
@@ -816,7 +816,7 @@ namespace KlipperSharp
 		public static Vector3d Lerp(Vector3d start, Vector3d end, double amount)
 		{
 			Vector3d result;
-			Lerp(ref start, ref end, amount, out result);
+			Lerp(in start, in end, amount, out result);
 			return result;
 		}
 
@@ -827,10 +827,10 @@ namespace KlipperSharp
 		/// <param name="end">End vector.</param>
 		/// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
 		/// <param name="result">When the method completes, contains the cubic interpolation of the two vectors.</param>
-		public static void SmoothStep(ref Vector3d start, ref Vector3d end, double amount, out Vector3d result)
+		public static void SmoothStep(in Vector3d start, in Vector3d end, double amount, out Vector3d result)
 		{
 			amount = MathUtil.SmoothStep(amount);
-			Lerp(ref start, ref end, amount, out result);
+			Lerp(in start, in end, amount, out result);
 		}
 
 		/// <summary>
@@ -843,7 +843,7 @@ namespace KlipperSharp
 		public static Vector3d SmoothStep(Vector3d start, Vector3d end, double amount)
 		{
 			Vector3d result;
-			SmoothStep(ref start, ref end, amount, out result);
+			SmoothStep(in start, in end, amount, out result);
 			return result;
 		}
 
@@ -856,7 +856,7 @@ namespace KlipperSharp
 		/// <param name="tangent2">Second source tangent vector.</param>
 		/// <param name="amount">Weighting factor.</param>
 		/// <param name="result">When the method completes, contains the result of the Hermite spline interpolation.</param>
-		public static void Hermite(ref Vector3d value1, ref Vector3d tangent1, ref Vector3d value2, ref Vector3d tangent2, double amount, out Vector3d result)
+		public static void Hermite(in Vector3d value1, in Vector3d tangent1, in Vector3d value2, in Vector3d tangent2, double amount, out Vector3d result)
 		{
 			double squared = amount * amount;
 			double cubed = amount * squared;
@@ -882,7 +882,7 @@ namespace KlipperSharp
 		public static Vector3d Hermite(Vector3d value1, Vector3d tangent1, Vector3d value2, Vector3d tangent2, double amount)
 		{
 			Vector3d result;
-			Hermite(ref value1, ref tangent1, ref value2, ref tangent2, amount, out result);
+			Hermite(in value1, in tangent1, in value2, in tangent2, amount, out result);
 			return result;
 		}
 
@@ -895,7 +895,7 @@ namespace KlipperSharp
 		/// <param name="value4">The fourth position in the interpolation.</param>
 		/// <param name="amount">Weighting factor.</param>
 		/// <param name="result">When the method completes, contains the result of the Catmull-Rom interpolation.</param>
-		public static void CatmullRom(ref Vector3d value1, ref Vector3d value2, ref Vector3d value3, ref Vector3d value4, double amount, out Vector3d result)
+		public static void CatmullRom(in Vector3d value1, in Vector3d value2, in Vector3d value3, in Vector3d value4, double amount, out Vector3d result)
 		{
 			double squared = amount * amount;
 			double cubed = amount * squared;
@@ -925,7 +925,7 @@ namespace KlipperSharp
 		public static Vector3d CatmullRom(Vector3d value1, Vector3d value2, Vector3d value3, Vector3d value4, double amount)
 		{
 			Vector3d result;
-			CatmullRom(ref value1, ref value2, ref value3, ref value4, amount, out result);
+			CatmullRom(in value1, in value2, in value3, in value4, amount, out result);
 			return result;
 		}
 
@@ -935,7 +935,7 @@ namespace KlipperSharp
 		/// <param name="left">The first source vector.</param>
 		/// <param name="right">The second source vector.</param>
 		/// <param name="result">When the method completes, contains an new vector composed of the largest components of the source vectors.</param>
-		public static void Max(ref Vector3d left, ref Vector3d right, out Vector3d result)
+		public static void Max(in Vector3d left, in Vector3d right, out Vector3d result)
 		{
 			result.X = (left.X > right.X) ? left.X : right.X;
 			result.Y = (left.Y > right.Y) ? left.Y : right.Y;
@@ -951,7 +951,7 @@ namespace KlipperSharp
 		public static Vector3d Max(Vector3d left, Vector3d right)
 		{
 			Vector3d result;
-			Max(ref left, ref right, out result);
+			Max(in left, in right, out result);
 			return result;
 		}
 
@@ -961,7 +961,7 @@ namespace KlipperSharp
 		/// <param name="left">The first source vector.</param>
 		/// <param name="right">The second source vector.</param>
 		/// <param name="result">When the method completes, contains an new vector composed of the smallest components of the source vectors.</param>
-		public static void Min(ref Vector3d left, ref Vector3d right, out Vector3d result)
+		public static void Min(in Vector3d left, in Vector3d right, out Vector3d result)
 		{
 			result.X = (left.X < right.X) ? left.X : right.X;
 			result.Y = (left.Y < right.Y) ? left.Y : right.Y;
@@ -977,7 +977,7 @@ namespace KlipperSharp
 		public static Vector3d Min(Vector3d left, Vector3d right)
 		{
 			Vector3d result;
-			Min(ref left, ref right, out result);
+			Min(in left, in right, out result);
 			return result;
 		}
 		/*
@@ -993,10 +993,10 @@ namespace KlipperSharp
 		/// <param name="maxZ">The maximum depth of the viewport.</param>
 		/// <param name="worldViewProjection">The combined world-view-projection matrix.</param>
 		/// <param name="result">When the method completes, contains the vector in screen space.</param>
-		public static void Project(ref Vector3d vector, double x, double y, double width, double height, double minZ, double maxZ, ref Matrix worldViewProjection, out Vector3d result)
+		public static void Project(in Vector3d vector, double x, double y, double width, double height, double minZ, double maxZ, in Matrix worldViewProjection, out Vector3d result)
 		{
 			Vector3d v = new Vector3d();
-			TransformCoordinate(ref vector, ref worldViewProjection, out v);
+			TransformCoordinate(in vector, in worldViewProjection, out v);
 
 			result = new Vector3d(((1.0f + v.X) * 0.5f * width) + x, ((1.0f - v.Y) * 0.5f * height) + y, (v.Z * (maxZ - minZ)) + minZ);
 		}
@@ -1016,7 +1016,7 @@ namespace KlipperSharp
 		public static Vector3d Project(Vector3d vector, double x, double y, double width, double height, double minZ, double maxZ, Matrix worldViewProjection)
 		{
 			Vector3d result;
-			Project(ref vector, x, y, width, height, minZ, maxZ, ref worldViewProjection, out result);
+			Project(in vector, x, y, width, height, minZ, maxZ, in worldViewProjection, out result);
 			return result;
 		}
 
@@ -1032,17 +1032,17 @@ namespace KlipperSharp
 		/// <param name="maxZ">The maximum depth of the viewport.</param>
 		/// <param name="worldViewProjection">The combined world-view-projection matrix.</param>
 		/// <param name="result">When the method completes, contains the vector in object space.</param>
-		public static void Unproject(ref Vector3d vector, double x, double y, double width, double height, double minZ, double maxZ, ref Matrix worldViewProjection, out Vector3d result)
+		public static void Unproject(in Vector3d vector, double x, double y, double width, double height, double minZ, double maxZ, in Matrix worldViewProjection, out Vector3d result)
 		{
 			Vector3d v = new Vector3d();
 			Matrix matrix = new Matrix();
-			Matrix.Invert(ref worldViewProjection, out matrix);
+			Matrix.Invert(in worldViewProjection, out matrix);
 
 			v.X = (((vector.X - x) / width) * 2.0f) - 1.0f;
 			v.Y = -((((vector.Y - y) / height) * 2.0f) - 1.0f);
 			v.Z = (vector.Z - minZ) / (maxZ - minZ);
 
-			TransformCoordinate(ref v, ref matrix, out result);
+			TransformCoordinate(in v, in matrix, out result);
 		}
 		
 		/// <summary>
@@ -1060,7 +1060,7 @@ namespace KlipperSharp
 		public static Vector3d Unproject(Vector3d vector, double x, double y, double width, double height, double minZ, double maxZ, Matrix worldViewProjection)
 		{
 			Vector3d result;
-			Unproject(ref vector, x, y, width, height, minZ, maxZ, ref worldViewProjection, out result);
+			Unproject(in vector, x, y, width, height, minZ, maxZ, in worldViewProjection, out result);
 			return result;
 		}
 		*/
@@ -1072,7 +1072,7 @@ namespace KlipperSharp
 		/// <param name="result">When the method completes, contains the reflected vector.</param>
 		/// <remarks>Reflect only gives the direction of a reflection off a surface, it does not determine 
 		/// whether the original vector was close enough to the surface to hit it.</remarks>
-		public static void Reflect(ref Vector3d vector, ref Vector3d normal, out Vector3d result)
+		public static void Reflect(in Vector3d vector, in Vector3d normal, out Vector3d result)
 		{
 			double dot = (vector.X * normal.X) + (vector.Y * normal.Y) + (vector.Z * normal.Z);
 
@@ -1092,7 +1092,7 @@ namespace KlipperSharp
 		public static Vector3d Reflect(Vector3d vector, Vector3d normal)
 		{
 			Vector3d result;
-			Reflect(ref vector, ref normal, out result);
+			Reflect(in vector, in normal, out result);
 			return result;
 		}
 
@@ -1195,7 +1195,7 @@ namespace KlipperSharp
 		/// <param name="vector">The vector to rotate.</param>
 		/// <param name="rotation">The <see cref="Quaternion"/> rotation to apply.</param>
 		/// <param name="result">When the method completes, contains the transformed <see cref="Vector4d"/>.</param>
-		public static void Transform(ref Vector3d vector, ref Quaternion rotation, out Vector3d result)
+		public static void Transform(in Vector3d vector, in Quaternion rotation, out Vector3d result)
 		{
 			double x = rotation.X + rotation.X;
 			double y = rotation.Y + rotation.Y;
@@ -1225,7 +1225,7 @@ namespace KlipperSharp
 		public static Vector3d Transform(Vector3d vector, Quaternion rotation)
 		{
 			Vector3d result;
-			Transform(ref vector, ref rotation, out result);
+			Transform(in vector, in rotation, out result);
 			return result;
 		}
 
@@ -1238,7 +1238,7 @@ namespace KlipperSharp
 		/// This array may be the same array as <paramref name="source"/>.</param>
 		/// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="destination"/> is <c>null</c>.</exception>
 		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="destination"/> is shorter in length than <paramref name="source"/>.</exception>
-		public static void Transform(Vector3d[] source, ref Quaternion rotation, Vector3d[] destination)
+		public static void Transform(Vector3d[] source, in Quaternion rotation, Vector3d[] destination)
 		{
 			if (source == null)
 				throw new ArgumentNullException("source");
@@ -1286,7 +1286,7 @@ namespace KlipperSharp
 		/// <param name="vector">The source vector.</param>
 		/// <param name="transform">The transformation <see cref="Matrix3x3"/>.</param>
 		/// <param name="result">When the method completes, contains the transformed <see cref="Vector3d"/>.</param>
-		public static void Transform(ref Vector3d vector, ref Matrix3x3 transform, out Vector3d result)
+		public static void Transform(in Vector3d vector, in Matrix3x3 transform, out Vector3d result)
 		{
 			result = new Vector3d((vector.X * transform.M11) + (vector.Y * transform.M21) + (vector.Z * transform.M31),
 											(vector.X * transform.M12) + (vector.Y * transform.M22) + (vector.Z * transform.M32),
@@ -1303,7 +1303,7 @@ namespace KlipperSharp
 		public static Vector3d Transform(Vector3d vector, Matrix3x3 transform)
 		{
 			Vector3d result;
-			Transform(ref vector, ref transform, out result);
+			Transform(in vector, in transform, out result);
 			return result;
 		}
 
@@ -1313,10 +1313,10 @@ namespace KlipperSharp
 		/// <param name="vector">The source vector.</param>
 		/// <param name="transform">The transformation <see cref="Matrix"/>.</param>
 		/// <param name="result">When the method completes, contains the transformed <see cref="Vector3d"/>.</param>
-		public static void Transform(ref Vector3d vector, ref Matrix transform, out Vector3d result)
+		public static void Transform(in Vector3d vector, in Matrix transform, out Vector3d result)
 		{
 			Vector4d intermediate;
-			Transform(ref vector, ref transform, out intermediate);
+			Transform(in vector, in transform, out intermediate);
 			result = (Vector3d)intermediate;
 		}
 
@@ -1326,7 +1326,7 @@ namespace KlipperSharp
 		/// <param name="vector">The source vector.</param>
 		/// <param name="transform">The transformation <see cref="Matrix"/>.</param>
 		/// <param name="result">When the method completes, contains the transformed <see cref="Vector4d"/>.</param>
-		public static void Transform(ref Vector3d vector, ref Matrix transform, out Vector4d result)
+		public static void Transform(in Vector3d vector, in Matrix transform, out Vector4d result)
 		{
 			result = new Vector4d(
 				 (vector.X * transform.M11) + (vector.Y * transform.M21) + (vector.Z * transform.M31) + transform.M41,
@@ -1344,7 +1344,7 @@ namespace KlipperSharp
 		public static Vector4d Transform(Vector3d vector, Matrix transform)
 		{
 			Vector4d result;
-			Transform(ref vector, ref transform, out result);
+			Transform(in vector, in transform, out result);
 			return result;
 		}
 
@@ -1356,7 +1356,7 @@ namespace KlipperSharp
 		/// <param name="destination">The array for which the transformed vectors are stored.</param>
 		/// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="destination"/> is <c>null</c>.</exception>
 		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="destination"/> is shorter in length than <paramref name="source"/>.</exception>
-		public static void Transform(Vector3d[] source, ref Matrix transform, Vector4d[] destination)
+		public static void Transform(Vector3d[] source, in Matrix transform, Vector4d[] destination)
 		{
 			if (source == null)
 				throw new ArgumentNullException("source");
@@ -1367,7 +1367,7 @@ namespace KlipperSharp
 
 			for (int i = 0; i < source.Length; ++i)
 			{
-				Transform(ref source[i], ref transform, out destination[i]);
+				Transform(in source[i], in transform, out destination[i]);
 			}
 		}
 
@@ -1384,7 +1384,7 @@ namespace KlipperSharp
 		/// therefore makes the vector homogeneous. The homogeneous vector is often preferred when working
 		/// with coordinates as the w component can safely be ignored.
 		/// </remarks>
-		public static void TransformCoordinate(ref Vector3d coordinate, ref Matrix transform, out Vector3d result)
+		public static void TransformCoordinate(in Vector3d coordinate, in Matrix transform, out Vector3d result)
 		{
 			Vector4d vector = new Vector4d();
 			vector.X = (coordinate.X * transform.M11) + (coordinate.Y * transform.M21) + (coordinate.Z * transform.M31) + transform.M41;
@@ -1411,7 +1411,7 @@ namespace KlipperSharp
 		public static Vector3d TransformCoordinate(Vector3d coordinate, Matrix transform)
 		{
 			Vector3d result;
-			TransformCoordinate(ref coordinate, ref transform, out result);
+			TransformCoordinate(in coordinate, in transform, out result);
 			return result;
 		}
 
@@ -1431,7 +1431,7 @@ namespace KlipperSharp
 		/// therefore makes the vector homogeneous. The homogeneous vector is often preferred when working
 		/// with coordinates as the w component can safely be ignored.
 		/// </remarks>
-		public static void TransformCoordinate(Vector3d[] source, ref Matrix transform, Vector3d[] destination)
+		public static void TransformCoordinate(Vector3d[] source, in Matrix transform, Vector3d[] destination)
 		{
 			if (source == null)
 				throw new ArgumentNullException("source");
@@ -1442,7 +1442,7 @@ namespace KlipperSharp
 
 			for (int i = 0; i < source.Length; ++i)
 			{
-				TransformCoordinate(ref source[i], ref transform, out destination[i]);
+				TransformCoordinate(in source[i], in transform, out destination[i]);
 			}
 		}
 
@@ -1459,7 +1459,7 @@ namespace KlipperSharp
 		/// apply. This is often preferred for normal vectors as normals purely represent direction
 		/// rather than location because normal vectors should not be translated.
 		/// </remarks>
-		public static void TransformNormal(ref Vector3d normal, ref Matrix transform, out Vector3d result)
+		public static void TransformNormal(in Vector3d normal, in Matrix transform, out Vector3d result)
 		{
 			result = new Vector3d(
 				 (normal.X * transform.M11) + (normal.Y * transform.M21) + (normal.Z * transform.M31),
@@ -1483,7 +1483,7 @@ namespace KlipperSharp
 		public static Vector3d TransformNormal(Vector3d normal, Matrix transform)
 		{
 			Vector3d result;
-			TransformNormal(ref normal, ref transform, out result);
+			TransformNormal(in normal, in transform, out result);
 			return result;
 		}
 
@@ -1503,7 +1503,7 @@ namespace KlipperSharp
 		/// apply. This is often preferred for normal vectors as normals purely represent direction
 		/// rather than location because normal vectors should not be translated.
 		/// </remarks>
-		public static void TransformNormal(Vector3d[] source, ref Matrix transform, Vector3d[] destination)
+		public static void TransformNormal(Vector3d[] source, in Matrix transform, Vector3d[] destination)
 		{
 			if (source == null)
 				throw new ArgumentNullException("source");
@@ -1514,7 +1514,7 @@ namespace KlipperSharp
 
 			for (int i = 0; i < source.Length; ++i)
 			{
-				TransformNormal(ref source[i], ref transform, out destination[i]);
+				TransformNormal(in source[i], in transform, out destination[i]);
 			}
 		}
 		*/
@@ -1530,7 +1530,7 @@ namespace KlipperSharp
 		}
 
 		/// <summary>
-		/// Multiplies a vector with another by performing component-wise multiplication equivalent to <see cref="Multiply(ref Vector3d,ref Vector3d,out Vector3d)"/>.
+		/// Multiplies a vector with another by performing component-wise multiplication equivalent to <see cref="Multiply(in Vector3d,in Vector3d,out Vector3d)"/>.
 		/// </summary>
 		/// <param name="left">The first vector to multiply.</param>
 		/// <param name="right">The second vector to multiply.</param>
@@ -1679,7 +1679,7 @@ namespace KlipperSharp
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator ==(Vector3d left, Vector3d right)
 		{
-			return left.Equals(ref right);
+			return left.Equals(in right);
 		}
 
 		/// <summary>
@@ -1691,7 +1691,7 @@ namespace KlipperSharp
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator !=(Vector3d left, Vector3d right)
 		{
-			return !left.Equals(ref right);
+			return !left.Equals(in right);
 		}
 
 		/// <summary>
@@ -1795,7 +1795,7 @@ namespace KlipperSharp
 		/// 	<c>true</c> if the specified <see cref="Vector3d"/> is equal to this instance; otherwise, <c>false</c>.
 		/// </returns>
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public bool Equals(ref Vector3d other)
+		public bool Equals(in Vector3d other)
 		{
 			return MathUtil.NearEqual(other.X, X) && MathUtil.NearEqual(other.Y, Y) && MathUtil.NearEqual(other.Z, Z);
 		}
@@ -1810,7 +1810,7 @@ namespace KlipperSharp
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool Equals(Vector3d other)
 		{
-			return Equals(ref other);
+			return Equals(in other);
 		}
 
 		/// <summary>
@@ -1826,7 +1826,7 @@ namespace KlipperSharp
 				return false;
 
 			var strongValue = (Vector3d)value;
-			return Equals(ref strongValue);
+			return Equals(in strongValue);
 		}
 	}
 }

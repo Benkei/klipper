@@ -143,7 +143,7 @@ namespace KlipperSharp
 		/// </summary>
 		/// <param name="value">A vector containing the values with which to initialize the X, Y, and Z components.</param>
 		/// <param name="w">Initial value for the W component of the vector.</param>
-		public Vector4d(Vector3d value, double w)
+		public Vector4d(in Vector3d value, double w)
 		{
 			X = value.X;
 			Y = value.Y;
@@ -157,7 +157,7 @@ namespace KlipperSharp
 		/// <param name="value">A vector containing the values with which to initialize the X and Y components.</param>
 		/// <param name="z">Initial value for the Z component of the vector.</param>
 		/// <param name="w">Initial value for the W component of the vector.</param>
-		public Vector4d(Vector2d value, double z, double w)
+		public Vector4d(in Vector2d value, double z, double w)
 		{
 			X = value.X;
 			Y = value.Y;
@@ -292,7 +292,7 @@ namespace KlipperSharp
 		/// <param name="left">The first vector to add.</param>
 		/// <param name="right">The second vector to add.</param>
 		/// <param name="result">When the method completes, contains the sum of the two vectors.</param>
-		public static void Add(ref Vector4d left, ref Vector4d right, out Vector4d result)
+		public static void Add(in Vector4d left, in Vector4d right, out Vector4d result)
 		{
 			result = new Vector4d(left.X + right.X, left.Y + right.Y, left.Z + right.Z, left.W + right.W);
 		}
@@ -303,7 +303,7 @@ namespace KlipperSharp
 		/// <param name="left">The first vector to add.</param>
 		/// <param name="right">The second vector to add.</param>
 		/// <returns>The sum of the two vectors.</returns>
-		public static Vector4d Add(Vector4d left, Vector4d right)
+		public static Vector4d Add(in Vector4d left, in Vector4d right)
 		{
 			return new Vector4d(left.X + right.X, left.Y + right.Y, left.Z + right.Z, left.W + right.W);
 		}
@@ -314,7 +314,7 @@ namespace KlipperSharp
 		/// <param name="left">The input vector</param>
 		/// <param name="right">The scalar value to be added to elements</param>
 		/// <param name="result">The vector with added scalar for each element.</param>
-		public static void Add(ref Vector4d left, ref double right, out Vector4d result)
+		public static void Add(in Vector4d left, in double right, out Vector4d result)
 		{
 			result = new Vector4d(left.X + right, left.Y + right, left.Z + right, left.W + right);
 		}
@@ -336,7 +336,7 @@ namespace KlipperSharp
 		/// <param name="left">The first vector to subtract.</param>
 		/// <param name="right">The second vector to subtract.</param>
 		/// <param name="result">When the method completes, contains the difference of the two vectors.</param>
-		public static void Subtract(ref Vector4d left, ref Vector4d right, out Vector4d result)
+		public static void Subtract(in Vector4d left, in Vector4d right, out Vector4d result)
 		{
 			result = new Vector4d(left.X - right.X, left.Y - right.Y, left.Z - right.Z, left.W - right.W);
 		}
@@ -358,7 +358,7 @@ namespace KlipperSharp
 		/// <param name="left">The input vector</param>
 		/// <param name="right">The scalar value to be subtraced from elements</param>
 		/// <param name="result">The vector with subtracted scalar for each element.</param>
-		public static void Subtract(ref Vector4d left, ref double right, out Vector4d result)
+		public static void Subtract(in Vector4d left, in double right, out Vector4d result)
 		{
 			result = new Vector4d(left.X - right, left.Y - right, left.Z - right, left.W - right);
 		}
@@ -380,7 +380,7 @@ namespace KlipperSharp
 		/// <param name="left">The scalar value to be subtraced from elements</param>
 		/// <param name="right">The input vector.</param>
 		/// <param name="result">The vector with subtracted scalar for each element.</param>
-		public static void Subtract(ref double left, ref Vector4d right, out Vector4d result)
+		public static void Subtract(in double left, in Vector4d right, out Vector4d result)
 		{
 			result = new Vector4d(left - right.X, left - right.Y, left - right.Z, left - right.W);
 		}
@@ -402,7 +402,7 @@ namespace KlipperSharp
 		/// <param name="value">The vector to scale.</param>
 		/// <param name="scale">The amount by which to scale the vector.</param>
 		/// <param name="result">When the method completes, contains the scaled vector.</param>
-		public static void Multiply(ref Vector4d value, double scale, out Vector4d result)
+		public static void Multiply(in Vector4d value, double scale, out Vector4d result)
 		{
 			result = new Vector4d(value.X * scale, value.Y * scale, value.Z * scale, value.W * scale);
 		}
@@ -424,7 +424,7 @@ namespace KlipperSharp
 		/// <param name="left">The first vector to multiply.</param>
 		/// <param name="right">The second vector to multiply.</param>
 		/// <param name="result">When the method completes, contains the multiplied vector.</param>
-		public static void Multiply(ref Vector4d left, ref Vector4d right, out Vector4d result)
+		public static void Multiply(in Vector4d left, in Vector4d right, out Vector4d result)
 		{
 			result = new Vector4d(left.X * right.X, left.Y * right.Y, left.Z * right.Z, left.W * right.W);
 		}
@@ -446,7 +446,7 @@ namespace KlipperSharp
 		/// <param name="value">The vector to scale.</param>
 		/// <param name="scale">The amount by which to scale the vector.</param>
 		/// <param name="result">When the method completes, contains the scaled vector.</param>
-		public static void Divide(ref Vector4d value, double scale, out Vector4d result)
+		public static void Divide(in Vector4d value, double scale, out Vector4d result)
 		{
 			result = new Vector4d(value.X / scale, value.Y / scale, value.Z / scale, value.W / scale);
 		}
@@ -468,7 +468,7 @@ namespace KlipperSharp
 		/// <param name="scale">The amount by which to scale the vector.</param>
 		/// <param name="value">The vector to scale.</param>
 		/// <param name="result">When the method completes, contains the scaled vector.</param>
-		public static void Divide(double scale, ref Vector4d value, out Vector4d result)
+		public static void Divide(double scale, in Vector4d value, out Vector4d result)
 		{
 			result = new Vector4d(scale / value.X, scale / value.Y, scale / value.Z, scale / value.W);
 		}
@@ -489,7 +489,7 @@ namespace KlipperSharp
 		/// </summary>
 		/// <param name="value">The vector to negate.</param>
 		/// <param name="result">When the method completes, contains a vector facing in the opposite direction.</param>
-		public static void Negate(ref Vector4d value, out Vector4d result)
+		public static void Negate(in Vector4d value, out Vector4d result)
 		{
 			result = new Vector4d(-value.X, -value.Y, -value.Z, -value.W);
 		}
@@ -513,7 +513,7 @@ namespace KlipperSharp
 		/// <param name="amount1">Barycentric coordinate b2, which expresses the weighting factor toward vertex 2 (specified in <paramref name="value2"/>).</param>
 		/// <param name="amount2">Barycentric coordinate b3, which expresses the weighting factor toward vertex 3 (specified in <paramref name="value3"/>).</param>
 		/// <param name="result">When the method completes, contains the 4D Cartesian coordinates of the specified point.</param>
-		public static void Barycentric(ref Vector4d value1, ref Vector4d value2, ref Vector4d value3, double amount1, double amount2, out Vector4d result)
+		public static void Barycentric(in Vector4d value1, in Vector4d value2, in Vector4d value3, double amount1, double amount2, out Vector4d result)
 		{
 			result = new Vector4d((value1.X + (amount1 * (value2.X - value1.X))) + (amount2 * (value3.X - value1.X)),
 				 (value1.Y + (amount1 * (value2.Y - value1.Y))) + (amount2 * (value3.Y - value1.Y)),
@@ -533,7 +533,7 @@ namespace KlipperSharp
 		public static Vector4d Barycentric(Vector4d value1, Vector4d value2, Vector4d value3, double amount1, double amount2)
 		{
 			Vector4d result;
-			Barycentric(ref value1, ref value2, ref value3, amount1, amount2, out result);
+			Barycentric(value1, value2, value3, amount1, amount2, out result);
 			return result;
 		}
 
@@ -544,7 +544,7 @@ namespace KlipperSharp
 		/// <param name="min">The minimum value.</param>
 		/// <param name="max">The maximum value.</param>
 		/// <param name="result">When the method completes, contains the clamped value.</param>
-		public static void Clamp(ref Vector4d value, ref Vector4d min, ref Vector4d max, out Vector4d result)
+		public static void Clamp(in Vector4d value, in Vector4d min, in Vector4d max, out Vector4d result)
 		{
 			var x = value.X;
 			x = (x > max.X) ? max.X : x;
@@ -575,7 +575,7 @@ namespace KlipperSharp
 		public static Vector4d Clamp(Vector4d value, Vector4d min, Vector4d max)
 		{
 			Vector4d result;
-			Clamp(ref value, ref min, ref max, out result);
+			Clamp(value, min, max, out result);
 			return result;
 		}
 
@@ -586,10 +586,10 @@ namespace KlipperSharp
 		/// <param name="value2">The second vector.</param>
 		/// <param name="result">When the method completes, contains the distance between the two vectors.</param>
 		/// <remarks>
-		/// <see cref="Vector4d.DistanceSquared(ref Vector4d, ref Vector4d, out double)"/> may be preferred when only the relative distance is needed
+		/// <see cref="Vector4d.DistanceSquared(in Vector4d, in Vector4d, out double)"/> may be preferred when only the relative distance is needed
 		/// and speed is of the essence.
 		/// </remarks>
-		public static void Distance(ref Vector4d value1, ref Vector4d value2, out double result)
+		public static void Distance(in Vector4d value1, in Vector4d value2, out double result)
 		{
 			var x = value1.X - value2.X;
 			var y = value1.Y - value2.Y;
@@ -632,7 +632,7 @@ namespace KlipperSharp
 		/// involves two square roots, which are computationally expensive. However, using distance squared 
 		/// provides the same information and avoids calculating two square roots.
 		/// </remarks>
-		public static void DistanceSquared(ref Vector4d value1, ref Vector4d value2, out double result)
+		public static void DistanceSquared(in Vector4d value1, in Vector4d value2, out double result)
 		{
 			var x = value1.X - value2.X;
 			var y = value1.Y - value2.Y;
@@ -671,7 +671,7 @@ namespace KlipperSharp
 		/// <param name="left">First source vector</param>
 		/// <param name="right">Second source vector.</param>
 		/// <param name="result">When the method completes, contains the dot product of the two vectors.</param>
-		public static void Dot(ref Vector4d left, ref Vector4d right, out double result)
+		public static void Dot(in Vector4d left, in Vector4d right, out double result)
 		{
 			result = (left.X * right.X) + (left.Y * right.Y) + (left.Z * right.Z) + (left.W * right.W);
 		}
@@ -692,7 +692,7 @@ namespace KlipperSharp
 		/// </summary>
 		/// <param name="value">The vector to normalize.</param>
 		/// <param name="result">When the method completes, contains the normalized vector.</param>
-		public static void Normalize(ref Vector4d value, out Vector4d result)
+		public static void Normalize(in Vector4d value, out Vector4d result)
 		{
 			Vector4d temp = value;
 			result = temp;
@@ -720,7 +720,7 @@ namespace KlipperSharp
 		/// <remarks>
 		/// Passing <paramref name="amount"/> a value of 0 will cause <paramref name="start"/> to be returned; a value of 1 will cause <paramref name="end"/> to be returned. 
 		/// </remarks>
-		public static void Lerp(ref Vector4d start, ref Vector4d end, double amount, out Vector4d result)
+		public static void Lerp(in Vector4d start, in Vector4d end, double amount, out Vector4d result)
 		{
 			result.X = MathUtil.Lerp(start.X, end.X, amount);
 			result.Y = MathUtil.Lerp(start.Y, end.Y, amount);
@@ -741,7 +741,7 @@ namespace KlipperSharp
 		public static Vector4d Lerp(Vector4d start, Vector4d end, double amount)
 		{
 			Vector4d result;
-			Lerp(ref start, ref end, amount, out result);
+			Lerp(start, end, amount, out result);
 			return result;
 		}
 
@@ -752,10 +752,10 @@ namespace KlipperSharp
 		/// <param name="end">End vector.</param>
 		/// <param name="amount">Value between 0 and 1 indicating the weight of <paramref name="end"/>.</param>
 		/// <param name="result">When the method completes, contains the cubic interpolation of the two vectors.</param>
-		public static void SmoothStep(ref Vector4d start, ref Vector4d end, double amount, out Vector4d result)
+		public static void SmoothStep(in Vector4d start, in Vector4d end, double amount, out Vector4d result)
 		{
 			amount = MathUtil.SmoothStep(amount);
-			Lerp(ref start, ref end, amount, out result);
+			Lerp(start, end, amount, out result);
 		}
 
 		/// <summary>
@@ -768,7 +768,7 @@ namespace KlipperSharp
 		public static Vector4d SmoothStep(Vector4d start, Vector4d end, double amount)
 		{
 			Vector4d result;
-			SmoothStep(ref start, ref end, amount, out result);
+			SmoothStep(start, end, amount, out result);
 			return result;
 		}
 
@@ -781,7 +781,7 @@ namespace KlipperSharp
 		/// <param name="tangent2">Second source tangent vector.</param>
 		/// <param name="amount">Weighting factor.</param>
 		/// <param name="result">When the method completes, contains the result of the Hermite spline interpolation.</param>
-		public static void Hermite(ref Vector4d value1, ref Vector4d tangent1, ref Vector4d value2, ref Vector4d tangent2, double amount, out Vector4d result)
+		public static void Hermite(in Vector4d value1, in Vector4d tangent1, in Vector4d value2, in Vector4d tangent2, double amount, out Vector4d result)
 		{
 			var squared = amount * amount;
 			var cubed = amount * squared;
@@ -808,7 +808,7 @@ namespace KlipperSharp
 		public static Vector4d Hermite(Vector4d value1, Vector4d tangent1, Vector4d value2, Vector4d tangent2, double amount)
 		{
 			Vector4d result;
-			Hermite(ref value1, ref tangent1, ref value2, ref tangent2, amount, out result);
+			Hermite(value1, tangent1, value2, tangent2, amount, out result);
 			return result;
 		}
 
@@ -821,7 +821,7 @@ namespace KlipperSharp
 		/// <param name="value4">The fourth position in the interpolation.</param>
 		/// <param name="amount">Weighting factor.</param>
 		/// <param name="result">When the method completes, contains the result of the Catmull-Rom interpolation.</param>
-		public static void CatmullRom(ref Vector4d value1, ref Vector4d value2, ref Vector4d value3, ref Vector4d value4, double amount, out Vector4d result)
+		public static void CatmullRom(in Vector4d value1, in Vector4d value2, in Vector4d value3, in Vector4d value4, double amount, out Vector4d result)
 		{
 			var squared = amount * amount;
 			var cubed = amount * squared;
@@ -844,7 +844,7 @@ namespace KlipperSharp
 		public static Vector4d CatmullRom(Vector4d value1, Vector4d value2, Vector4d value3, Vector4d value4, double amount)
 		{
 			Vector4d result;
-			CatmullRom(ref value1, ref value2, ref value3, ref value4, amount, out result);
+			CatmullRom(value1, value2, value3, value4, amount, out result);
 			return result;
 		}
 
@@ -854,7 +854,7 @@ namespace KlipperSharp
 		/// <param name="left">The first source vector.</param>
 		/// <param name="right">The second source vector.</param>
 		/// <param name="result">When the method completes, contains an new vector composed of the largest components of the source vectors.</param>
-		public static void Max(ref Vector4d left, ref Vector4d right, out Vector4d result)
+		public static void Max(in Vector4d left, in Vector4d right, out Vector4d result)
 		{
 			result.X = (left.X > right.X) ? left.X : right.X;
 			result.Y = (left.Y > right.Y) ? left.Y : right.Y;
@@ -871,7 +871,7 @@ namespace KlipperSharp
 		public static Vector4d Max(Vector4d left, Vector4d right)
 		{
 			Vector4d result;
-			Max(ref left, ref right, out result);
+			Max(left, right, out result);
 			return result;
 		}
 
@@ -881,7 +881,7 @@ namespace KlipperSharp
 		/// <param name="left">The first source vector.</param>
 		/// <param name="right">The second source vector.</param>
 		/// <param name="result">When the method completes, contains an new vector composed of the smallest components of the source vectors.</param>
-		public static void Min(ref Vector4d left, ref Vector4d right, out Vector4d result)
+		public static void Min(in Vector4d left, in Vector4d right, out Vector4d result)
 		{
 			result.X = (left.X < right.X) ? left.X : right.X;
 			result.Y = (left.Y < right.Y) ? left.Y : right.Y;
@@ -898,7 +898,7 @@ namespace KlipperSharp
 		public static Vector4d Min(Vector4d left, Vector4d right)
 		{
 			Vector4d result;
-			Min(ref left, ref right, out result);
+			Min(left, right, out result);
 			return result;
 		}
 
@@ -1001,7 +1001,7 @@ namespace KlipperSharp
 		/// <param name="vector">The vector to rotate.</param>
 		/// <param name="rotation">The <see cref="Quaternion"/> rotation to apply.</param>
 		/// <param name="result">When the method completes, contains the transformed <see cref="Vector4d"/>.</param>
-		public static void Transform(ref Vector4d vector, ref Quaternion rotation, out Vector4d result)
+		public static void Transform(in Vector4d vector, in Quaternion rotation, out Vector4d result)
 		{
 			var x = rotation.X + rotation.X;
 			var y = rotation.Y + rotation.Y;
@@ -1032,7 +1032,7 @@ namespace KlipperSharp
 		public static Vector4d Transform(Vector4d vector, Quaternion rotation)
 		{
 			Vector4d result;
-			Transform(ref vector, ref rotation, out result);
+			Transform(in vector, in rotation, out result);
 			return result;
 		}
 
@@ -1045,7 +1045,7 @@ namespace KlipperSharp
 		/// This array may be the same array as <paramref name="source"/>.</param>
 		/// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="destination"/> is <c>null</c>.</exception>
 		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="destination"/> is shorter in length than <paramref name="source"/>.</exception>
-		public static void Transform(Vector4d[] source, ref Quaternion rotation, Vector4d[] destination)
+		public static void Transform(Vector4d[] source, in Quaternion rotation, Vector4d[] destination)
 		{
 			if (source == null)
 				throw new ArgumentNullException("source");
@@ -1093,7 +1093,7 @@ namespace KlipperSharp
 		/// <param name="vector">The source vector.</param>
 		/// <param name="transform">The transformation <see cref="Matrix"/>.</param>
 		/// <param name="result">When the method completes, contains the transformed <see cref="Vector4d"/>.</param>
-		public static void Transform(ref Vector4d vector, ref Matrix transform, out Vector4d result)
+		public static void Transform(in Vector4d vector, in Matrix transform, out Vector4d result)
 		{
 			result = new Vector4d(
 				 (vector.X * transform.M11) + (vector.Y * transform.M21) + (vector.Z * transform.M31) + (vector.W * transform.M41),
@@ -1111,7 +1111,7 @@ namespace KlipperSharp
 		public static Vector4d Transform(Vector4d vector, Matrix transform)
 		{
 			Vector4d result;
-			Transform(ref vector, ref transform, out result);
+			Transform(in vector, in transform, out result);
 			return result;
 		}
 
@@ -1121,7 +1121,7 @@ namespace KlipperSharp
 		/// <param name="vector">The source vector.</param>
 		/// <param name="transform">The transformation <see cref="Matrix5x4"/>.</param>
 		/// <param name="result">When the method completes, contains the transformed <see cref="Vector4d"/>.</param>
-		public static void Transform(ref Vector4d vector, ref Matrix5x4 transform, out Vector4d result)
+		public static void Transform(in Vector4d vector, in Matrix5x4 transform, out Vector4d result)
 		{
 			result = new Vector4d(
 				 (vector.X * transform.M11) + (vector.Y * transform.M21) + (vector.Z * transform.M31) + (vector.W * transform.M41) + transform.M51,
@@ -1139,7 +1139,7 @@ namespace KlipperSharp
 		public static Vector4d Transform(Vector4d vector, Matrix5x4 transform)
 		{
 			Vector4d result;
-			Transform(ref vector, ref transform, out result);
+			Transform(in vector, in transform, out result);
 			return result;
 		}
 
@@ -1152,7 +1152,7 @@ namespace KlipperSharp
 		/// This array may be the same array as <paramref name="source"/>.</param>
 		/// <exception cref="ArgumentNullException">Thrown when <paramref name="source"/> or <paramref name="destination"/> is <c>null</c>.</exception>
 		/// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="destination"/> is shorter in length than <paramref name="source"/>.</exception>
-		public static void Transform(Vector4d[] source, ref Matrix transform, Vector4d[] destination)
+		public static void Transform(Vector4d[] source, in Matrix transform, Vector4d[] destination)
 		{
 			if (source == null)
 				throw new ArgumentNullException("source");
@@ -1163,7 +1163,7 @@ namespace KlipperSharp
 
 			for (int i = 0; i < source.Length; ++i)
 			{
-				Transform(ref source[i], ref transform, out destination[i]);
+				Transform(in source[i], in transform, out destination[i]);
 			}
 		}
 		*/
@@ -1179,7 +1179,7 @@ namespace KlipperSharp
 		}
 
 		/// <summary>
-		/// Multiplies a vector with another by performing component-wise multiplication equivalent to <see cref="Multiply(ref Vector4d,ref Vector4d,out Vector4d)"/>.
+		/// Multiplies a vector with another by performing component-wise multiplication equivalent to <see cref="Multiply(in Vector4d,in Vector4d,out Vector4d)"/>.
 		/// </summary>
 		/// <param name="left">The first vector to multiply.</param>
 		/// <param name="right">The second vector to multiply.</param>
@@ -1328,7 +1328,7 @@ namespace KlipperSharp
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator ==(Vector4d left, Vector4d right)
 		{
-			return left.Equals(ref right);
+			return left.Equals(in right);
 		}
 
 		/// <summary>
@@ -1340,7 +1340,7 @@ namespace KlipperSharp
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator !=(Vector4d left, Vector4d right)
 		{
-			return !left.Equals(ref right);
+			return !left.Equals(in right);
 		}
 
 		/// <summary>
@@ -1444,7 +1444,7 @@ namespace KlipperSharp
 		/// <returns>
 		/// <c>true</c> if the specified <see cref="Vector4d"/> is equal to this instance; otherwise, <c>false</c>.
 		/// </returns>
-		public bool Equals(ref Vector4d other)
+		public bool Equals(in Vector4d other)
 		{
 			return (MathUtil.NearEqual(other.X, X) &&
 				 MathUtil.NearEqual(other.Y, Y) &&
@@ -1462,7 +1462,7 @@ namespace KlipperSharp
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool Equals(Vector4d other)
 		{
-			return Equals(ref other);
+			return Equals(in other);
 		}
 
 		/// <summary>
@@ -1478,7 +1478,7 @@ namespace KlipperSharp
 				return false;
 
 			var strongValue = (Vector4d)value;
-			return Equals(ref strongValue);
+			return Equals(in strongValue);
 		}
 	}
 }
