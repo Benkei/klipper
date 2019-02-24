@@ -92,5 +92,32 @@ namespace KlipperSharp
 			}
 			throw new ArgumentOutOfRangeException(nameof(index));
 		}
+
+		public static int IndexOf(this StringBuilder sb, char c)
+		{
+			int pos = 0;
+			foreach (ReadOnlyMemory<char> chunk in sb.GetChunks())
+			{
+				var span = chunk.Span;
+				for (int i = 0; i < span.Length; i++)
+					if (span[i] == c)
+						return pos + i;
+				pos += span.Length;
+			}
+			return -1;
+		}
+		public static int LastIndexOf(this StringBuilder sb, char c)
+		{
+			int pos = -1, offset = 0;
+			foreach (ReadOnlyMemory<char> chunk in sb.GetChunks())
+			{
+				var span = chunk.Span;
+				for (int i = 0; i < span.Length; i++)
+					if (span[i] == c)
+						pos = offset + i;
+				offset += span.Length;
+			}
+			return pos;
+		}
 	}
 }
