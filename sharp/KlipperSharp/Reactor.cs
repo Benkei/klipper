@@ -1,7 +1,9 @@
-﻿using NLog;
+﻿using KlipperSharp.MachineCodes;
+using NLog;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +14,7 @@ namespace KlipperSharp
 
 	public class ReactorTimer
 	{
+		internal double calltime;
 		internal readonly ReactorAction callback;
 		internal double waketime;
 		internal readonly object syncLock = new object();
@@ -54,16 +57,16 @@ namespace KlipperSharp
 
 	public class ReactorFileHandler
 	{
-		private object fd;
-		private Action<double> callback;
+		public CommandStream fd;
+		public Action<double> callback;
 
-		public ReactorFileHandler(object fd, Action<double> callback)
+		public ReactorFileHandler(CommandStream fd, Action<double> callback)
 		{
 			this.fd = fd;
 			this.callback = callback;
 		}
 
-		public object fileno()
+		public CommandStream fileno()
 		{
 			return fd;
 		}
@@ -111,7 +114,7 @@ namespace KlipperSharp
 			// Greenlets
 			_g_dispatch = null;
 			_greenlets = new List<object>();
-			parallelTimerCallback = new Action<ReactorTimer>(ParallelTimer);
+			parallelTimerCallback = ParallelTimer;
 		}
 
 		~SelectReactor()
@@ -173,31 +176,16 @@ namespace KlipperSharp
 				}
 				_next_timer = NEVER;
 
-				parallelTime = eventtime;
-			}
-
-			//var result = Parallel.ForEach(_timers, parallelTimerCallback);
-			foreach (var item in _timers)
-			{
-				var task = Task.Factory.StartNew(ParallelTimer, item);
-				//tasks.Add(task);
-			}
-			//var taskWhen = Task.WhenAll(tasks);
-			//taskWhen.Wait();
-
-			//tasks.Clear();
-
-			lock (_timers)
-			{
-				//foreach (var t in _timers)
-				//{
-				//	if (eventtime >= t.waketime)
-				//	{
-				//		t.waketime = NEVER;
-				//		t.waketime = t.callback(eventtime);
-				//	}
-				//	_note_time(t);
-				//}
+				foreach (var item in _timers)
+				{
+					if (eventtime >= item.waketime)
+					{
+						item.calltime = eventtime;
+						item.waketime = NEVER;
+						Task.Factory.StartNew(parallelTimerCallback, item);
+					}
+					_note_time(item);
+				}
 
 				if (eventtime >= _next_timer)
 				{
@@ -207,21 +195,22 @@ namespace KlipperSharp
 			}
 		}
 
-		double parallelTime;
-		Action<ReactorTimer> parallelTimerCallback;
+		Action<object> parallelTimerCallback;
 		void ParallelTimer(object arg)
 		{
 			ReactorTimer t = (ReactorTimer)arg;
-			if (parallelTime >= t.waketime)
+			try
 			{
-				t.waketime = NEVER;
-				t.waketime = t.callback(parallelTime);
+				t.waketime = t.callback(t.calltime);
+				_note_time(t);
+			}
+			finally
+			{
 				lock (t.syncLock)
 				{
 					Monitor.PulseAll(t.syncLock);
 				}
 			}
-			_note_time(t);
 		}
 
 		// Callbacks
@@ -330,16 +319,22 @@ namespace KlipperSharp
 		}
 
 		// File descriptors
-		public virtual ReactorFileHandler register_fd(object fd, Action<double> callback)
+		public virtual ReactorFileHandler register_fd(CommandStream fd, Action<double> callback)
 		{
 			var handler = new ReactorFileHandler(fd, callback);
-			_fds.Add(handler);
+			lock (_fds)
+			{
+				_fds.Add(handler);
+			}
 			return handler;
 		}
 
 		public virtual void unregister_fd(ReactorFileHandler handler)
 		{
-			_fds.Remove(handler);
+			lock (_fds)
+			{
+				_fds.Remove(handler);
+			}
 		}
 
 		// Main loop
@@ -369,7 +364,17 @@ namespace KlipperSharp
 			while (_process)
 			{
 				var timeout = _check_timers(eventtime);
-				eventtime = monotonic();
+				lock (_fds)
+				{
+					for (int i = 0; i < _fds.Count; i++)
+					{
+						if (_fds[i].fd.ReadHasData())
+						{
+							eventtime = monotonic();
+							_fds[i].callback(eventtime);
+						}
+					}
+				}
 				//var res = select.select(_fds, new List<object>(), new List<object>(), timeout);
 				//eventtime = monotonic();
 				//foreach (var fd in res[0])

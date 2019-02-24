@@ -1,10 +1,13 @@
 ﻿using KlipperSharp.Extra;
 using NLog;
 using System;
+using System.Buffers;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace KlipperSharp.MachineCodes
@@ -15,6 +18,70 @@ namespace KlipperSharp.MachineCodes
 		void move(Vector4 newpos, double speed);
 	}
 
+	public class CommandStream : Stream
+	{
+		private byte[] readBuffer = new byte[1024];
+		private int readBufferLen = 0;
+		public Stream baseStream;
+
+		public CommandStream(Stream baseStream)
+		{
+			this.baseStream = baseStream ?? throw new ArgumentNullException(nameof(baseStream));
+		}
+
+		public override bool CanRead => baseStream.CanRead;
+
+		public override bool CanSeek => baseStream.CanSeek;
+
+		public override bool CanWrite => baseStream.CanWrite;
+
+		public override long Length => baseStream.Length;
+
+		public override long Position { get => baseStream.Position; set => baseStream.Position = value; }
+
+		public override void Flush()
+		{
+			baseStream.Flush();
+		}
+
+		public bool ReadHasData()
+		{
+			if (readBufferLen > 0)
+			{
+				return true;
+			}
+			var read = baseStream.Read(readBuffer, readBufferLen, readBuffer.Length - readBufferLen);
+			if (read >= 0)
+			{
+				readBufferLen = read;
+			}
+			return readBufferLen != 0;
+		}
+
+		public override int Read(byte[] buffer, int offset, int count)
+		{
+			readBuffer.AsSpan(0, readBufferLen).CopyTo(buffer.AsSpan(offset, count));
+			var read = baseStream.Read(buffer.AsSpan(offset + readBufferLen, count - readBufferLen));
+			read += readBufferLen;
+			readBufferLen = 0;
+			return read;
+		}
+
+		public override long Seek(long offset, SeekOrigin origin)
+		{
+			return baseStream.Seek(offset, origin);
+		}
+
+		public override void SetLength(long value)
+		{
+			baseStream.SetLength(value);
+		}
+
+		public override void Write(byte[] buffer, int offset, int count)
+		{
+			baseStream.Write(buffer, offset, count);
+		}
+	}
 
 	[Serializable]
 	public class GCodeException : Exception
@@ -31,10 +98,10 @@ namespace KlipperSharp.MachineCodes
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
-		public const string cmd_RESTART_help = "Reload config file and restart host software";
-		public const string cmd_FIRMWARE_RESTART_help = "Restart firmware, host, and reload config";
-		public const string cmd_SET_GCODE_OFFSET_help = "Set a virtual offset to g-code positions";
-		public const string cmd_STATUS_help = "Report the printer status";
+		public readonly string cmd_RESTART_help = "Reload config file and restart host software";
+		public readonly string cmd_FIRMWARE_RESTART_help = "Restart firmware, host, and reload config";
+		public readonly string cmd_SET_GCODE_OFFSET_help = "Set a virtual offset to g-code positions";
+		public readonly string cmd_STATUS_help = "Report the printer status";
 		public const double RETRY_TIME = 0.1;
 		public static Regex args_r = new Regex(@"([A-Z_]+|[A-Z*/])");
 		public static Regex m112_r = new Regex(@"^(?:[nN][0-9]+)?\s*[mM]112(?:\s|$)");
@@ -96,20 +163,19 @@ namespace KlipperSharp.MachineCodes
 
 
 		private Machine printer;
-		private object fd;
+		private CommandStream fd;
 		private SelectReactor reactor;
 		private bool is_processing_data;
 		private bool is_fileinput;
-		private string partial_input;
 		private List<string> pending_commands = new List<string>();
 		private int bytes_read;
-		private List<(double, object)> input_log = new List<(double, object)>(50);
+		private List<(double, string)> input_log = new List<(double, string)>(50);
 		private bool is_printer_ready;
-		private Dictionary<string, Action<Dictionary<string, object>>> gcode_handlers;
-		private Dictionary<string, Action<Dictionary<string, object>>> base_gcode_handlers = new Dictionary<string, Action<Dictionary<string, object>>>();
-		private Dictionary<string, Action<Dictionary<string, object>>> ready_gcode_handlers = new Dictionary<string, Action<Dictionary<string, object>>>();
-		private Dictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)> mux_commands = new Dictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)>();
-		private Dictionary<string, string> gcode_help = new Dictionary<string, string>();
+		private ConcurrentDictionary<string, Action<Dictionary<string, object>>> gcode_handlers;
+		private ConcurrentDictionary<string, Action<Dictionary<string, object>>> base_gcode_handlers = new ConcurrentDictionary<string, Action<Dictionary<string, object>>>();
+		private ConcurrentDictionary<string, Action<Dictionary<string, object>>> ready_gcode_handlers = new ConcurrentDictionary<string, Action<Dictionary<string, object>>>();
+		private ConcurrentDictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)> mux_commands = new ConcurrentDictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)>();
+		private ConcurrentDictionary<string, string> gcode_help = new ConcurrentDictionary<string, string>();
 		private bool absolutecoord;
 		private Vector4 base_position;
 		private Vector4 last_position;
@@ -123,7 +189,7 @@ namespace KlipperSharp.MachineCodes
 		private ToolHead toolhead;
 		private PrinterHeaters heater;
 		private double speed;
-		private Dictionary<string, int> axis2pos;
+		private static Dictionary<string, int> axis2pos = new Dictionary<string, int> { { "X", 0 }, { "Y", 1 }, { "Z", 2 }, { "E", 3 } };
 
 		private Fan fan;
 		private PrinterExtruder extruder;
@@ -133,7 +199,8 @@ namespace KlipperSharp.MachineCodes
 		public GCodeParser(Machine printer, Stream fd)
 		{
 			this.printer = printer;
-			this.fd = fd;
+			this.fd = new CommandStream(fd);
+
 			printer.register_event_handler("klippy:ready", this.handle_ready);
 			printer.register_event_handler("klippy:shutdown", this.handle_shutdown);
 			printer.register_event_handler("klippy:disconnect", this.handle_disconnect);
@@ -146,20 +213,29 @@ namespace KlipperSharp.MachineCodes
 			{
 				this.fd_handle = this.reactor.register_fd(this.fd, this.process_data);
 			}
-			this.partial_input = "";
 			this.bytes_read = 0;
 			// Command handling
 			this.is_printer_ready = false;
 			foreach (var cmd in this.all_handlers)
 			{
-				//var func = getattr(this, "cmd_" + cmd);
-				//var wnr = getattr(this, "cmd_" + cmd + "_when_not_ready", false);
-				//var desc = getattr(this, "cmd_" + cmd + "_help", null);
-				//this.register_command(cmd, func, wnr, desc);
-				//foreach (var a in getattr(this, "cmd_" + cmd + "_aliases", new List<object>()))
-				//{
-				//	this.register_command(a, func, wnr);
-				//}
+				var method = GetType().GetMethod("cmd_" + cmd);
+				var fieldNotReady = GetType().GetField("cmd_" + cmd + "_when_not_ready");
+				var fieldHelp = GetType().GetField("cmd_" + cmd + "_help");
+				var fieldAliases = GetType().GetField("cmd_" + cmd + "_aliases");
+
+				var func = (Action<Dictionary<string, object>>)method.CreateDelegate(typeof(Action<Dictionary<string, object>>), this);
+				var wnr = fieldNotReady != null ? (bool)fieldNotReady.GetValue(this) : false;
+				var desc = fieldHelp != null ? (string)fieldHelp.GetValue(this) : null;
+				this.register_command(cmd, func, wnr, desc);
+
+				if (fieldAliases != null)
+				{
+					var aliases = (string[])fieldAliases.GetValue(this);
+					foreach (var a in aliases)
+					{
+						this.register_command(a, func, wnr);
+					}
+				}
 			}
 			// G-Code coordinate manipulation
 			this.absolutecoord = true;
@@ -175,31 +251,19 @@ namespace KlipperSharp.MachineCodes
 			this.toolhead = null;
 			this.heater = null;
 			this.speed = 25.0 * 60.0;
-			this.axis2pos = new Dictionary<string, int> {
-				{ "X", 0 },
-				{ "Y", 1 },
-				{ "Z", 2 },
-				{ "E", 3 }
-			};
 		}
 
 		public void register_command(string cmd, Action<Dictionary<string, object>> func, bool when_not_ready = false, string desc = null)
 		{
 			if (func == null)
 			{
-				if (this.ready_gcode_handlers.ContainsKey(cmd))
-				{
-					this.ready_gcode_handlers.Remove(cmd);
-				}
-				if (this.base_gcode_handlers.ContainsKey(cmd))
-				{
-					this.base_gcode_handlers.Remove(cmd);
-				}
+				this.ready_gcode_handlers.TryRemove(cmd, out var empty1);
+				this.base_gcode_handlers.TryRemove(cmd, out var empty2);
 				return;
 			}
 			if (this.ready_gcode_handlers.ContainsKey(cmd))
 			{
-				throw new Exception($"gcode command {cmd} already registered");
+				throw new ConfigException($"gcode command {cmd} already registered");
 			}
 
 			if (!(cmd.Length >= 2 && !char.IsUpper(cmd[0]) && char.IsDigit(cmd[1])))
@@ -207,7 +271,8 @@ namespace KlipperSharp.MachineCodes
 				var origfunc = func;
 				func = parameters => origfunc(this.get_extended_params(parameters));
 			}
-			this.ready_gcode_handlers[cmd] = func;
+			if (this.ready_gcode_handlers != null)
+				this.ready_gcode_handlers[cmd] = func;
 			if (when_not_ready)
 			{
 				this.base_gcode_handlers[cmd] = func;
@@ -236,11 +301,11 @@ namespace KlipperSharp.MachineCodes
 			var prev_values = _tup_1.Item2;
 			if (prev_key != key)
 			{
-				throw new Exception($"mux command {cmd} {key} {value} may have only one key ({prev_key})");
+				throw new ConfigException($"mux command {cmd} {key} {value} may have only one key ({prev_key})");
 			}
 			if (prev_values.ContainsKey(value))
 			{
-				throw new Exception($"mux command {cmd} {key} {value} already registered ({prev_values})");
+				throw new ConfigException($"mux command {cmd} {key} {value} already registered ({prev_values})");
 			}
 			prev_values[value] = func;
 		}
@@ -249,8 +314,7 @@ namespace KlipperSharp.MachineCodes
 		{
 			if (this.move_transform != null)
 			{
-				//throw this.printer.config_error("G-Code move transform already specified");
-				throw new Exception("G-Code move transform already specified");
+				throw new ConfigException("G-Code move transform already specified");
 			}
 			this.move_transform = transform;
 			this.move_with_transform = transform.move;
@@ -360,11 +424,13 @@ namespace KlipperSharp.MachineCodes
 				var cpos = line.IndexOf(";");
 				if (cpos >= 0)
 				{
+					// get none comment text
 					line = line.Substring(0, cpos);
 				}
+				line = line.ToUpperInvariant();
 				// Break command into parts
-				var parts = (new Span<string>(args_r.Split(line.ToUpper()))).Slice(1);
-				var parameters = new Dictionary<string, object>();// = range(0, parts.Count, 2).ToDictionary(i => parts[i], i => parts[i + 1].strip());
+				var parts = args_r.Split(line).AsSpan(1);
+				var parameters = new Dictionary<string, object>();
 				for (int i = 0; i < parts.Length; i += 2)
 				{
 					parameters[parts[i]] = parts[i + 1].Trim();
@@ -385,15 +451,18 @@ namespace KlipperSharp.MachineCodes
 				// Invoke handler for command
 				this.need_ack = need_ack;
 
-				var handler = this.gcode_handlers.Get(cmd, this.cmd_default);
+				if (!gcode_handlers.TryGetValue(cmd, out var handler))
+				{
+					handler = cmd_default;
+				}
 				try
 				{
 					handler(parameters);
 				}
-				catch (Exception ex)
+				catch (GCodeException ex)
 				{
-					this.respond_error(ex.ToString());
-					this.reset_last_position();
+					respond_error(ex.ToString());
+					reset_last_position();
 					if (!need_ack)
 					{
 						throw;
@@ -403,43 +472,78 @@ namespace KlipperSharp.MachineCodes
 				{
 					var msg = $"Internal error on command:'{cmd}'";
 					logging.Error(msg);
-
-					this.printer.invoke_shutdown(msg);
-
-					this.respond_error(msg);
+					printer.invoke_shutdown(msg);
+					respond_error(msg);
 					if (!need_ack)
 					{
 						throw;
 					}
 				}
 
-				this.ack();
-
+				ack();
 			}
+		}
+
+		StringBuilder cmdBuffer = new StringBuilder();
+		List<string> lines = new List<string>(4);
+
+		private int ReadData(List<string> lines)
+		{
+			var buffer = ArrayPool<byte>.Shared.Rent(4096);
+			var charBuffer = ArrayPool<char>.Shared.Rent(4096);
+			try
+			{
+				var read = fd.Read(buffer.AsSpan());
+				var readChar = Encoding.UTF8.GetChars(buffer.AsSpan(0, read), charBuffer);
+
+				cmdBuffer.Append(charBuffer.AsSpan(0, readChar));
+			}
+			finally
+			{
+				ArrayPool<byte>.Shared.Return(buffer);
+				ArrayPool<char>.Shared.Return(charBuffer);
+			}
+
+			int idx;
+			int count = 0;
+			while ((idx = cmdBuffer.IndexOf('\n')) != -1)
+			{
+				var str = cmdBuffer.ToString(0, idx);
+				if (string.IsNullOrEmpty(str))
+				{
+					continue;
+				}
+				lines.Add(str);
+				cmdBuffer.Remove(0, idx + 1);
+				count++;
+			}
+			return count;
 		}
 
 		public void process_data(double eventtime)
 		{
 			// Read input, separate by newline, and add to pending_commands
-			//string data;
-			//try
-			//{
-			//	data = os.read(this.fd, 4096);
-			//}
-			//catch
-			//{
-			//	logging.Error("Read g-code");
-			//	return;
-			//}
-			//this.input_log.Add((eventtime, data));
-			//this.bytes_read += data.Length;
-			//var lines = new List<string>(data.Split("\n"));
-			//lines[0] = this.partial_input + lines[0];
-			//this.partial_input = lines[lines.Count - 1];
-			//lines.RemoveAt(lines.Count - 1);
-			//var pending_commands = this.pending_commands;
-			//pending_commands.AddRange(lines);
-			//// Special handling for debug file input EOF
+			try
+			{
+				ReadData(lines);
+			}
+			catch
+			{
+				logging.Error("Read g-code");
+				return;
+			}
+
+			for (int i = 0; i < lines.Count; i++)
+			{
+				this.input_log.Add((eventtime, lines[i]));
+				this.bytes_read += lines[i].Length;
+			}
+
+			var pending_commands = this.pending_commands;
+			pending_commands.AddRange(lines);
+			lines.Clear();
+
+			// Special handling for debug file input EOF
 			//if (data == null && this.is_fileinput)
 			//{
 			//	if (!this.is_processing_data)
@@ -448,40 +552,41 @@ namespace KlipperSharp.MachineCodes
 			//	}
 			//	pending_commands.Add("");
 			//}
-			//// Handle case where multiple commands pending
-			//if (this.is_processing_data || pending_commands.Count > 1)
-			//{
-			//	if (pending_commands.Count < 20)
-			//	{
-			//		// Check for M112 out-of-order
-			//		foreach (var line in lines)
-			//		{
-			//			if (m112_r.IsMatch(line))
-			//			{
-			//				this.cmd_M112(new Dictionary<string, object>());
-			//			}
-			//		}
-			//	}
-			//	if (this.is_processing_data)
-			//	{
-			//		if (pending_commands.Count >= 20)
-			//		{
-			//			// Stop reading input
-			//			this.reactor.unregister_fd(this.fd_handle);
-			//			this.fd_handle = null;
-			//		}
-			//		return;
-			//	}
-			//}
-			//// Process commands
-			//this.is_processing_data = true;
-			//this.pending_commands = new List<string>();
-			//this.process_commands(pending_commands);
-			//if (this.pending_commands.Count != 0)
-			//{
-			//	this.process_pending();
-			//}
-			//this.is_processing_data = false;
+
+			// Handle case where multiple commands pending
+			if (this.is_processing_data || pending_commands.Count > 1)
+			{
+				if (pending_commands.Count < 20)
+				{
+					// Check for M112 out-of-order
+					foreach (var line in lines)
+					{
+						if (m112_r.IsMatch(line))
+						{
+							this.cmd_M112(null);
+						}
+					}
+				}
+				if (this.is_processing_data)
+				{
+					if (pending_commands.Count >= 20)
+					{
+						// Stop reading input
+						this.reactor.unregister_fd(this.fd_handle);
+						this.fd_handle = null;
+					}
+					return;
+				}
+			}
+			// Process commands
+			this.is_processing_data = true;
+			this.pending_commands = new List<string>();
+			this.process_commands(pending_commands);
+			if (this.pending_commands.Count != 0)
+			{
+				this.process_pending();
+			}
+			this.is_processing_data = false;
 		}
 
 		public void process_pending()
@@ -510,7 +615,7 @@ namespace KlipperSharp.MachineCodes
 			{
 				this.process_commands(commands, need_ack: false);
 			}
-			catch (Exception)
+			catch (GCodeException)
 			{
 				if (this.pending_commands.Count != 0)
 				{
@@ -562,42 +667,42 @@ namespace KlipperSharp.MachineCodes
 		// Response handling
 		public void ack(string msg = null)
 		{
-			//if (!this.need_ack || this.is_fileinput)
-			//{
-			//	return;
-			//}
-			//try
-			//{
-			//	if (msg != null)
-			//	{
-			//		os.write(this.fd, String.Format("ok %s\n", msg));
-			//	}
-			//	else
-			//	{
-			//		os.write(this.fd, "ok\n");
-			//	}
-			//}
-			//catch
-			//{
-			//	logging.Error("Write g-code ack");
-			//}
-			//this.need_ack = false;
+			if (!this.need_ack || this.is_fileinput)
+			{
+				return;
+			}
+			try
+			{
+				//if (msg != null)
+				//{
+				//	os.write(this.fd, String.Format("ok %s\n", msg));
+				//}
+				//else
+				//{
+				//	os.write(this.fd, "ok\n");
+				//}
+			}
+			catch
+			{
+				logging.Error("Write g-code ack");
+			}
+			this.need_ack = false;
 		}
 
 		public void respond(string msg)
 		{
-			//if (this.is_fileinput)
-			//{
-			//	return;
-			//}
-			//try
-			//{
-			//	os.write(this.fd, msg + "\n");
-			//}
-			//catch
-			//{
-			//	logging.Error("Write g-code response");
-			//}
+			if (this.is_fileinput)
+			{
+				return;
+			}
+			try
+			{
+				//os.write(this.fd, msg + "\n");
+			}
+			catch
+			{
+				logging.Error("Write g-code response");
+			}
 		}
 
 		public void respond_info(string msg)
@@ -697,12 +802,14 @@ namespace KlipperSharp.MachineCodes
 
 		public Dictionary<string, object> get_extended_params(Dictionary<string, object> parameters)
 		{
-			//var m = extended_r.Match(parameters["#original"] as string);
+			return parameters;
+			//var m = extended_r.Match((string)parameters.Get("#original"));
 			//if (m == null)
 			//{
 			//	// Not an "extended" command
 			//	return parameters;
 			//}
+			//throw new NotImplementedException();
 			//var eargs = m.Groups["args"];
 			//try
 			//{
@@ -713,9 +820,8 @@ namespace KlipperSharp.MachineCodes
 			//}
 			//catch (Exception ex)
 			//{
-			//	throw new Exception(String.Format("Malformed command '%s'", parameters["#original"]), ex);
+			//	throw new GCodeException($"Malformed command '{parameters["#original"]}'", ex);
 			//}
-			throw new NotImplementedException();
 		}
 
 		// Temperature wrappers
@@ -788,9 +894,9 @@ namespace KlipperSharp.MachineCodes
 			{
 				heater.set_temp(print_time, temp);
 			}
-			catch
+			catch (Exception ex)
 			{
-				throw;
+				throw new GCodeException("", ex);
 			}
 			if (wait && temp != 0)
 			{
@@ -812,504 +918,6 @@ namespace KlipperSharp.MachineCodes
 			this.fan.set_speed(print_time, speed);
 		}
 
-		// G-Code special command handlers
-		public void cmd_default(Dictionary<string, object> parameters)
-		{
-			if (!this.is_printer_ready)
-			{
-				this.respond_error(this.printer.get_state_message());
-				return;
-			}
-			var cmd = parameters.Get("#command") as string;
-			if (cmd == null)
-			{
-				logging.Debug(parameters["#original"]);
-				return;
-			}
-			if (cmd[0] == 'T' && cmd.Length > 1 && char.IsDigit(cmd[1]))
-			{
-				// Tn command has to be handled specially
-				this.cmd_Tn(parameters);
-				return;
-			}
-			else if (cmd.StartsWith("M117 "))
-			{
-				// Handle M117 gcode with numeric and special characters
-				var handler = this.gcode_handlers.Get("M117", null);
-				if (handler != null)
-				{
-					handler(parameters);
-					return;
-				}
-			}
-			this.respond_info($"Unknown command:'{cmd}'");
-		}
-
-		public void cmd_Tn(Dictionary<string, object> parameters)
-		{
-			// Select Tool
-			var extruders = PrinterExtruder.get_printer_extruders(this.printer);
-			var index = this.get_int("T", parameters, minval: 0, maxval: extruders.Count - 1);
-			var e = extruders[index];
-			if (object.ReferenceEquals(this.extruder, e))
-			{
-				return;
-			}
-			this.run_script_from_command(this.extruder.get_activate_gcode(false));
-			try
-			{
-				this.toolhead.set_extruder(e);
-			}
-			catch (Exception ex)
-			{
-				throw new Exception(e.ToString(), ex);
-			}
-			this.extruder = e;
-			this.reset_last_position();
-			this.extrude_factor = 1.0;
-			this.base_position.W = this.last_position.W;
-			this.run_script_from_command(this.extruder.get_activate_gcode(true));
-		}
-
-		public void cmd_mux(Dictionary<string, object> parameters)
-		{
-			string key_param;
-			var _tup_1 = this.mux_commands[parameters.Get<string>("#command")];
-			var key = _tup_1.Item1;
-			var values = _tup_1.Item2;
-			if (values.ContainsKey(null))
-			{
-				key_param = this.get_str(key, parameters, null);
-			}
-			else
-			{
-				key_param = this.get_str(key, parameters);
-			}
-			if (!values.ContainsKey(key_param))
-			{
-				throw new Exception($"The value '{key_param}' is not valid for {key}");
-			}
-			values[key_param](parameters);
-		}
-
-		public void cmd_G1(Dictionary<string, object> parameters)
-		{
-			// Move
-			try
-			{
-				double v;
-				object value;
-				Vector4 vec = new Vector4();
-				if (parameters.TryGetValue("X", out value))
-				{
-					vec.X = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
-				}
-				if (parameters.TryGetValue("Y", out value))
-				{
-					vec.Y = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
-				}
-				if (parameters.TryGetValue("Z", out value))
-				{
-					vec.Z = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
-				}
-
-				if (!this.absolutecoord)
-				{
-					// value relative to position of last move
-					this.last_position += vec;
-				}
-				else
-				{
-					// value relative to base coordinate position
-					this.last_position = vec + this.base_position;
-				}
-
-				if (parameters.TryGetValue("E", out value))
-				{
-					vec.W = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
-					vec.W *= (float)extrude_factor;
-				}
-
-				if (!this.absolutecoord || !this.absoluteextrude)
-				{
-					// value relative to position of last move
-					this.last_position.W += vec.W;
-				}
-				else
-				{
-					// value relative to base coordinate position
-					this.last_position.W = vec.W + this.base_position.W;
-				}
-
-				if (parameters.TryGetValue("F", out value))
-				{
-					var speed = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
-					if (speed <= 0.0)
-					{
-						throw new Exception($"Invalid speed in '{parameters["#original"]}'");
-					}
-					this.speed = speed;
-				}
-			}
-			catch (Exception ex)
-			{
-				throw new Exception($"Unable to parse move '{parameters["#original"]}'", ex);
-			}
-			try
-			{
-				this.move_with_transform(this.last_position, this.speed * this.speed_factor);
-			}
-			catch (Exception)
-			{
-				throw;
-			}
-		}
-
-		public void cmd_G4(Dictionary<string, object> parameters)
-		{
-			double delay;
-			// Dwell
-			if (parameters.ContainsKey("S"))
-			{
-				delay = this.get_float("S", parameters, minval: 0.0);
-			}
-			else
-			{
-				delay = this.get_float("P", parameters, 0.0, minval: 0.0) / 1000.0;
-			}
-			this.toolhead.dwell(delay);
-		}
-
-		public void cmd_G28(Dictionary<string, object> parameters)
-		{
-			// Move to origin
-			var axes = new List<int>();
-			foreach (var axis in "XYZ")
-			{
-				if (parameters.ContainsKey(axis.ToString()))
-				{
-					axes.Add(this.axis2pos[axis.ToString()]);
-				}
-			}
-			if (axes.Count != 0)
-			{
-				axes.Add(0);
-				axes.Add(1);
-				axes.Add(2);
-			}
-			var homing_state = new Homing(this.printer);
-			if (this.is_fileinput)
-			{
-				homing_state.set_no_verify_retract();
-			}
-			try
-			{
-				homing_state.home_axes(axes);
-			}
-			catch
-			{
-				throw;
-			}
-			foreach (var axis in homing_state.get_axes())
-			{
-				this.base_position.Set(axis, this.homing_position.Get(axis));
-			}
-			this.reset_last_position();
-		}
-
-		public void cmd_M18(Dictionary<string, object> parameters)
-		{
-			// Turn off motors
-			this.toolhead.motor_off();
-		}
-
-		public void cmd_M400(Dictionary<string, object> parameters)
-		{
-			// Wait for current moves to finish
-			this.toolhead.wait_moves();
-		}
-
-		// G-Code coordinate manipulation
-		public void cmd_G20(Dictionary<string, object> parameters)
-		{
-			// Set units to inches
-			this.respond_error("Machine does not support G20 (inches) command");
-		}
-
-		public void cmd_M82(Dictionary<string, object> parameters)
-		{
-			// Use absolute distances for extrusion
-			this.absoluteextrude = true;
-		}
-
-		public void cmd_M83(Dictionary<string, object> parameters)
-		{
-			// Use relative distances for extrusion
-			this.absoluteextrude = false;
-		}
-
-		public void cmd_G90(Dictionary<string, object> parameters)
-		{
-			// Use absolute coordinates
-			this.absolutecoord = true;
-		}
-
-		public void cmd_G91(Dictionary<string, object> parameters)
-		{
-			// Use relative coordinates
-			this.absolutecoord = false;
-		}
-
-		public void cmd_G92(Dictionary<string, object> parameters)
-		{
-			// Set position
-			var offsets = this.axis2pos.ToDictionary(_tup_1 => _tup_1.Value, _tup_1 => this.get_float(_tup_1.Key, parameters));
-			foreach (var _tup_2 in offsets)
-			{
-				var p = _tup_2.Key;
-				var offset = _tup_2.Value;
-				if (p == 3)
-				{
-					offset *= this.extrude_factor;
-				}
-				this.base_position.Set(p, last_position.Get(p) - offset);
-			}
-			if (offsets.Count == 0)
-			{
-				this.base_position = this.last_position;
-			}
-		}
-
-		public void cmd_M114(Dictionary<string, object> parameters)
-		{
-			// Get Current Position
-			var p = this.last_position - this.base_position;
-			p.W /= (float)this.extrude_factor;
-			this.respond($"X:{p.X} Y:{p.Y} Z:{p.Z} E:{p.W}");
-		}
-
-		public void cmd_M220(Dictionary<string, object> parameters)
-		{
-			// Set speed factor override percentage
-			var value = this.get_float("S", parameters, 100.0, above: 0.0) / (60.0 * 100.0);
-			this.speed_factor = value;
-		}
-
-		public void cmd_M221(Dictionary<string, object> parameters)
-		{
-			// Set extrude factor override percentage
-			var new_extrude_factor = this.get_float("S", parameters, 100.0, above: 0.0) / 100.0;
-			var last_e_pos = this.last_position.W;
-			var e_value = (last_e_pos - this.base_position.W) / this.extrude_factor;
-			this.base_position.W = (float)(last_e_pos - e_value * new_extrude_factor);
-			this.extrude_factor = new_extrude_factor;
-		}
-
-		public void cmd_SET_GCODE_OFFSET(Dictionary<string, object> parameters)
-		{
-			double offset;
-			foreach (var _tup_1 in this.axis2pos)
-			{
-				var axis = _tup_1.Key;
-				var pos = _tup_1.Value;
-				if (parameters.ContainsKey(axis))
-				{
-					offset = this.get_float(axis, parameters);
-				}
-				else if (parameters.ContainsKey(axis + "_ADJUST"))
-				{
-					offset = this.homing_position.Get(pos);
-					offset += this.get_float(axis + "_ADJUST", parameters);
-				}
-				else
-				{
-					continue;
-				}
-				var delta = offset - this.homing_position.Get(pos);
-				this.last_position.Set(pos, last_position.Get(pos) + delta);
-				this.base_position.Set(pos, base_position.Get(pos) + delta);
-				this.homing_position.Set(pos, offset);
-			}
-		}
-
-		public void cmd_M206(Dictionary<string, object> parameters)
-		{
-			// Offset axes
-			var offsets = "XYZ".ToDictionary(a => this.axis2pos[a.ToString()], a => this.get_float(a.ToString(), parameters));
-			foreach (var item in offsets)
-			{
-				var p = item.Key;
-				var offset = item.Value;
-				this.base_position.Set(p, base_position.Get(p) - (this.homing_position.Get(p) + offset));
-				this.homing_position.Set(p, homing_position.Get(p) - (-offset));
-			}
-		}
-
-		public void cmd_M105(Dictionary<string, object> parameters)
-		{
-			// Get Extruder Temperature
-			this.ack(this.get_temp(this.reactor.monotonic()));
-		}
-
-		public void cmd_M104(Dictionary<string, object> parameters)
-		{
-			// Set Extruder Temperature
-			this.set_temp(parameters);
-		}
-
-		public void cmd_M109(Dictionary<string, object> parameters)
-		{
-			// Set Extruder Temperature and Wait
-			this.set_temp(parameters, wait: true);
-		}
-
-		public void cmd_M140(Dictionary<string, object> parameters)
-		{
-			// Set Bed Temperature
-			this.set_temp(parameters, is_bed: true);
-		}
-
-		public void cmd_M190(Dictionary<string, object> parameters)
-		{
-			// Set Bed Temperature and Wait
-			this.set_temp(parameters, is_bed: true, wait: true);
-		}
-
-		public void cmd_M106(Dictionary<string, object> parameters)
-		{
-			// Set fan speed
-			this.set_fan_speed(this.get_float("S", parameters, 255.0, minval: 0.0) / 255.0);
-		}
-
-		public void cmd_M107(Dictionary<string, object> parameters)
-		{
-			// Turn fan off
-			this.set_fan_speed(0.0);
-		}
-
-		public void cmd_M112(Dictionary<string, object> parameters)
-		{
-			// Emergency Stop
-			this.printer.invoke_shutdown("Shutdown due to M112 command");
-		}
-
-		public void cmd_M115(Dictionary<string, object> parameters)
-		{
-			// Get Firmware Version and Capabilities
-			var software_version = (string)this.printer.get_start_args().Get("software_version");
-			this.ack($"FIRMWARE_NAME:Klipper FIRMWARE_VERSION:{software_version}");
-		}
-
-		public void cmd_IGNORE(Dictionary<string, object> parameters)
-		{
-			// Commands that are just silently accepted
-		}
-
-		public void cmd_GET_POSITION(Dictionary<string, object> parameters)
-		{
-			if (this.toolhead == null)
-			{
-				this.cmd_default(parameters);
-				return;
-			}
-			var kin = this.toolhead.get_kinematics();
-			var steppers = kin.get_steppers();
-
-			var mcu_pos = string.Join(" ", (from s in steppers
-													  select $"{s.get_name()}:{s.get_mcu_position()}"));
-			var stepper_pos = string.Join(" ", (from s in steppers
-															select $"{s.get_name()}:{s.get_commanded_position()}"));
-			var kinematic_pos = Vector3Format(kin.calc_position());
-			var toolhead_pos = Vector4Format(toolhead.get_position());
-			var gcode_pos = Vector4Format(last_position);
-			var base_pos = Vector4Format(base_position);
-			var homing_pos = Vector3Format(homing_position);
-			this.respond_info($"mcu: {mcu_pos}\nstepper: {stepper_pos}\nkinematic: {kinematic_pos}\ntoolhead: {toolhead_pos}\ngcode: {gcode_pos}\ngcode base: {base_pos}\ngcode homing: {homing_pos}");
-		}
-
-		private static string Vector4Format(in Vector4 v)
-		{
-			return $"X:{v.X} Z:{v.Y} Z:{v.Z} E:{v.W}";
-		}
-		private static string Vector3Format(in Vector4 v)
-		{
-			return $"X:{v.X} Z:{v.Y} Z:{v.Z}";
-		}
-		private static string Vector3Format(in Vector3 v)
-		{
-			return $"X:{v.X} Z:{v.Y} Z:{v.Z}";
-		}
-
-		public void request_restart(string result)
-		{
-			if (this.is_printer_ready)
-			{
-				this.toolhead.motor_off();
-				var print_time = this.toolhead.get_last_move_time();
-				if (this.heater != null)
-				{
-					foreach (var heater in this.heater.get_all_heaters())
-					{
-						if (heater != null)
-						{
-							heater.set_temp(print_time, 0.0);
-						}
-					}
-				}
-				if (this.fan != null)
-				{
-					this.fan.set_speed(print_time, 0.0);
-				}
-				this.toolhead.dwell(0.5);
-				this.toolhead.wait_moves();
-			}
-			this.printer.request_exit(result);
-		}
-
-		public void cmd_RESTART(Dictionary<string, object> parameters)
-		{
-			this.request_restart("restart");
-		}
-
-		public void cmd_FIRMWARE_RESTART(Dictionary<string, object> parameters)
-		{
-			this.request_restart("firmware_restart");
-		}
-
-		public void cmd_ECHO(Dictionary<string, object> parameters)
-		{
-			this.respond_info(parameters.Get<string>("#original"));
-		}
-
-		public void cmd_STATUS(Dictionary<string, object> parameters)
-		{
-			if (this.is_printer_ready)
-			{
-				this._respond_state("Ready");
-				return;
-			}
-			var msg = this.printer.get_state_message();
-			msg = msg.TrimStart() + "\nKlipper state: Not ready";
-			this.respond_error(msg);
-		}
-
-		public void cmd_HELP(Dictionary<string, object> parameters)
-		{
-			var cmdhelp = new List<string>();
-			if (!this.is_printer_ready)
-			{
-				cmdhelp.Add("Printer is not ready - not all commands available.");
-			}
-			cmdhelp.Add("Available extended commands:");
-			foreach (var cmd in this.gcode_handlers.OrderBy((a) => a.Key))
-			{
-				if (this.gcode_help.ContainsKey(cmd.Key))
-				{
-					cmdhelp.Add($"{cmd.Key}: {this.gcode_help[cmd.Key]}");
-				}
-			}
-			this.respond_info(string.Join('\n', cmdhelp));
-		}
 	}
 
 }

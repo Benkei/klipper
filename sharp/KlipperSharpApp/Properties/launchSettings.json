@@ -2,7 +2,7 @@
   "profiles": {
     "KlipperSharpApp": {
       "commandName": "Project",
-      "commandLineArgs": "generic-ramps.cfg"
+      "commandLineArgs": "generic-ramps.cfg --i \"testGCode.txt\""
     }
   }
 }

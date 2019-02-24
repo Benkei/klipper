@@ -591,7 +591,7 @@ namespace KlipperSharp.PulseGeneration
 				// Find message with lowest reqclock
 				ulong req_clock = SerialQueue.MAX_CLOCK;
 				var qm = new SerialQueue.RawMessage();
-				var scFound = new stepcompress();
+				var scFound = default(stepcompress);
 				bool found = false;
 				for (i = 0; i < ss.sc_num; i++)
 				{
@@ -608,7 +608,7 @@ namespace KlipperSharp.PulseGeneration
 						}
 					}
 				}
-				if (found || (qm.min_clock != 0 && req_clock > move_clock))
+				if (!found || (qm.min_clock != 0 && req_clock > move_clock))
 					break;
 
 				ulong next_avail = ss.move_clocks[0];
