@@ -53,7 +53,7 @@ namespace KlipperSharp
 	/// <summary>
 	/// Represents a four dimensional mathematical vector.
 	/// </summary>
-	[StructLayout(LayoutKind.Sequential, Pack = 4)]
+	[StructLayout(LayoutKind.Sequential, Pack = 8)]
 	public unsafe struct Vector4d : IEquatable<Vector4d>, IFormattable
 	{
 		/// <summary>
@@ -1325,7 +1325,7 @@ namespace KlipperSharp
 		/// <param name="left">The first value to compare.</param>
 		/// <param name="right">The second value to compare.</param>
 		/// <returns><c>true</c> if <paramref name="left"/> has the same value as <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-		[MethodImpl((MethodImplOptions)0x100)] // MethodImplOptions.AggressiveInlining
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator ==(Vector4d left, Vector4d right)
 		{
 			return left.Equals(ref right);
@@ -1337,7 +1337,7 @@ namespace KlipperSharp
 		/// <param name="left">The first value to compare.</param>
 		/// <param name="right">The second value to compare.</param>
 		/// <returns><c>true</c> if <paramref name="left"/> has a different value than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-		[MethodImpl((MethodImplOptions)0x100)] // MethodImplOptions.AggressiveInlining
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator !=(Vector4d left, Vector4d right)
 		{
 			return !left.Equals(ref right);
@@ -1459,7 +1459,7 @@ namespace KlipperSharp
 		/// <returns>
 		/// <c>true</c> if the specified <see cref="Vector4d"/> is equal to this instance; otherwise, <c>false</c>.
 		/// </returns>
-		[MethodImpl((MethodImplOptions)0x100)] // MethodImplOptions.AggressiveInlining
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool Equals(Vector4d other)
 		{
 			return Equals(ref other);

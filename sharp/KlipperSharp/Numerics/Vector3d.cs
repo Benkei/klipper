@@ -53,7 +53,7 @@ namespace KlipperSharp
 	/// <summary>
 	/// Represents a three dimensional mathematical vector.
 	/// </summary>
-	[StructLayout(LayoutKind.Sequential, Pack = 4)]
+	[StructLayout(LayoutKind.Sequential, Pack = 8)]
 	public unsafe struct Vector3d : IEquatable<Vector3d>, IFormattable
 	{
 		/// <summary>
@@ -1676,7 +1676,7 @@ namespace KlipperSharp
 		/// <param name="left">The first value to compare.</param>
 		/// <param name="right">The second value to compare.</param>
 		/// <returns><c>true</c> if <paramref name="left"/> has the same value as <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-		[MethodImpl((MethodImplOptions)0x100)] // MethodImplOptions.AggressiveInlining
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator ==(Vector3d left, Vector3d right)
 		{
 			return left.Equals(ref right);
@@ -1688,7 +1688,7 @@ namespace KlipperSharp
 		/// <param name="left">The first value to compare.</param>
 		/// <param name="right">The second value to compare.</param>
 		/// <returns><c>true</c> if <paramref name="left"/> has a different value than <paramref name="right"/>; otherwise, <c>false</c>.</returns>
-		[MethodImpl((MethodImplOptions)0x100)] // MethodImplOptions.AggressiveInlining
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool operator !=(Vector3d left, Vector3d right)
 		{
 			return !left.Equals(ref right);
@@ -1794,7 +1794,7 @@ namespace KlipperSharp
 		/// <returns>
 		/// 	<c>true</c> if the specified <see cref="Vector3d"/> is equal to this instance; otherwise, <c>false</c>.
 		/// </returns>
-		[MethodImpl((MethodImplOptions)0x100)] // MethodImplOptions.AggressiveInlining
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool Equals(ref Vector3d other)
 		{
 			return MathUtil.NearEqual(other.X, X) && MathUtil.NearEqual(other.Y, Y) && MathUtil.NearEqual(other.Z, Z);
@@ -1807,7 +1807,7 @@ namespace KlipperSharp
 		/// <returns>
 		/// 	<c>true</c> if the specified <see cref="Vector3d"/> is equal to this instance; otherwise, <c>false</c>.
 		/// </returns>
-		[MethodImpl((MethodImplOptions)0x100)] // MethodImplOptions.AggressiveInlining
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool Equals(Vector3d other)
 		{
 			return Equals(ref other);
