@@ -84,8 +84,7 @@ namespace KlipperSharp
 					}
 					if (!update_flush_count && i < flush_count)
 					{
-						var cruise_v2 = Math.Min((start_v2 + reachable_start_v2) * 0.5, move.max_cruise_v2);
-						cruise_v2 = Math.Min(cruise_v2, peak_cruise_v2);
+						var cruise_v2 = MathUtil.Min((start_v2 + reachable_start_v2) * 0.5, move.max_cruise_v2, peak_cruise_v2);
 						move.set_junction(Math.Min(start_v2, cruise_v2), cruise_v2, Math.Min(next_end_v2, cruise_v2));
 					}
 				}

@@ -8,7 +8,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Text;
 
 namespace KlipperSharp.Kinematics
@@ -106,9 +105,7 @@ namespace KlipperSharp.Kinematics
 
 			limit_z = double.MaxValue;
 			var min = abs_endstops - arm_lengths;
-			limit_z = Math.Min(min.X, limit_z);
-			limit_z = Math.Min(min.Y, limit_z);
-			limit_z = Math.Min(min.Z, limit_z);
+			limit_z = MathUtil.Min(min.X, min.Y, min.Z, limit_z);
 
 			logging.Info(String.Format("Delta max build height %.2fmm (radius tapered above %.2fmm)", this.max_z, this.limit_z));
 			// Find the point where an XY move could result in excessive

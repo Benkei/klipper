@@ -9,7 +9,6 @@ using KlipperSharp.PulseGeneration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Text;
 
 namespace KlipperSharp
@@ -57,7 +56,7 @@ namespace KlipperSharp
 			this.cmove = toolhead.cmove;
 			this.is_kinematic_move = true;
 			this.axes_d = end_pos - start_pos;
-			this.move_d = axes_d.Length(); //Math.Sqrt((from d in axes_d.GetRange(0, 3) select (d * d)).Sum());
+			this.move_d = ((Vector3d)axes_d).Length(); //Math.Sqrt((from d in axes_d.GetRange(0, 3) select (d * d)).Sum());
 			if (move_d < 0.000000001)
 			{
 				// Extrude only move
@@ -92,7 +91,7 @@ namespace KlipperSharp
 			this.smooth_delta_v2 = Math.Min(this.smooth_delta_v2, this.delta_v2);
 		}
 
-		public void calc_junction(Move prev_move)
+		public unsafe void calc_junction(Move prev_move)
 		{
 			if (!this.is_kinematic_move || !prev_move.is_kinematic_move)
 			{
@@ -116,19 +115,18 @@ namespace KlipperSharp
 			var tan_theta_d2 = sin_theta_d2 / Math.Sqrt(0.5 * (1.0 + junction_cos_theta));
 			var move_centripetal_v2 = 0.5 * this.move_d * tan_theta_d2 * this.accel;
 			var prev_move_centripetal_v2 = 0.5 * prev_move.move_d * tan_theta_d2 * prev_move.accel;
-			//this.max_start_v2 = Math.Min(R * this.accel, R * prev_move.accel,
-			//	move_centripetal_v2, prev_move_centripetal_v2,
-			//	extruder_v2, this.max_cruise_v2,
-			//	prev_move.max_cruise_v2, prev_move.max_start_v2 + prev_move.delta_v2
-			//	);
-			this.max_start_v2 = Math.Min(R * this.accel, R * prev_move.accel);
-			this.max_start_v2 = Math.Min(this.max_start_v2, move_centripetal_v2);
-			this.max_start_v2 = Math.Min(this.max_start_v2, prev_move_centripetal_v2);
-			this.max_start_v2 = Math.Min(this.max_start_v2, extruder_v2);
-			this.max_start_v2 = Math.Min(this.max_start_v2, this.max_cruise_v2);
-			this.max_start_v2 = Math.Min(this.max_start_v2, prev_move.max_cruise_v2);
-			this.max_start_v2 = Math.Min(this.max_start_v2, prev_move.max_start_v2 + prev_move.delta_v2);
-			this.max_smoothed_v2 = Math.Min(this.max_start_v2, prev_move.max_smoothed_v2 + prev_move.smooth_delta_v2);
+			double* ptr = stackalloc double[8] {
+				R * this.accel,
+				R * prev_move.accel,
+				move_centripetal_v2,
+				prev_move_centripetal_v2,
+				extruder_v2,
+				max_cruise_v2,
+				prev_move.max_cruise_v2,
+				prev_move.max_start_v2 + prev_move.delta_v2
+			};
+			max_start_v2 = MathUtil.Min(new ReadOnlySpan<double>(ptr, 8));
+			max_smoothed_v2 = Math.Min(max_start_v2, prev_move.max_smoothed_v2 + prev_move.smooth_delta_v2);
 		}
 
 		public void set_junction(double start_v2, double cruise_v2, double end_v2)

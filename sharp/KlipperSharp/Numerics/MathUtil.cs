@@ -1,8 +1,6 @@
 ﻿using NLog;
 using System;
-using System.Collections.Generic;
-using System.Numerics;
-using System.Text;
+using System.Runtime.CompilerServices;
 
 namespace KlipperSharp
 {
@@ -10,11 +8,22 @@ namespace KlipperSharp
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static double ToRadians(double angle)
 		{
 			return (Math.PI / 180) * angle;
 		}
 
+		public static T Min<T>(ReadOnlySpan<T> args) where T : IComparable<T>
+		{
+			if (args.IsEmpty) return default;
+			T res = args[0];
+			for (int i = 1; i < args.Length; i++)
+			{
+				res = res.CompareTo(args[i]) < 0 ? res : args[i];
+			}
+			return res;
+		}
 		public static T Min<T>(in T arg0, in T arg1, in T arg2, in T arg3) where T : IComparable<T>
 		{
 			T res = arg0.CompareTo(arg1) < 0 ? arg0 : arg1;
@@ -26,6 +35,16 @@ namespace KlipperSharp
 		{
 			T res = arg0.CompareTo(arg1) < 0 ? arg0 : arg1;
 			res = res.CompareTo(arg2) < 0 ? res : arg2;
+			return res;
+		}
+		public static T Max<T>(ReadOnlySpan<T> args) where T : IComparable<T>
+		{
+			if (args.IsEmpty) return default;
+			T res = args[0];
+			for (int i = 1; i < args.Length; i++)
+			{
+				res = res.CompareTo(args[i]) > 0 ? res : args[i];
+			}
 			return res;
 		}
 		public static T Max<T>(in T arg0, in T arg1, in T arg2) where T : IComparable<T>
