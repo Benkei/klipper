@@ -13,7 +13,7 @@ namespace KlipperSharp.Kinematics
 		private double max_z_velocity;
 		private double max_z_accel;
 		private bool need_motor_enable;
-		private Vector2 limit_z;
+		private Vector2d limit_z;
 		private double limit_xy2;
 
 		public PolarKinematic(ToolHead toolhead, ConfigWrapper config)
@@ -40,7 +40,7 @@ namespace KlipperSharp.Kinematics
 			this.max_z_velocity = config.getfloat("max_z_velocity", max_velocity, above: 0.0, maxval: max_velocity);
 			this.max_z_accel = config.getfloat("max_z_accel", max_accel, above: 0.0, maxval: max_accel);
 			this.need_motor_enable = true;
-			this.limit_z = new Vector2(1, -1);
+			this.limit_z = new Vector2d(1, -1);
 			this.limit_xy2 = -1.0;
 			// Setup stepper max halt velocity
 			var max_halt_velocity = toolhead.get_max_axis_halt();
@@ -58,19 +58,19 @@ namespace KlipperSharp.Kinematics
 			return this.steppers;
 		}
 
-		public override Vector3 calc_position()
+		public override Vector3d calc_position()
 		{
 			var bed_angle = this.steppers[0].get_commanded_position();
 			var arm_pos = this.rails[0].get_commanded_position();
 			var z_pos = this.rails[1].get_commanded_position();
-			return new Vector3(
-				(float)(Math.Cos(bed_angle) * arm_pos),
-				(float)(Math.Sin(bed_angle) * arm_pos),
-				(float)z_pos
+			return new Vector3d(
+				(Math.Cos(bed_angle) * arm_pos),
+				(Math.Sin(bed_angle) * arm_pos),
+				z_pos
 			);
 		}
 
-		public override void set_position(Vector3 newpos, List<int> homing_axes)
+		public override void set_position(Vector3d newpos, List<int> homing_axes)
 		{
 			foreach (var s in this.steppers)
 			{
@@ -150,7 +150,7 @@ namespace KlipperSharp.Kinematics
 
 		public override void motor_off(double print_time)
 		{
-			this.limit_z = new Vector2(1, -1);
+			this.limit_z = new Vector2d(1, -1);
 			this.limit_xy2 = -1.0;
 			foreach (var s in this.steppers)
 			{

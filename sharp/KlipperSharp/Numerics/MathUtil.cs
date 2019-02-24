@@ -187,7 +187,7 @@ namespace KlipperSharp
 
 		public static Vector3d matrix_mul(Vector3d m1, double s)
 		{
-			return m1 * (float)s;
+			return m1 * s;
 		}
 
 

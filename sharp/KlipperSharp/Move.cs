@@ -22,13 +22,13 @@ namespace KlipperSharp
 	public class Move
 	{
 		private ToolHead toolhead;
-		public Vector4 start_pos;
+		public Vector4d start_pos;
 		public move cmove;
 		public bool is_kinematic_move;
-		public Vector4 axes_d;
+		public Vector4d axes_d;
 		internal double accel;
 		public double move_d;
-		public Vector4 end_pos;
+		public Vector4d end_pos;
 		internal double min_move_t;
 		internal double max_start_v2;
 		public double max_cruise_v2;
@@ -47,7 +47,7 @@ namespace KlipperSharp
 		internal double extrude_r;
 		internal double extrude_max_corner_v;
 
-		public Move(ToolHead toolhead, Vector4 start_pos, Vector4 end_pos, double speed)
+		public Move(ToolHead toolhead, Vector4d start_pos, Vector4d end_pos, double speed)
 		{
 			this.toolhead = toolhead;
 			this.start_pos = start_pos;

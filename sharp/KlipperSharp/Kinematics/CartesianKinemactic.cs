@@ -13,7 +13,7 @@ namespace KlipperSharp.Kinematics
 		private double max_z_velocity;
 		private double max_z_accel;
 		private bool need_motor_enable;
-		private Vector2[] limits = new Vector2[3] { new Vector2(1.0f, -1.0f), new Vector2(1.0f, -1.0f), new Vector2(1.0f, -1.0f) };
+		private Vector2d[] limits = new Vector2d[3] { new Vector2d(1.0f, -1.0f), new Vector2d(1.0f, -1.0f), new Vector2d(1.0f, -1.0f) };
 		private PrinterRail[] rails;
 		private int dual_carriage_axis;
 		private List<PrinterRail> dual_carriage_rails;
@@ -70,16 +70,16 @@ namespace KlipperSharp.Kinematics
 					  select s).ToList();
 		}
 
-		public override Vector3 calc_position()
+		public override Vector3d calc_position()
 		{
-			return new Vector3(
-				(float)rails[0].get_commanded_position(),
-				(float)rails[1].get_commanded_position(),
-				(float)rails[2].get_commanded_position()
+			return new Vector3d(
+				rails[0].get_commanded_position(),
+				rails[1].get_commanded_position(),
+				rails[2].get_commanded_position()
 			);
 		}
 
-		public override void set_position(Vector3 newpos, List<int> homing_axes)
+		public override void set_position(Vector3d newpos, List<int> homing_axes)
 		{
 			for (int i = 0; i < this.rails.Length; i++)
 			{
@@ -147,7 +147,7 @@ namespace KlipperSharp.Kinematics
 
 		public override void motor_off(double print_time)
 		{
-			this.limits = new[] { new Vector2(1.0f, -1.0f), new Vector2(1.0f, -1.0f), new Vector2(1.0f, -1.0f) };
+			this.limits = new[] { new Vector2d(1.0f, -1.0f), new Vector2d(1.0f, -1.0f), new Vector2d(1.0f, -1.0f) };
 			foreach (var rail in this.rails)
 			{
 				rail.motor_enable(print_time, false);
@@ -235,7 +235,7 @@ namespace KlipperSharp.Kinematics
 			var dc_axis = this.dual_carriage_axis;
 			this.rails[dc_axis] = dc_rail;
 			var extruder_pos = toolhead.get_position().W;
-			toolhead.set_position(new Vector4(this.calc_position(), extruder_pos));
+			toolhead.set_position(new Vector4d(this.calc_position(), extruder_pos));
 			if (this.limits[dc_axis].X <= this.limits[dc_axis].Y)
 			{
 				this.limits[dc_axis] = dc_rail.get_range();

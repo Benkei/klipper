@@ -16,7 +16,7 @@ namespace KlipperSharp
 		 System.Runtime.Serialization.SerializationInfo info,
 		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
 
-		public static EndstopException EndstopMoveError(Vector4 pos, string msg = "Move out of range")
+		public static EndstopException EndstopMoveError(Vector4d pos, string msg = "Move out of range")
 		{
 			return new EndstopException($"{msg}: {pos.X:0.000} {pos.Y:0.000} {pos.Z:0.000} [{pos.W:0.000}]");
 		}
@@ -57,15 +57,15 @@ namespace KlipperSharp
 			return this.changed_axes;
 		}
 
-		Vector4 _fill_coord(in (double?, double?, double?, double?) coord)
+		Vector4d _fill_coord(in (double?, double?, double?, double?) coord)
 		{
-			Vector4 result;
+			Vector4d result;
 			// Fill in any None entries in 'coord' with current toolhead position
 			var thcoord = this.toolhead.get_position();
-			result.X = (float)(coord.Item1 ?? thcoord.X);
-			result.Y = (float)(coord.Item2 ?? thcoord.Y);
-			result.Z = (float)(coord.Item3 ?? thcoord.Z);
-			result.W = (float)(coord.Item4 ?? thcoord.W);
+			result.X = (coord.Item1 ?? thcoord.X);
+			result.Y = (coord.Item2 ?? thcoord.Y);
+			result.Z = (coord.Item3 ?? thcoord.Z);
+			result.W = (coord.Item4 ?? thcoord.W);
 			return result;
 		}
 
@@ -86,7 +86,7 @@ namespace KlipperSharp
 		}
 
 		public void homing_move(
-			 Vector4 movepos,
+			 Vector4d movepos,
 			 List<(Mcu_endstop endstop, string name)> endstops,
 			 double speed,
 			 double dwell_t = 0.0,
@@ -240,10 +240,10 @@ namespace KlipperSharp
 				// Retract
 				var move_d = axes_d.Length();
 				var retract_r = Math.Min(1.0, hi.retract_dist / move_d);
-				var retractpos = movepos - axes_d * (float)retract_r;
+				var retractpos = movepos - axes_d * retract_r;
 				this.toolhead.move(retractpos, homing_speed);
 				// Home again
-				forcepos = retractpos - axes_d * (float)retract_r;
+				forcepos = retractpos - axes_d * retract_r;
 				this.toolhead.set_position(forcepos);
 				this.homing_move(movepos, endstops, second_homing_speed, verify_movement: this.verify_retract);
 			}

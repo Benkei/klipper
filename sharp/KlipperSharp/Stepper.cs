@@ -67,8 +67,8 @@ namespace KlipperSharp
 		public Action<KinematicType, object[]> setup_itersolve;
 		private Func<KinematicBase, KinematicBase> set_stepper_kinematics;
 		private Func<bool, object> set_ignore_move;
-		private Func<Vector3, double> calc_position_from_coord;
-		public Action<Vector3> set_position;
+		private Func<Vector3d, double> calc_position_from_coord;
+		public Action<Vector3d> set_position;
 		public Func<double> get_commanded_position;
 		public Action<double> set_commanded_position;
 		public Func<int> get_mcu_position;
@@ -246,9 +246,9 @@ namespace KlipperSharp
 			}
 		}
 
-		public Vector2 get_range()
+		public Vector2d get_range()
 		{
-			return new Vector2((float)this.position_min, (float)this.position_max);
+			return new Vector2d(this.position_min, this.position_max);
 		}
 
 		public struct Homing_info
@@ -342,7 +342,7 @@ namespace KlipperSharp
 			}
 		}
 
-		public void set_position(Vector3 coord)
+		public void set_position(Vector3d coord)
 		{
 			foreach (var stepper in this.steppers)
 			{

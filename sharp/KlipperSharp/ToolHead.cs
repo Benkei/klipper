@@ -21,7 +21,7 @@ namespace KlipperSharp
 		private List<Mcu> all_mcus;
 		private Mcu mcu;
 		private MoveQueue move_queue;
-		private Vector4 commanded_pos; // XYZ E
+		private Vector4d commanded_pos; // XYZ E
 		public double max_velocity;
 		public double max_accel;
 		private double requested_accel_to_decel;
@@ -54,7 +54,7 @@ namespace KlipperSharp
 			this.all_mcus = (from mcus in this.printer.lookup_objects<Mcu>(module: "mcu") select mcus.modul as Mcu).ToList();
 			this.mcu = this.all_mcus[0];
 			this.move_queue = new MoveQueue();
-			this.commanded_pos = Vector4.Zero;
+			this.commanded_pos = Vector4d.Zero;
 			this.printer.register_event_handler("klippy:shutdown", _handle_shutdown);
 			// Velocity and acceleration control
 			this.max_velocity = config.getfloat("max_velocity", above: 0.0);
@@ -239,19 +239,19 @@ namespace KlipperSharp
 		}
 
 		// Movement commands
-		public Vector4 get_position()
+		public Vector4d get_position()
 		{
 			return this.commanded_pos;
 		}
 
-		public void set_position(Vector4 newpos, List<int> homing_axes = null)
+		public void set_position(Vector4d newpos, List<int> homing_axes = null)
 		{
 			this._flush_lookahead();
 			this.commanded_pos = newpos;
-			this.kin.set_position(new Vector3(newpos.X, newpos.Y, newpos.Z), homing_axes);
+			this.kin.set_position(new Vector3d(newpos.X, newpos.Y, newpos.Z), homing_axes);
 		}
 
-		public void move(Vector4 newpos, double speed)
+		public void move(Vector4d newpos, double speed)
 		{
 			var move = new Move(this, commanded_pos, newpos, speed);
 			if (move.move_d == 0)
@@ -318,7 +318,7 @@ namespace KlipperSharp
 			var extrude_pos = extruder.set_active(last_move_time, true);
 			this.extruder = extruder;
 			this.move_queue.set_extruder(extruder);
-			this.commanded_pos.W = (float)extrude_pos;
+			this.commanded_pos.W = extrude_pos;
 		}
 
 		public BaseExtruder get_extruder()

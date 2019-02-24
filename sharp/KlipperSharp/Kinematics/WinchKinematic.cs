@@ -8,14 +8,14 @@ namespace KlipperSharp.Kinematics
 	class WinchKinematic : BaseKinematic
 	{
 		private List<PrinterStepper> steppers;
-		private List<Vector3> anchors;
+		private List<Vector3d> anchors;
 		private bool need_motor_enable;
 
 		public WinchKinematic(ToolHead toolhead, ConfigWrapper config)
 		{
 			// Setup steppers at each anchor
 			this.steppers = new List<PrinterStepper>();
-			this.anchors = new List<Vector3>();
+			this.anchors = new List<Vector3d>();
 			for (int i = 0; i < 26; i++)
 			{
 				var name = "stepper_" + (char)('a' + i);
@@ -26,10 +26,10 @@ namespace KlipperSharp.Kinematics
 				var stepper_config = config.getsection(name);
 				var s = new PrinterStepper(stepper_config);
 				this.steppers.Add(s);
-				var anchor = new Vector3(
-					(float)stepper_config.getfloat("anchor_x"),
-					(float)stepper_config.getfloat("anchor_y"),
-					(float)stepper_config.getfloat("anchor_z"));
+				var anchor = new Vector3d(
+					stepper_config.getfloat("anchor_x"),
+					stepper_config.getfloat("anchor_y"),
+					stepper_config.getfloat("anchor_z"));
 				this.anchors.Add(anchor);
 				s.setup_itersolve(KinematicType.winch, new object[] { anchor.X, anchor.Y, anchor.Z });
 			}
@@ -44,7 +44,7 @@ namespace KlipperSharp.Kinematics
 			}
 			// Setup boundary checks
 			this.need_motor_enable = true;
-			this.set_position(Vector3.Zero, null);
+			this.set_position(Vector3d.Zero, null);
 		}
 
 		public override List<PrinterStepper> get_steppers(string flags = "")
@@ -52,7 +52,7 @@ namespace KlipperSharp.Kinematics
 			return this.steppers;
 		}
 
-		public override Vector3 calc_position()
+		public override Vector3d calc_position()
 		{
 			// Use only first three steppers to calculate cartesian position
 			var lenX = steppers[0].get_commanded_position();
@@ -64,7 +64,7 @@ namespace KlipperSharp.Kinematics
 			return MathUtil.trilateration(anchors[0], anchors[1], anchors[2], lenX, lenY, lenZ);
 		}
 
-		public override void set_position(Vector3 newpos, List<int> homing_axes)
+		public override void set_position(Vector3d newpos, List<int> homing_axes)
 		{
 			foreach (var s in this.steppers)
 			{

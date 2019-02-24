@@ -101,7 +101,7 @@ namespace KlipperSharp.MachineCodes
 			{
 				double v;
 				object value;
-				Vector4 vec = new Vector4();
+				Vector4d vec = new Vector4d();
 				if (parameters.TryGetValue("X", out value))
 				{
 					vec.X = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
@@ -129,7 +129,7 @@ namespace KlipperSharp.MachineCodes
 				if (parameters.TryGetValue("E", out value))
 				{
 					vec.W = float.Parse((string)value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
-					vec.W *= (float)extrude_factor;
+					vec.W *= extrude_factor;
 				}
 
 				if (!this.absolutecoord || !this.absoluteextrude)
@@ -286,7 +286,7 @@ namespace KlipperSharp.MachineCodes
 		{
 			// Get Current Position
 			var p = this.last_position - this.base_position;
-			p.W /= (float)this.extrude_factor;
+			p.W /= this.extrude_factor;
 			this.respond($"X:{p.X} Y:{p.Y} Z:{p.Z} E:{p.W}");
 		}
 
@@ -303,7 +303,7 @@ namespace KlipperSharp.MachineCodes
 			var new_extrude_factor = this.get_float("S", parameters, 100.0, above: 0.0) / 100.0;
 			var last_e_pos = this.last_position.W;
 			var e_value = (last_e_pos - this.base_position.W) / this.extrude_factor;
-			this.base_position.W = (float)(last_e_pos - e_value * new_extrude_factor);
+			this.base_position.W = (last_e_pos - e_value * new_extrude_factor);
 			this.extrude_factor = new_extrude_factor;
 		}
 
@@ -429,15 +429,15 @@ namespace KlipperSharp.MachineCodes
 			this.respond_info($"mcu: {mcu_pos}\nstepper: {stepper_pos}\nkinematic: {kinematic_pos}\ntoolhead: {toolhead_pos}\ngcode: {gcode_pos}\ngcode base: {base_pos}\ngcode homing: {homing_pos}");
 		}
 
-		private static string Vector4Format(in Vector4 v)
+		private static string Vector4Format(in Vector4d v)
 		{
 			return $"X:{v.X} Z:{v.Y} Z:{v.Z} E:{v.W}";
 		}
-		private static string Vector3Format(in Vector4 v)
+		private static string Vector3Format(in Vector4d v)
 		{
 			return $"X:{v.X} Z:{v.Y} Z:{v.Z}";
 		}
-		private static string Vector3Format(in Vector3 v)
+		private static string Vector3Format(in Vector3d v)
 		{
 			return $"X:{v.X} Z:{v.Y} Z:{v.Z}";
 		}

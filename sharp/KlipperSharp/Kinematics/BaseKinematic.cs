@@ -29,9 +29,9 @@ namespace KlipperSharp.Kinematics
 	{
 		public abstract List<PrinterStepper> get_steppers(string flags = "");
 
-		public abstract Vector3 calc_position();
+		public abstract Vector3d calc_position();
 
-		public abstract void set_position(Vector3 newpos, List<int> homing_axes);
+		public abstract void set_position(Vector3d newpos, List<int> homing_axes);
 
 		public abstract void home(Homing homing_state);
 

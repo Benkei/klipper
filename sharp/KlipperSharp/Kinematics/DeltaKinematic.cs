@@ -24,14 +24,14 @@ namespace KlipperSharp.Kinematics
 		private double slow_ratio;
 		private double radius;
 		private double printable_radius;
-		private Vector3 arm_lengths;
-		private Vector3 arm2;
-		private Vector3 abs_endstops;
-		private Vector3 angles;
+		private Vector3d arm_lengths;
+		private Vector3d arm2;
+		private Vector3d abs_endstops;
+		private Vector3d angles;
 		private (double cos, double sin)[] towers;
 		private bool need_motor_enable;
 		private double limit_xy2;
-		private Vector3 home_position;
+		private Vector3d home_position;
 		private double max_z;
 		private double min_z;
 		private double limit_z;
@@ -73,19 +73,19 @@ namespace KlipperSharp.Kinematics
 			this.printable_radius = config.getfloat("delta_printable_radius", above: 0.0);
 			var arm_length_a = stepper_config_a.getfloat("arm_length", above: radius);
 
-			arm_lengths.X = (float)arm_length_a;
-			arm_lengths.Y = (float)stepper_config_b.getfloat("arm_length", arm_length_a, above: radius);
-			arm_lengths.Z = (float)stepper_config_c.getfloat("arm_length", arm_length_a, above: radius);
-			arm2.X = (float)Math.Pow(arm_lengths.X, 2);
-			arm2.Y = (float)Math.Pow(arm_lengths.Y, 2);
-			arm2.Z = (float)Math.Pow(arm_lengths.Z, 2);
-			abs_endstops.X = (float)(rails[0].get_homing_info().position_endstop + Math.Sqrt(arm2.X - Math.Pow(radius, 2)));
-			abs_endstops.Y = (float)(rails[1].get_homing_info().position_endstop + Math.Sqrt(arm2.Y - Math.Pow(radius, 2)));
-			abs_endstops.Z = (float)(rails[2].get_homing_info().position_endstop + Math.Sqrt(arm2.Z - Math.Pow(radius, 2)));
+			arm_lengths.X = arm_length_a;
+			arm_lengths.Y = stepper_config_b.getfloat("arm_length", arm_length_a, above: radius);
+			arm_lengths.Z = stepper_config_c.getfloat("arm_length", arm_length_a, above: radius);
+			arm2.X = Math.Pow(arm_lengths.X, 2);
+			arm2.Y = Math.Pow(arm_lengths.Y, 2);
+			arm2.Z = Math.Pow(arm_lengths.Z, 2);
+			abs_endstops.X = (rails[0].get_homing_info().position_endstop + Math.Sqrt(arm2.X - Math.Pow(radius, 2)));
+			abs_endstops.Y = (rails[1].get_homing_info().position_endstop + Math.Sqrt(arm2.Y - Math.Pow(radius, 2)));
+			abs_endstops.Z = (rails[2].get_homing_info().position_endstop + Math.Sqrt(arm2.Z - Math.Pow(radius, 2)));
 			// Determine tower locations in cartesian space
-			angles.X = (float)stepper_config_a.getfloat("angle", 210.0);
-			angles.Y = (float)stepper_config_b.getfloat("angle", 330.0);
-			angles.Z = (float)stepper_config_c.getfloat("angle", 90.0);
+			angles.X = stepper_config_a.getfloat("angle", 210.0);
+			angles.Y = stepper_config_b.getfloat("angle", 330.0);
+			angles.Z = stepper_config_c.getfloat("angle", 90.0);
 			this.towers = new (double, double)[]
 			{
 				(Math.Cos(MathUtil.ToRadians(angles.X)) * radius, Math.Sin(MathUtil.ToRadians(angles.X)) * radius),
@@ -125,10 +125,10 @@ namespace KlipperSharp.Kinematics
 			logging.Info(String.Format("Delta max build radius %.2fmm (moves slowed past %.2fmm and %.2fmm)",
 				Math.Sqrt(this.max_xy2), Math.Sqrt(this.slow_xy2), Math.Sqrt(this.very_slow_xy2)));
 
-			this.set_position(Vector3.Zero, null);
+			this.set_position(Vector3d.Zero, null);
 		}
 
-		private static double ratio_to_dist(double ratio, double half_min_step_dist, float min_arm_length)
+		private static double ratio_to_dist(double ratio, double half_min_step_dist, double min_arm_length)
 		{
 			return ratio * Math.Sqrt(Math.Pow(min_arm_length, 2) / (Math.Pow(ratio, 2) + 1.0) - Math.Pow(half_min_step_dist, 2)) + half_min_step_dist;
 		}
@@ -140,24 +140,24 @@ namespace KlipperSharp.Kinematics
 					  select s).ToList();
 		}
 
-		Vector3 _actuator_to_cartesian(Vector3 spos)
+		Vector3d _actuator_to_cartesian(Vector3d spos)
 		{
-			Vector3 sphere_coord_x = new Vector3((float)this.towers[0].cos, (float)this.towers[0].sin, spos.X);
-			Vector3 sphere_coord_y = new Vector3((float)this.towers[1].cos, (float)this.towers[1].sin, spos.X);
-			Vector3 sphere_coord_z = new Vector3((float)this.towers[2].cos, (float)this.towers[2].sin, spos.X);
+			Vector3d sphere_coord_x = new Vector3d(this.towers[0].cos, this.towers[0].sin, spos.X);
+			Vector3d sphere_coord_y = new Vector3d(this.towers[1].cos, this.towers[1].sin, spos.X);
+			Vector3d sphere_coord_z = new Vector3d(this.towers[2].cos, this.towers[2].sin, spos.X);
 			return MathUtil.trilateration(sphere_coord_x, sphere_coord_y, sphere_coord_z, arm2.X, arm2.Y, arm2.Z);
 		}
 
-		public override Vector3 calc_position()
+		public override Vector3d calc_position()
 		{
-			Vector3 spos;
-			spos.X = (float)rails[0].get_commanded_position();
-			spos.Y = (float)rails[1].get_commanded_position();
-			spos.Z = (float)rails[2].get_commanded_position();
+			Vector3d spos;
+			spos.X = rails[0].get_commanded_position();
+			spos.Y = rails[1].get_commanded_position();
+			spos.Z = rails[2].get_commanded_position();
 			return this._actuator_to_cartesian(spos);
 		}
 
-		public override void set_position(Vector3 newpos, List<int> homing_axes)
+		public override void set_position(Vector3d newpos, List<int> homing_axes)
 		{
 			foreach (var rail in this.rails)
 			{
@@ -175,7 +175,7 @@ namespace KlipperSharp.Kinematics
 			// All axes are homed simultaneously
 			homing_state.set_axes(new List<int> { 0, 1, 2 });
 			var forcepos = home_position;
-			forcepos.Z = (float)(-1.5 * Math.Sqrt(MathUtil.Max(arm2.X, arm2.Y, arm2.Z) - this.max_xy2));
+			forcepos.Z = (-1.5 * Math.Sqrt(MathUtil.Max(arm2.X, arm2.Y, arm2.Z) - this.max_xy2));
 
 			homing_state.home_rails(new List<PrinterRail>(rails),
 				(forcepos.X, forcepos.Y, forcepos.Z, null),
@@ -224,7 +224,7 @@ namespace KlipperSharp.Kinematics
 			if (end_xy2 > limit_xy2 || end_z > this.max_z || end_z < this.min_z)
 			{
 				// Move out of range - verify not a homing move
-				var ePos = new Vector3(end_pos.X, end_pos.Y, end_pos.Z);
+				var ePos = new Vector3d(end_pos.X, end_pos.Y, end_pos.Z);
 				if (ePos != this.home_position
 					|| end_z < this.min_z || end_z > this.home_position.Z)
 				{

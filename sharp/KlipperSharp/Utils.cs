@@ -50,7 +50,7 @@ namespace KlipperSharp
 			return args[idx + 1];
 		}
 
-		public static double Get(this in Vector4 v, int index)
+		public static double Get(this in Vector4d v, int index)
 		{
 			switch (index)
 			{
@@ -61,7 +61,7 @@ namespace KlipperSharp
 			}
 			throw new ArgumentOutOfRangeException(nameof(index));
 		}
-		public static double Get(this in Vector3 v, int index)
+		public static double Get(this in Vector3d v, int index)
 		{
 			switch (index)
 			{
@@ -71,24 +71,24 @@ namespace KlipperSharp
 			}
 			throw new ArgumentOutOfRangeException(nameof(index));
 		}
-		public static void Set(this ref Vector4 v, int index, double value)
+		public static void Set(this ref Vector4d v, int index, double value)
 		{
 			switch (index)
 			{
-				case 0: v.X = (float)value; break;
-				case 1: v.Y = (float)value; break;
-				case 2: v.Z = (float)value; break;
-				case 3: v.W = (float)value; break;
+				case 0: v.X = value; break;
+				case 1: v.Y = value; break;
+				case 2: v.Z = value; break;
+				case 3: v.W = value; break;
 			}
 			throw new ArgumentOutOfRangeException(nameof(index));
 		}
-		public static void Set(this ref Vector3 v, int index, double value)
+		public static void Set(this ref Vector3d v, int index, double value)
 		{
 			switch (index)
 			{
-				case 0: v.X = (float)value; break;
-				case 1: v.Y = (float)value; break;
-				case 2: v.Z = (float)value; break;
+				case 0: v.X = value; break;
+				case 1: v.Y = value; break;
+				case 2: v.Z = value; break;
 			}
 			throw new ArgumentOutOfRangeException(nameof(index));
 		}

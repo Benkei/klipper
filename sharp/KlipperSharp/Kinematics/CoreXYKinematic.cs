@@ -18,7 +18,7 @@ namespace KlipperSharp.Kinematics
 		private double max_z_velocity;
 		private double max_z_accel;
 		private bool need_motor_enable;
-		private Vector2[] limits;
+		private Vector2d[] limits;
 
 		public CoreXYKinematic(ToolHead toolhead, ConfigWrapper config)
 		{
@@ -40,7 +40,7 @@ namespace KlipperSharp.Kinematics
 			this.max_z_velocity = config.getfloat("max_z_velocity", max_velocity, above: 0.0, maxval: max_velocity);
 			this.max_z_accel = config.getfloat("max_z_accel", max_accel, above: 0.0, maxval: max_accel);
 			this.need_motor_enable = true;
-			this.limits = new Vector2[] { new Vector2(1, -1), new Vector2(1, -1), new Vector2(1, -1) };
+			this.limits = new Vector2d[] { new Vector2d(1, -1), new Vector2d(1, -1), new Vector2d(1, -1) };
 			// Setup stepper max halt velocity
 			var max_halt_velocity = toolhead.get_max_axis_halt();
 			var max_xy_halt_velocity = max_halt_velocity * Math.Sqrt(2.0);
@@ -60,18 +60,18 @@ namespace KlipperSharp.Kinematics
 					  select s).ToList();
 		}
 
-		public override Vector3 calc_position()
+		public override Vector3d calc_position()
 		{
-			Vector3 pos;
-			pos.X = (float)rails[0].get_commanded_position();
-			pos.Y = (float)rails[1].get_commanded_position();
-			pos.Z = (float)rails[2].get_commanded_position();
+			Vector3d pos;
+			pos.X = rails[0].get_commanded_position();
+			pos.Y = rails[1].get_commanded_position();
+			pos.Z = rails[2].get_commanded_position();
 			pos.X = 0.5f * (pos.X + pos.Y);
 			pos.Y = 0.5f * (pos.X - pos.Y);
 			return pos;
 		}
 
-		public override void set_position(Vector3 newpos, List<int> homing_axes)
+		public override void set_position(Vector3d newpos, List<int> homing_axes)
 		{
 			for (int i = 0; i < rails.Length; i++)
 			{
@@ -121,9 +121,9 @@ namespace KlipperSharp.Kinematics
 
 		public override void motor_off(double print_time)
 		{
-			this.limits[0] = new Vector2(0, 0);
-			this.limits[1] = new Vector2(0, 0);
-			this.limits[2] = new Vector2(0, 0);
+			this.limits[0] = new Vector2d(0, 0);
+			this.limits[1] = new Vector2d(0, 0);
+			this.limits[2] = new Vector2d(0, 0);
 			foreach (var rail in this.rails)
 			{
 				rail.motor_enable(print_time, false);

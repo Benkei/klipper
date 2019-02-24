@@ -12,12 +12,12 @@ namespace KlipperSharp.Kinematics
 			return new List<PrinterStepper>();
 		}
 
-		public override Vector3 calc_position()
+		public override Vector3d calc_position()
 		{
-			return Vector3.Zero;
+			return Vector3d.Zero;
 		}
 
-		public override void set_position(Vector3 newpos, List<int> homing_axes)
+		public override void set_position(Vector3d newpos, List<int> homing_axes)
 		{
 		}
 

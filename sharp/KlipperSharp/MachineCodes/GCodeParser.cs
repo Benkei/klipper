@@ -14,8 +14,8 @@ namespace KlipperSharp.MachineCodes
 {
 	public interface ITransform
 	{
-		Vector4 get_position();
-		void move(Vector4 newpos, double speed);
+		Vector4d get_position();
+		void move(Vector4d newpos, double speed);
 	}
 
 	public class CommandStream : Stream
@@ -177,14 +177,14 @@ namespace KlipperSharp.MachineCodes
 		private ConcurrentDictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)> mux_commands = new ConcurrentDictionary<string, (string, Dictionary<string, Action<Dictionary<string, object>>>)>();
 		private ConcurrentDictionary<string, string> gcode_help = new ConcurrentDictionary<string, string>();
 		private bool absolutecoord;
-		private Vector4 base_position;
-		private Vector4 last_position;
-		private Vector4 homing_position;
+		private Vector4d base_position;
+		private Vector4d last_position;
+		private Vector4d homing_position;
 		private double speed_factor;
 		private double extrude_factor;
 		private ITransform move_transform;
-		private Action<Vector4, double> move_with_transform;
-		private Func<Vector4> position_with_transform;
+		private Action<Vector4d, double> move_with_transform;
+		private Func<Vector4d> position_with_transform;
 		private bool need_ack;
 		private ToolHead toolhead;
 		private PrinterHeaters heater;
@@ -239,13 +239,13 @@ namespace KlipperSharp.MachineCodes
 			}
 			// G-Code coordinate manipulation
 			this.absolutecoord = true;
-			this.base_position = Vector4.Zero;
-			this.last_position = Vector4.Zero;
-			this.homing_position = Vector4.Zero;
+			this.base_position = Vector4d.Zero;
+			this.last_position = Vector4d.Zero;
+			this.homing_position = Vector4d.Zero;
 			this.speed_factor = 1.0 / 60.0;
 			this.extrude_factor = 1.0;
 			this.move_transform = null;
-			this.position_with_transform = () => Vector4.Zero;
+			this.position_with_transform = () => Vector4d.Zero;
 			// G-Code state
 			this.need_ack = false;
 			this.toolhead = null;
