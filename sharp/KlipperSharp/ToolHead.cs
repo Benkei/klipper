@@ -6,7 +6,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 
 namespace KlipperSharp
 {
@@ -92,6 +91,14 @@ namespace KlipperSharp
 			try
 			{
 				this.kin = KinematicFactory.load_kinematics(kin_name, this, config);
+			}
+			catch (ConfigException)
+			{
+				throw;
+			}
+			catch (PinsException)
+			{
+				throw;
 			}
 			catch (Exception ex)
 			{

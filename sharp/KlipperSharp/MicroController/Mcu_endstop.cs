@@ -4,15 +4,20 @@ using System.Linq;
 
 namespace KlipperSharp.MicroController
 {
+
+	[Serializable]
+	public class TimeoutEndstopException : Exception
+	{
+		public TimeoutEndstopException() { }
+		public TimeoutEndstopException(string message) : base(message) { }
+		public TimeoutEndstopException(string message, Exception inner) : base(message, inner) { }
+		protected TimeoutEndstopException(
+		 System.Runtime.Serialization.SerializationInfo info,
+		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+	}
+
 	public class Mcu_endstop
 	{
-		public class TimeoutError : Exception
-		{
-			public TimeoutError(string msg) : base(msg)
-			{
-			}
-		}
-
 		public const double RETRY_QUERY = 1.0;
 		private Mcu _mcu;
 		private List<Mcu_stepper> _steppers;
@@ -62,7 +67,7 @@ namespace KlipperSharp.MicroController
 
 		public List<Mcu_stepper> get_steppers()
 		{
-			return _steppers.ToList();
+			return _steppers;
 		}
 
 		public void _build_config()
@@ -93,7 +98,7 @@ namespace KlipperSharp.MicroController
 			 bool triggered = true)
 		{
 			var clock = _mcu.print_time_to_clock(print_time);
-			var rest_ticks = Convert.ToInt32(rest_time * _mcu.get_adjusted_freq());
+			var rest_ticks = (int)(rest_time * _mcu.get_adjusted_freq());
 			_homing = true;
 			_min_query_time = _mcu.monotonic();
 			_next_query_print_time = print_time + RETRY_QUERY;
@@ -159,7 +164,7 @@ namespace KlipperSharp.MicroController
 					}
 					_homing = false;
 					_home_cmd.send(new object[] { _oid, 0, 0, 0, 0, 0 });
-					throw new TimeoutError("Timeout during endstop homing");
+					throw new TimeoutEndstopException("Timeout during endstop homing");
 				}
 			}
 			if (_mcu.is_shutdown())

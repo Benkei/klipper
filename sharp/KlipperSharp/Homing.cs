@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 
 namespace KlipperSharp
 {
@@ -93,14 +92,10 @@ namespace KlipperSharp
 			 bool probe_pos = false,
 			 bool verify_movement = false)
 		{
-			string name;
-			Mcu_endstop mcu_endstop;
 			// Notify endstops of upcoming home
-			foreach (var _tup_1 in endstops)
+			foreach (var item in endstops)
 			{
-				mcu_endstop = _tup_1.Item1;
-				name = _tup_1.Item2;
-				mcu_endstop.home_prepare();
+				item.endstop.home_prepare();
 			}
 			if (dwell_t != 0)
 			{
@@ -112,12 +107,10 @@ namespace KlipperSharp
 										let es = item.endstop
 										from s in es.get_steppers()
 										select (s, item.name, s.get_mcu_position())).ToList();
-			foreach (var _tup_3 in endstops)
+			foreach (var item in endstops)
 			{
-				mcu_endstop = _tup_3.Item1;
-				name = _tup_3.Item2;
-				var min_step_dist = (from s in mcu_endstop.get_steppers() select s.get_step_dist()).Min();
-				mcu_endstop.home_start(print_time, ENDSTOP_SAMPLE_TIME, ENDSTOP_SAMPLE_COUNT, min_step_dist / speed);
+				var min_step_dist = (from s in item.endstop.get_steppers() select s.get_step_dist()).Min();
+				item.endstop.home_start(print_time, ENDSTOP_SAMPLE_TIME, ENDSTOP_SAMPLE_COUNT, min_step_dist / speed);
 			}
 			this.toolhead.dwell(HOMING_START_DELAY, check_stall: false);
 			// Issue move
@@ -126,25 +119,23 @@ namespace KlipperSharp
 			{
 				this.toolhead.move(movepos, speed);
 			}
-			catch (/*EndstopError*/ Exception e)
+			catch (EndstopException e)
 			{
 				error = $"Error during homing move: {e}";
 			}
 			var move_end_print_time = this.toolhead.get_last_move_time();
 			this.toolhead.reset_print_time(print_time);
-			foreach (var _tup_4 in endstops)
+			foreach (var item in endstops)
 			{
-				mcu_endstop = _tup_4.Item1;
-				name = _tup_4.Item2;
 				try
 				{
-					mcu_endstop.home_wait(move_end_print_time);
+					item.endstop.home_wait(move_end_print_time);
 				}
-				catch (Exception e)
+				catch (TimeoutEndstopException e)
 				{
 					if (error == null)
 					{
-						error = $"Failed to home {name}: {e}";
+						error = $"Failed to home {item.name}: {e}";
 					}
 				}
 			}
@@ -157,13 +148,11 @@ namespace KlipperSharp
 			{
 				this.toolhead.set_position(movepos);
 			}
-			foreach (var _tup_5 in endstops)
+			foreach (var item in endstops)
 			{
-				mcu_endstop = _tup_5.Item1;
-				name = _tup_5.Item2;
 				try
 				{
-					mcu_endstop.home_finalize();
+					item.endstop.home_finalize();
 				}
 				catch (EndstopException e)
 				{
@@ -180,18 +169,15 @@ namespace KlipperSharp
 			// Check if some movement occurred
 			if (verify_movement)
 			{
-				foreach (var _tup_6 in start_mcu_pos)
+				foreach (var item in start_mcu_pos)
 				{
-					var s = _tup_6.Item1;
-					name = _tup_6.Item2;
-					var pos = _tup_6.Item3;
-					if (s.get_mcu_position() == pos)
+					if (item.s.get_mcu_position() == item.Item3)
 					{
 						if (probe_pos)
 						{
 							throw new EndstopException("Probe triggered prior to movement");
 						}
-						throw new EndstopException($"Endstop {name} still triggered after retract");
+						throw new EndstopException($"Endstop {item.name} still triggered after retract");
 					}
 				}
 			}

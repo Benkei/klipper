@@ -384,8 +384,17 @@ Printer is shutdown
 
 		public List<object> send_event(string @event, params object[] parameters)
 		{
-			var list = event_handlers.Get(@event);
-			return (from cb in list select cb.DynamicInvoke(parameters)).ToList();
+			var handles = event_handlers.Get(@event);
+			var response = new List<object>();
+			for (int i = 0; handles != null && i < handles.Count; i++)
+			{
+				var result = handles[i].DynamicInvoke(parameters);
+				if (result != null)
+				{
+					response.Add(result);
+				}
+			}
+			return response;
 		}
 
 		public void request_exit(string result)

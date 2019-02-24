@@ -28,7 +28,7 @@ namespace KlipperSharp
 		}
 		public override void encode(BinaryWriter output, object value)
 		{
-			var v = (int)value;
+			var v = Convert.ToInt32(value);
 			if (v >= 0xc000000 || v < -0x4000000) output.Write((byte)((v >> 28) & 0x7f | 0x80));
 			if (v >= 0x180000 || v < -0x80000) output.Write((byte)((v >> 21) & 0x7f | 0x80));
 			if (v >= 0x3000 || v < -0x1000) output.Write((byte)((v >> 14) & 0x7f | 0x80));

@@ -1,7 +1,6 @@
 ﻿using KlipperSharp.MachineCodes;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
 using System.Linq;
 
 namespace KlipperSharp.Kinematics
@@ -111,7 +110,7 @@ namespace KlipperSharp.Kinematics
 				forcepos[axis] += 1.5 * (position_max - hi.position_endstop);
 			}
 			// Perform homing
-			double limit_speed = 0;
+			double? limit_speed = null;
 			if (axis == 2)
 			{
 				limit_speed = this.max_z_velocity;

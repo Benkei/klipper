@@ -3,7 +3,6 @@ using KlipperSharp.PulseGeneration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 
 namespace KlipperSharp
 {
@@ -45,14 +44,13 @@ namespace KlipperSharp
 				return new StepperEnablePin(null, 9999);
 			}
 			var pin_params = ppins.lookup_pin(pin, can_invert: true, share_type: "stepper_enable");
-			var enable = pin_params.classPin;
-			if (enable == null)
+			if (pin_params.classPin == null)
 			{
 				var mcu_enable = pin_params.chip.setup_pin<Mcu_digital_out>("digital_out", pin_params);
 				mcu_enable.setup_max_duration(0.0);
 				pin_params.classPin = new StepperEnablePin(mcu_enable);
 			}
-			return enable;
+			return pin_params.classPin;
 		}
 	}
 

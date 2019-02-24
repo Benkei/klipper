@@ -161,7 +161,7 @@ namespace KlipperSharp
 
 		public virtual int print_time_to_clock(double print_time)
 		{
-			return Convert.ToInt32(print_time * this.mcu_freq);
+			return (int)(print_time * this.mcu_freq);
 		}
 
 		public virtual double clock_to_print_time(double clock)
@@ -181,7 +181,7 @@ namespace KlipperSharp
 			var sample_time = _tup_1.Item1;
 			var clock = _tup_1.Item2;
 			var freq = _tup_1.Item3;
-			return Convert.ToInt32(clock + (eventtime - sample_time) * freq);
+			return (int)(clock + (eventtime - sample_time) * freq);
 		}
 
 		public double estimated_print_time(double eventtime)

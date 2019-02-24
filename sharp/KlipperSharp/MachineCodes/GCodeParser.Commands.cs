@@ -6,7 +6,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -193,7 +192,7 @@ namespace KlipperSharp.MachineCodes
 					axes.Add(axis2pos[axis.ToString()]);
 				}
 			}
-			if (axes.Count != 0)
+			if (axes.Count == 0)
 			{
 				axes.Add(0);
 				axes.Add(1);
