@@ -28,7 +28,7 @@ namespace KlipperSharp
 		}
 		public override void encode(BinaryWriter output, object value)
 		{
-			var v = Convert.ToInt32(value);
+			var v = Convert.ToInt64(value);
 			if (v >= 0xc000000 || v < -0x4000000) output.Write((byte)((v >> 28) & 0x7f | 0x80));
 			if (v >= 0x180000 || v < -0x80000) output.Write((byte)((v >> 21) & 0x7f | 0x80));
 			if (v >= 0x3000 || v < -0x1000) output.Write((byte)((v >> 14) & 0x7f | 0x80));
@@ -489,6 +489,7 @@ namespace KlipperSharp
 
 		public List<byte> _parse_buffer(string value)
 		{
+			throw new NotImplementedException();
 			if (value == null)
 			{
 				return new List<byte>();
@@ -546,7 +547,10 @@ namespace KlipperSharp
 					var t = ((MessageFormat)mp).Name_to_type[item.Key];
 					if (t.is_integer)
 					{
-						tval = Convert.ToInt32(item.Value);
+						if (t.signed)
+							tval = Convert.ToInt32(item.Value);
+						else
+							tval = Convert.ToUInt32(item.Value);
 					}
 					else
 					{
@@ -555,19 +559,19 @@ namespace KlipperSharp
 					argParts[item.Key] = tval;
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
 				//traceback.print_exc()
-				throw new Exception($"Unable to extract params from: {msgName}");
+				throw new Exception($"Unable to extract params from: {msgName}", ex);
 			}
 			try
 			{
 				((MessageFormat)mp).Encode_by_name(argParts, writer);
 			}
-			catch
+			catch (Exception ex)
 			{
 				//traceback.print_exc()
-				throw new Exception($"Unable to encode: {msgName}");
+				throw new Exception($"Unable to encode: {msgName}", ex);
 			}
 		}
 

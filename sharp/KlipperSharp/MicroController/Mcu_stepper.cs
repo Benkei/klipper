@@ -199,7 +199,7 @@ namespace KlipperSharp.MicroController
 				throw new Exception("Internal error in stepcompress");
 			}
 			uint* data = stackalloc uint[] { (uint)this._reset_cmd_id, (uint)this._oid, 0 };
-			ret = Stepcompress.stepcompress_queue_msg(ref this._stepqueue, data, 3) > 0;
+			ret = Stepcompress.stepcompress_queue_msg(ref this._stepqueue, new ReadOnlySpan<uint>(data, 3)) > 0;
 			//ret = this._ffi_lib.stepcompress_queue_msg(this._stepqueue, data, 3);
 			if (ret)
 			{
@@ -210,7 +210,7 @@ namespace KlipperSharp.MicroController
 				return;
 			}
 			var parameters = this._get_position_cmd.send_with_response(new object[] { this._oid }, response: "stepper_position", response_oid: this._oid);
-			var mcu_pos_dist = (double)parameters["pos"] * this._step_dist;
+			var mcu_pos_dist = parameters.Get<int>("pos") * this._step_dist;
 			if (this._invert_dir)
 			{
 				mcu_pos_dist = -mcu_pos_dist;

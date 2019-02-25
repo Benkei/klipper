@@ -214,10 +214,8 @@ namespace KlipperSharp.PulseGeneration
 		// Allocate a new 'stepcompress' object
 		public static stepcompress stepcompress_alloc(uint oid)
 		{
-			stepcompress sc = new stepcompress();
+			stepcompress sc = new stepcompress(oid);
 			sc.msg_queue = new Queue<SerialQueue.RawMessage>();
-			sc.oid = oid;
-			sc.sdir = -1;
 			return sc;
 		}
 
@@ -327,13 +325,13 @@ namespace KlipperSharp.PulseGeneration
 		}
 
 		// Queue an mcu command to go out in order with stepper commands
-		public static int stepcompress_queue_msg(ref stepcompress sc, uint* data, int len)
+		public static int stepcompress_queue_msg(ref stepcompress sc, ReadOnlySpan<uint> data)
 		{
 			int ret = stepcompress_flush(ref sc, ulong.MaxValue);
 			if (ret != 0)
 				return ret;
 
-			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(data, len));
+			var qm = SerialQueue.RawMessage.CreateAndEncode(data);
 			qm.req_clock = sc.homing_clock != 0 ? 0 : sc.last_step_clock;
 			sc.msg_queue.Enqueue(qm);
 			return 0;
@@ -650,7 +648,7 @@ namespace KlipperSharp.PulseGeneration
 		public double clock_offset;
 	}
 
-	public unsafe struct stepcompress
+	public unsafe class stepcompress
 	{
 		// Buffer management
 		public uint* queue, queue_end, queue_pos, queue_next;
@@ -662,7 +660,7 @@ namespace KlipperSharp.PulseGeneration
 		public Queue<SerialQueue.RawMessage> msg_queue;
 		public uint queue_step_msgid, set_next_step_dir_msgid, oid;
 		public int sdir, invert_sdir;
-		public stepcompress(uint oid) : this()
+		public stepcompress(uint oid)
 		{
 			this.oid = oid;
 			sdir = -1;

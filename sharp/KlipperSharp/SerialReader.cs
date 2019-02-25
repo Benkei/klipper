@@ -66,7 +66,8 @@ namespace KlipperSharp
 				parameter["#receive_time"] = response.receive_time;
 				var hdl = (parameter.Get<string>("#name"), parameter.Get<int>("oid"));
 
-				logging.Info($"{hdl.Item1}:{hdl.Item2} - {(float)((response.receive_time - response.sent_time) * 1000)} : {(float)(response.sent_time * 1000)}/{(float)(response.receive_time * 1000)}");
+				//logging.Info($"{hdl.Item1}:{hdl.Item2} - {(float)((response.receive_time - response.sent_time) * 1000)} : {(float)(response.sent_time * 1000)}/{(float)(response.receive_time * 1000)}");
+				logging.Info($"{hdl.Item1}:{hdl.Item2}");
 
 				Action<Dictionary<string, object>> callback;
 				lock (_lock)
@@ -397,10 +398,10 @@ namespace KlipperSharp
 		public void unregister()
 		{
 			serial.unregister_callback(name, oid);
-			this.serial.reactor.unregister_timer(this.send_timer);
+			serial.reactor.unregister_timer(this.send_timer);
 		}
 
-		public double send_event(double eventtime)
+		double send_event(double eventtime)
 		{
 			if (response != null)
 			{
@@ -411,7 +412,7 @@ namespace KlipperSharp
 			return eventtime + RETRY_TIME;
 		}
 
-		public void handle_callback(Dictionary<string, object> parameter)
+		void handle_callback(Dictionary<string, object> parameter)
 		{
 			double last_sent_time = parameter.Get<double>("#sent_time");
 			if (last_sent_time >= min_query_time)

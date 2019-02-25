@@ -50,7 +50,7 @@ namespace KlipperSharp
 		{
 			this.printer = config.get_printer();
 			this.reactor = this.printer.get_reactor();
-			this.all_mcus = (from mcus in this.printer.lookup_objects<Mcu>(module: "mcu") select mcus.modul as Mcu).ToList();
+			this.all_mcus = (from mcus in this.printer.lookup_objects<Mcu>(module: "mcu") select mcus.modul).ToList();
 			this.mcu = this.all_mcus[0];
 			this.move_queue = new MoveQueue();
 			this.commanded_pos = Vector4d.Zero;

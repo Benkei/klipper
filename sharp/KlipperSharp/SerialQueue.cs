@@ -467,7 +467,8 @@ namespace KlipperSharp
 				if (input_pos != 0)
 				{
 					//memmove(sq->input_buf, &sq->input_buf[ret], input_pos);
-					Buffer.BlockCopy(input_buf, ret, input_buf, 0, 4096 - ret);
+					//Buffer.BlockCopy(input_buf, ret, input_buf, 0, 4096 - ret);
+					input_buf.AsSpan(ret, input_pos).CopyTo(input_buf.AsSpan());
 				}
 			}
 		}
@@ -479,7 +480,7 @@ namespace KlipperSharp
 			ulong rseq = (receive_seq & ~MESSAGE_SEQ_MASK) | (input_buf[MESSAGE_POS_SEQ] & MESSAGE_SEQ_MASK);
 			if (rseq < receive_seq)
 				rseq += MESSAGE_SEQ_MASK + 1;
-			//Console.WriteLine($"Msg seq:{rseq} l:{length}");
+
 			if (rseq != receive_seq)
 			{
 				// New sequence number
@@ -487,7 +488,8 @@ namespace KlipperSharp
 			}
 			if (length == MESSAGE_MIN)
 			{
-				//Console.WriteLine($"Ack/nak seq:{rseq}");
+				logging.Info($"Ack/nak seq:{rseq}; t:{HighResolutionTime.Now * 1000:0.00}");
+
 				// Ack/nak message
 				if (last_ack_seq < rseq)
 				{
@@ -683,7 +685,7 @@ namespace KlipperSharp
 		// Determine the time the next serial data should be sent
 		double check_send_command(double eventtime)
 		{
-			if (send_seq - receive_seq >= MESSAGE_SEQ_MASK && receive_seq != ulong.MaxValue)
+			if ((send_seq - receive_seq) >= MESSAGE_SEQ_MASK && receive_seq != ulong.MaxValue)
 				// Need an ack before more messages can be sent
 				return PR_NEVER;
 			if (send_seq > receive_seq && receive_window != 0)
@@ -830,6 +832,7 @@ namespace KlipperSharp
 			//queue_message output = new queue_message();
 			//output.len = MESSAGE_HEADER_SIZE;
 
+			int count = 0;
 			while (ready_bytes != 0)
 			{
 				// Find highest priority message (message with lowest req_clock)
@@ -857,6 +860,8 @@ namespace KlipperSharp
 				//Buffer.MemoryCopy(qm.msg, output.msg + output.len, MESSAGE_MAX, qm.len);
 				//memcpy(output.msg[output.len], qm.msg, qm.len);
 
+				count++;
+
 				//output.len += qm.len;
 				ready_bytes -= qm.len;
 			}
@@ -866,8 +871,7 @@ namespace KlipperSharp
 			sendBuffer.WriteByte((byte)(sendBuffer.Length + MESSAGE_TRAILER_SIZE));
 			sendBuffer.WriteByte((byte)(MESSAGE_DEST | (send_seq & MESSAGE_SEQ_MASK)));
 
-			int crc = SerialUtil.Crc16_ccitt(
-				new ReadOnlySpan<byte>(sendBuffer.GetBuffer(), 0, (int)sendBuffer.Length));
+			int crc = SerialUtil.Crc16_ccitt(sendBuffer.GetBuffer().AsSpan(0, (int)sendBuffer.Length));
 
 			sendBuffer.Position = sendBuffer.Length;
 			sendBuffer.WriteByte((byte)(crc >> 8));
@@ -901,6 +905,8 @@ namespace KlipperSharp
 			send_seq++;
 			need_ack_bytes += output.len;
 			send_queue.Enqueue(output);
+
+			logging.Info($"Send Msg; seq:{send_seq}; packet:{sendBuffer.Length} {need_ack_bytes}/{receive_window}; pack:{count}; t:{HighResolutionTime.Now * 1000:0.00}");
 		}
 
 		#endregion

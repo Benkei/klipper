@@ -84,7 +84,7 @@ namespace KlipperSharp.Kinematics
 			{
 				var rail = this.rails[i];
 				rail.set_position(newpos);
-				if (homing_axes.Contains(i))
+				if (homing_axes != null && homing_axes.Contains(i))
 				{
 					this.limits[i] = rail.get_range();
 				}
