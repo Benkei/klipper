@@ -450,6 +450,7 @@ namespace KlipperSharp.MachineCodes
 				// Invoke handler for command
 				this.need_ack = need_ack;
 
+				logging.Debug("Execute " + cmd);
 				if (!gcode_handlers.TryGetValue(cmd, out var handler))
 				{
 					handler = cmd_default;
@@ -507,13 +508,13 @@ namespace KlipperSharp.MachineCodes
 			int count = 0;
 			while ((idx = cmdBuffer.IndexOf('\n')) != -1)
 			{
-				var str = cmdBuffer.ToString(0, idx);
+				var str = cmdBuffer.ToString(0, idx).Trim();
+				cmdBuffer.Remove(0, idx + 1);
 				if (string.IsNullOrEmpty(str))
 				{
 					continue;
 				}
 				lines.Add(str);
-				cmdBuffer.Remove(0, idx + 1);
 				count++;
 			}
 			return count;
@@ -680,6 +681,7 @@ namespace KlipperSharp.MachineCodes
 				//{
 				//	os.write(this.fd, "ok\n");
 				//}
+				logging.Info("ok " + msg);
 			}
 			catch
 			{
@@ -697,6 +699,7 @@ namespace KlipperSharp.MachineCodes
 			try
 			{
 				//os.write(this.fd, msg + "\n");
+				logging.Info(msg);
 			}
 			catch
 			{
@@ -706,7 +709,6 @@ namespace KlipperSharp.MachineCodes
 
 		public void respond_info(string msg)
 		{
-			logging.Debug(msg);
 			var lines = (from l in (msg.Trim().Split('\n')) select l.Trim());
 			this.respond("// " + string.Join("\n// ", lines));
 		}
