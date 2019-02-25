@@ -141,9 +141,8 @@ or in response to an internal error in the host software."}
 		}
 
 		// Serial callbacks
-		public void _handle_mcu_stats(Dictionary<string, object> parameters)
+		void _handle_mcu_stats(Dictionary<string, object> parameters)
 		{
-			logging.Debug("Mcu stats c:{0} sum:{1} sumsq:{2}", parameters.Get<int>("count"), parameters.Get<int>("sum"), parameters.Get<int>("sumsq"));
 			var count = parameters.Get<int>("count");
 			var tick_sum = parameters.Get<int>("sum");
 			var c = 1.0 / (count * this._mcu_freq);
@@ -151,9 +150,11 @@ or in response to an internal error in the host software."}
 			var tick_sumsq = parameters.Get<int>("sumsq") * this._stats_sumsq_base;
 			this._mcu_tick_stddev = c * Math.Sqrt(count * tick_sumsq - Math.Pow(tick_sum, 2));
 			this._mcu_tick_awake = tick_sum / this._mcu_freq;
+
+			//logging.Debug("Mcu stats c:{0} sum:{1} sumsq:{2}", parameters.Get<int>("count"), parameters.Get<int>("sum"), parameters.Get<int>("sumsq"));
 		}
 
-		public void _handle_shutdown(Dictionary<string, object> parameters)
+		void _handle_shutdown(Dictionary<string, object> parameters)
 		{
 			if (this._is_shutdown)
 				return;
@@ -170,7 +171,7 @@ or in response to an internal error in the host software."}
 		}
 
 		// Connection phase
-		public void _check_restart(string reason)
+		void _check_restart(string reason)
 		{
 			var start_reason = (string)this._printer.get_start_args().Get("start_reason");
 			if (start_reason == "firmware_restart")
@@ -183,7 +184,7 @@ or in response to an internal error in the host software."}
 			throw new Exception($"Attempt MCU '{this._name}' restart failed");
 		}
 
-		public void _connect_file(bool pace = false)
+		void _connect_file(bool pace = false)
 		{
 			//object dict_fname;
 			//object out_fname;
@@ -216,7 +217,7 @@ or in response to an internal error in the host software."}
 			//}
 		}
 
-		public void _add_custom()
+		void _add_custom()
 		{
 			foreach (var item in this._custom.Split("\n"))
 			{
@@ -235,7 +236,7 @@ or in response to an internal error in the host software."}
 			}
 		}
 
-		public void _send_config(int prev_crc)
+		void _send_config(uint prev_crc)
 		{
 			// Build config commands
 			foreach (var cb in this._config_callbacks)
@@ -261,7 +262,11 @@ or in response to an internal error in the host software."}
 			}
 			// Calculate config CRC
 			var bytes = Encoding.ASCII.GetBytes(string.Join('\n', this._config_cmds));
-			int config_crc = (int)Crc32.Compute(bytes) & -1;
+			var config_crc = Crc32.Compute(bytes) & 0xffffffff;
+
+			System.IO.File.WriteAllText("config.txt", string.Join('\n', this._config_cmds) + "\n" + config_crc);
+			logging.Debug($"Config send crc32 {config_crc}");
+
 			this.add_config_cmd($"finalize_config crc={config_crc}");
 			// Transmit config messages (if needed)
 			if (prev_crc == 0)
@@ -284,9 +289,8 @@ or in response to an internal error in the host software."}
 			}
 		}
 
-		public Dictionary<string, object> _send_get_config()
+		Dictionary<string, object> _send_get_config()
 		{
-			var get_config_cmd = this.lookup_command("get_config");
 			if (this.is_fileoutput())
 			{
 				return new Dictionary<string, object>
@@ -296,22 +300,23 @@ or in response to an internal error in the host software."}
 					{"crc", 0}
 				};
 			}
+			var get_config_cmd = this.lookup_command("get_config");
 			var config_parameters = get_config_cmd.send_with_response(null, "config");
 			if (this._is_shutdown)
 			{
 				throw new Exception($"MCU '{this._name}' error during config: {this._shutdown_msg}");
 			}
-			if (config_parameters.Get("is_shutdown") == null)
+			if (config_parameters.Get<bool>("is_shutdown"))
 			{
 				throw new Exception($"Can not update MCU '{this._name}' config as it is shutdown");
 			}
 			return config_parameters;
 		}
 
-		public void _check_config()
+		void _check_config()
 		{
 			var config_parameters = this._send_get_config();
-			if (config_parameters.Get("is_config") == null)
+			if (!config_parameters.Get<bool>("is_config"))
 			{
 				if (this._restart_method == RestartMethod.Rpi_usb)
 				{
@@ -321,7 +326,8 @@ or in response to an internal error in the host software."}
 				// Not configured - send config and issue get_config again
 				this._send_config(0);
 				config_parameters = this._send_get_config();
-				if (config_parameters.Get("is_config") == null && !this.is_fileoutput())
+				logging.Debug($"Config received crc32 {(uint)config_parameters.Get<int>("crc")}");
+				if (!config_parameters.Get<bool>("is_config") && !this.is_fileoutput())
 				{
 					throw new Exception($"Unable to configure MCU '{this._name}'");
 				}
@@ -334,15 +340,15 @@ or in response to an internal error in the host software."}
 					throw new Exception($"Failed automated reset of MCU '{this._name}'");
 				}
 				// Already configured - send init commands
-				this._send_config((int)config_parameters.Get("crc"));
+				this._send_config(config_parameters.Get<uint>("crc"));
 			}
 			// Setup steppersync with the move_count returned by get_config
-			this._move_count = (int)config_parameters.Get("move_count");
+			this._move_count = config_parameters.Get<int>("move_count");
 			this._steppersync = Stepcompress.steppersync_alloc(this._serial.serialqueue, this._stepqueues, this._stepqueues.Count, this._move_count);
 			Stepcompress.steppersync_set_time(this._steppersync, 0.0, this._mcu_freq);
 		}
 
-		public void _connect()
+		void _connect()
 		{
 			if (this.is_fileoutput())
 			{
@@ -361,13 +367,13 @@ or in response to an internal error in the host software."}
 			var msgparser = this._serial.msgparser;
 			var name = this._name;
 
-
-
 			var log_info = new List<string> {
 				$"Loaded MCU '{name}' {msgparser.messages_by_id.Count} commands ({msgparser.version} / {msgparser.build_versions})",
 				$"MCU '{name}' config: {string.Join(" ", msgparser.config.Select((a) => $"{a.Key}={a.Value}"))}"
 			};
-			logging.Info(string.Join("\n", log_info));
+			logging.Info(log_info[0]);
+			logging.Info(log_info[1]);
+
 			this._mcu_freq = this.get_constant_float("CLOCK_FREQ");
 			this._stats_sumsq_base = this.get_constant_float("STATS_SUMSQ_BASE");
 			this._emergency_stop_cmd = this.lookup_command("emergency_stop");
@@ -383,9 +389,11 @@ or in response to an internal error in the host software."}
 			this.register_msg(this._handle_shutdown, "is_shutdown");
 			this.register_msg(this._handle_mcu_stats, "stats");
 			this._check_config();
+
 			var move_msg = $"Configured MCU '{name}' ({this._move_count} moves)";
 			logging.Info(move_msg);
 			log_info.Add(move_msg);
+
 			this._printer.set_rollover_info(name, string.Join("\n", log_info), log: false);
 		}
 
@@ -523,7 +531,7 @@ or in response to an internal error in the host software."}
 		}
 
 		// Restarts
-		public void _disconnect()
+		void _disconnect()
 		{
 			this._serial.disconnect();
 			if (this._steppersync != null)
@@ -533,12 +541,12 @@ or in response to an internal error in the host software."}
 			}
 		}
 
-		public void _shutdown()
+		void _shutdown()
 		{
 			_shutdown(false);
 		}
 
-		public void _shutdown(bool force)
+		void _shutdown(bool force)
 		{
 			if (this._emergency_stop_cmd == null || this._is_shutdown && !force)
 			{
@@ -547,14 +555,14 @@ or in response to an internal error in the host software."}
 			this._emergency_stop_cmd.send();
 		}
 
-		public void _restart_arduino()
+		void _restart_arduino()
 		{
 			logging.Info("Attempting MCU '{0}' reset", this._name);
 			this._disconnect();
 			serialhdl.arduino_reset(this._serialport, this._reactor);
 		}
 
-		public void _restart_via_command()
+		void _restart_via_command()
 		{
 			if (this._reset_cmd == null && this._config_reset_cmd == null || !this._clocksync.is_active())
 			{
@@ -580,7 +588,7 @@ or in response to an internal error in the host software."}
 			this._disconnect();
 		}
 
-		public void _restart_rpi_usb()
+		void _restart_rpi_usb()
 		{
 			logging.Info("Attempting MCU '{0}' reset via rpi usb power", this._name);
 			this._disconnect();
