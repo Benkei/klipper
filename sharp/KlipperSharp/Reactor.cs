@@ -57,6 +57,8 @@ namespace KlipperSharp
 
 	public class ReactorFileHandler
 	{
+		internal double eventtime;
+		internal bool block;
 		public CommandStream fd;
 		public Action<double> callback;
 
@@ -90,7 +92,6 @@ namespace KlipperSharp
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
 		protected bool _process = false;
-		public Func<double> monotonic;
 		private List<ReactorTimer> _timers;
 		private double _next_timer;
 		private object _pipe_fds;
@@ -102,8 +103,7 @@ namespace KlipperSharp
 		public SelectReactor()
 		{
 			// Main code
-			monotonic = () => HighResolutionTime.Now; //chelper.get_ffi()[1].get_monotonic;
-																	// Timers
+			// Timers
 			_timers = new List<ReactorTimer>();
 			_next_timer = NEVER;
 			// Callbacks
@@ -115,6 +115,7 @@ namespace KlipperSharp
 			_g_dispatch = null;
 			_greenlets = new List<object>();
 			parallelTimerCallback = ParallelTimer;
+			taskFileHandleCheckCallback = TaskFileHandleCheck;
 		}
 
 		~SelectReactor()
@@ -125,6 +126,11 @@ namespace KlipperSharp
 				//os.close(this._pipe_fds[1]);
 				this._pipe_fds = null;
 			}
+		}
+
+		public double monotonic()
+		{
+			return HighResolutionTime.Now;
 		}
 
 		// Timers
@@ -142,8 +148,11 @@ namespace KlipperSharp
 
 		public void update_timer(ReactorTimer t, double nexttime)
 		{
-			t.waketime = nexttime;
-			_note_time(t);
+			lock (_timers)
+			{
+				t.waketime = nexttime;
+				_note_time(t);
+			}
 		}
 
 		public ReactorTimer register_timer(ReactorAction callback, double waketime = NEVER)
@@ -166,7 +175,7 @@ namespace KlipperSharp
 		}
 
 		List<Task> tasks = new List<Task>();
-		double _check_timers(double eventtime)
+		private double _check_timers(double eventtime)
 		{
 			lock (_timers)
 			{
@@ -192,6 +201,42 @@ namespace KlipperSharp
 					return 0.0;
 				}
 				return Math.Min(1.0, Math.Max(0.001, _next_timer - monotonic()));
+			}
+		}
+
+		private void CheckFileHandles(double timeout)
+		{
+			var timeEnd = monotonic() + timeout;
+			lock (_fds)
+			{
+				for (int i = 0; i < _fds.Count; i++)
+				{
+					var eventtime = monotonic();
+					if (eventtime >= timeEnd)
+					{
+						break;
+					}
+					if (!_fds[i].block && _fds[i].fd.ReadHasData())
+					{
+						_fds[i].eventtime = eventtime;
+						_fds[i].block = true;
+						Task.Factory.StartNew(taskFileHandleCheckCallback, _fds[i]);
+					}
+				}
+			}
+		}
+
+		Action<object> taskFileHandleCheckCallback;
+		void TaskFileHandleCheck(object arg)
+		{
+			var fds = (ReactorFileHandler)arg;
+			try
+			{
+				fds.callback(fds.eventtime);
+			}
+			finally
+			{
+				fds.block = false;
 			}
 		}
 
@@ -360,33 +405,12 @@ namespace KlipperSharp
 			//}
 			//_g_dispatch = null;
 			//var _g_dispatch = this.g_dispatch = greenlet.getcurrent();
-			var eventtime = monotonic();
 			while (_process)
 			{
+				var eventtime = monotonic();
 				var timeout = _check_timers(eventtime);
-				lock (_fds)
-				{
-					for (int i = 0; i < _fds.Count; i++)
-					{
-						if (_fds[i].fd.ReadHasData())
-						{
-							eventtime = monotonic();
-							_fds[i].callback(eventtime);
-						}
-					}
-				}
-				//var res = select.select(_fds, new List<object>(), new List<object>(), timeout);
-				//eventtime = monotonic();
-				//foreach (var fd in res[0])
-				//{
-				//	fd.callback(eventtime);
-				//	if (g_dispatch != this.g_dispatch)
-				//	{
-				//		this._end_greenlet(g_dispatch);
-				//		eventtime = monotonic();
-				//		break;
-				//	}
-				//}
+				CheckFileHandles(eventtime);
+
 				Wait(ref _process, eventtime + timeout);
 			}
 			//_g_dispatch = null;
@@ -407,15 +431,8 @@ namespace KlipperSharp
 				else
 					Thread.Sleep(1);
 
-				//if (diff < 0.001f)
-				//	Thread.SpinWait(10);
-				//else if (diff < 0.050f)
-				//	Thread.SpinWait(100);
-				//else
-				//	Thread.Sleep(1);
-
 				if (!running)
-					return;
+					break;
 			}
 		}
 
@@ -436,6 +453,9 @@ namespace KlipperSharp
 			_process = false;
 		}
 	}
+
+
+
 	/*
 	public class PollReactor : SelectReactor
 	{
