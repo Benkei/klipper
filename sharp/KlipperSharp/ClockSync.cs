@@ -9,7 +9,7 @@ namespace KlipperSharp
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
-		public const double RTT_AGE = 1E-05 / (60.0 * 60.0);
+		public const double RTT_AGE = 0.000010 / (60.0 * 60.0);
 		public const double DECAY = 1.0 / 30.0;
 		public const double TRANSMIT_EXTRA = 0.001;
 		protected SelectReactor reactor;
@@ -87,29 +87,30 @@ namespace KlipperSharp
 		}
 
 		// MCU clock querying (_handle_clock is invoked from background thread)
-		public double _get_clock_event(double eventtime)
+		double _get_clock_event(double eventtime)
 		{
-			this.get_clock_cmd.send(null);
+			this.get_clock_cmd.send();
 			this.queries_pending += 1;
+
 			// Use an unusual time for the next event so clock messages
 			// don't resonate with other periodic events.
 			return eventtime + 0.9839;
 		}
 
-		public void _handle_clock(Dictionary<string, object> parameters)
+		void _handle_clock(Dictionary<string, object> parameters)
 		{
 			this.queries_pending = 0;
 			// Extend clock to 64bit
 			var last_clock = this.last_clock;
-			var clock = last_clock & ~-1L | parameters.Get<long>("clock");
+			var clock = last_clock & ~0xffffffffL | parameters.Get<long>("clock");
 			if (clock < last_clock)
 			{
-				clock += 4294967296L;
+				clock += 0x100000000L;
 			}
 			this.last_clock = clock;
 			// Check if this is the best round-trip-time seen so far
 			var sent_time = parameters.Get<double>("#sent_time");
-			if (sent_time != 0)
+			if (sent_time == 0)
 			{
 				return;
 			}
@@ -120,7 +121,7 @@ namespace KlipperSharp
 			{
 				min_half_rtt = half_rtt;
 				min_rtt_time = sent_time;
-				logging.Debug("new minimum rtt {0}: hrtt={1} freq={2}", sent_time, half_rtt, this.clock_est.Item3);
+				logging.Debug("new minimum rtt {0:0.000}: hrtt={1:0.000000} freq={2:0}", sent_time, half_rtt, this.clock_est.Item3);
 			}
 			// Filter out samples that are extreme outliers
 			var exp_clock = (sent_time - time_avg) * clock_est.Item3 + clock_avg;
@@ -129,11 +130,11 @@ namespace KlipperSharp
 			{
 				if (clock > exp_clock && sent_time < last_prediction_time + 10.0)
 				{
-					logging.Debug("Ignoring clock sample {0}: freq={1} diff={2} stddev={3}",
+					logging.Debug("Ignoring clock sample {0:0.000}: freq={1:0} diff={2:0} stddev={3:0.000}",
 						sent_time, this.clock_est.Item3, clock - exp_clock, Math.Sqrt(this.prediction_variance));
 					return;
 				}
-				logging.Info("Resetting prediction variance {0}: freq={1} diff={2} stddev={3}",
+				logging.Info("Resetting prediction variance {0:0.000}: freq={1:0} diff={2:0} stddev={3:0.000}",
 					sent_time, this.clock_est.Item3, clock - exp_clock, Math.Sqrt(this.prediction_variance));
 				prediction_variance = Math.Pow(0.001 * mcu_freq, 2);
 			}
@@ -154,8 +155,7 @@ namespace KlipperSharp
 			var pred_stddev = Math.Sqrt(prediction_variance);
 			serial.set_clock_est(new_freq, time_avg + TRANSMIT_EXTRA, (ulong)(clock_avg - 3.0 * pred_stddev));
 			clock_est = (time_avg + min_half_rtt, clock_avg, new_freq);
-			logging.Debug("regr {0}: freq={1} d={2}({3})",
-							  sent_time, new_freq, clock - exp_clock, pred_stddev);
+			logging.Debug("regr {0:0.000}: freq={1:0.000} d={2:0}({3:0.000})", sent_time, new_freq, clock - exp_clock, pred_stddev);
 			// clock frequency conversions
 		}
 
