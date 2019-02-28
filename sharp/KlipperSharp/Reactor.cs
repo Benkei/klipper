@@ -424,9 +424,9 @@ namespace KlipperSharp
 				if (diff <= 0f)
 					break;
 
-				if (diff < 0.005f)
+				if (diff < 0.001f)
 					Thread.SpinWait(10);
-				else if (diff < 0.050f)
+				else if (diff < 0.003f)
 					Thread.SpinWait(100);
 				else
 					Thread.Sleep(1);

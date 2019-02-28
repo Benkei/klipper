@@ -67,7 +67,7 @@ namespace KlipperSharp
 				var hdl = (parameter.Get<string>("#name"), parameter.Get<int>("oid"));
 
 				//logging.Info($"{hdl.Item1}:{hdl.Item2} - {(float)((response.receive_time - response.sent_time) * 1000)} : {(float)(response.sent_time * 1000)}/{(float)(response.receive_time * 1000)}");
-				logging.Info($"{hdl.Item1}:{hdl.Item2}");
+				//logging.Info($"{hdl.Item1}:{hdl.Item2}");
 
 				Action<Dictionary<string, object>> callback;
 				lock (_lock)

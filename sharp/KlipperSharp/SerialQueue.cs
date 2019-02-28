@@ -393,14 +393,22 @@ namespace KlipperSharp
 					double diff = retransmitTimer - eventtime;
 					double diff2 = commandTimer - eventtime;
 					diff = diff < diff2 ? diff : diff2;
-					if (diff <= 0.001f)
-						continue;
-					else if (diff < 0.005f || send_queue.Count > 0)
+
+					if (diff < 0.001f)
 						Thread.SpinWait(10);
-					else if (diff < 0.015f)
+					else if (diff < 0.003f)
 						Thread.SpinWait(100);
 					else
 						Thread.Sleep(1);
+
+					//if (diff <= 0.001f)
+					//	continue;
+					//else if (diff < 0.005f || send_queue.Count > 0)
+					//	Thread.SpinWait(10);
+					//else if (diff < 0.015f)
+					//	Thread.SpinWait(100);
+					//else
+					//	Thread.Sleep(1);
 
 					if (kick)
 					{
@@ -488,7 +496,7 @@ namespace KlipperSharp
 			}
 			if (length == MESSAGE_MIN)
 			{
-				logging.Info($"Ack/nak seq:{rseq}; t:{HighResolutionTime.Now * 1000:0.00}");
+				//logging.Info($"Ack/nak seq:{rseq}; t:{HighResolutionTime.Now * 1000:0.00}");
 
 				// Ack/nak message
 				if (last_ack_seq < rseq)
@@ -906,7 +914,7 @@ namespace KlipperSharp
 			need_ack_bytes += output.len;
 			send_queue.Enqueue(output);
 
-			logging.Info($"Send Msg; seq:{send_seq}; packet:{sendBuffer.Length} {need_ack_bytes}/{receive_window}; pack:{count}; t:{HighResolutionTime.Now * 1000:0.00}");
+			//logging.Info($"Send Msg; seq:{send_seq}; packet:{sendBuffer.Length} {need_ack_bytes}/{receive_window}; pack:{count}; t:{HighResolutionTime.Now * 1000:0.00}");
 		}
 
 		#endregion
