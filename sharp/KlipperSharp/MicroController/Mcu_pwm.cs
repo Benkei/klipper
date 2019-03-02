@@ -111,7 +111,7 @@ namespace KlipperSharp.MicroController
 			{
 				value = 1.0 - value;
 			}
-			value = Convert.ToInt32(Math.Max(0.0, Math.Min(1.0, value)) * this._pwm_max + 0.5);
+			value = (int)(Math.Max(0.0, Math.Min(1.0, value)) * this._pwm_max + 0.5);
 			this._set_cmd.send(new object[] { this._oid, clock, value }, minclock: (ulong)this._last_clock, reqclock: (ulong)clock);
 			this._last_clock = clock;
 		}

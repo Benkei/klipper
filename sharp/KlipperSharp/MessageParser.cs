@@ -35,22 +35,21 @@ namespace KlipperSharp
 			if (v >= 0x60 || v < -0x20) output.Write((byte)((v >> 7) & 0x7f | 0x80));
 			output.Write((byte)(v & 0x7f));
 		}
-		public override object parse(ReadOnlySpan<byte> text, ref int position)
+		public override object parse(ReadOnlySpan<byte> data, ref int position)
 		{
-			var c = text[position];
-			position++;
-			var v = c & 0x7f;
+			var c = data[position++];
+			uint v = c & 0x7fu;
 			if ((c & 0x60) == 0x60)
-				v |= -0x20;
+				v |= unchecked((uint)-0x20);
 			while ((c & 0x80) > 0)
 			{
-				c = text[position];
-				position++;
-				v = (v << 7) | (c & 0x7f);
+				c = data[position++];
+				v = (v << 7) | (c & 0x7fu);
 			}
-			if (!signed)
-				v = (int)(v & 0xffffffff);
-			return v;
+			if (signed)
+				return (int)v;
+			else
+				return v;
 		}
 	}
 	public class PT_int32 : PT_uint32
@@ -494,7 +493,7 @@ namespace KlipperSharp
 			{
 				return new List<byte>();
 			}
-			//var tval = Convert.ToInt32(value, 16);
+			//var tval = (int)(value, 16);
 			//var @out = new List<object>();
 			//foreach (var i in range(value.Count / 2))
 			//{

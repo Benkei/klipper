@@ -12,14 +12,15 @@ namespace KlipperSharp
 		public const double RTT_AGE = 0.000010 / (60.0 * 60.0);
 		public const double DECAY = 1.0 / 30.0;
 		public const double TRANSMIT_EXTRA = 0.001;
+
 		protected SelectReactor reactor;
 		protected SerialReader serial;
 		private ReactorTimer get_clock_timer;
 		private SerialCommand get_clock_cmd;
 		private int queries_pending;
 		protected internal double mcu_freq;
-		private long last_clock;
-		protected internal (double, double, double) clock_est;
+		private ulong last_clock;
+		protected internal (double time_avg, double clock_avg, double mcu_freq) clock_est;
 		private double min_half_rtt;
 		private double min_rtt_time;
 		private double time_avg;
@@ -56,7 +57,7 @@ namespace KlipperSharp
 			// Load initial clock and frequency
 			var get_uptime_cmd = serial.lookup_command("get_uptime");
 			var parameters = get_uptime_cmd.send_with_response(response: "uptime");
-			last_clock = parameters.Get<long>("high") << 32 | parameters.Get<long>("clock");
+			last_clock = parameters.Get<ulong>("high") << 32 | parameters.Get<ulong>("clock");
 			clock_avg = last_clock;
 			time_avg = parameters.Get<double>("#sent_time");
 			clock_est = (time_avg, clock_avg, mcu_freq);
@@ -102,7 +103,7 @@ namespace KlipperSharp
 			this.queries_pending = 0;
 			// Extend clock to 64bit
 			var last_clock = this.last_clock;
-			var clock = last_clock & ~0xffffffffL | parameters.Get<long>("clock");
+			var clock = last_clock & ~0xffffffffUL | parameters.Get<ulong>("clock");
 			if (clock < last_clock)
 			{
 				clock += 0x100000000L;
@@ -121,21 +122,21 @@ namespace KlipperSharp
 			{
 				min_half_rtt = half_rtt;
 				min_rtt_time = sent_time;
-				logging.Debug("new minimum rtt {0:0.000}: hrtt={1:0.000000} freq={2:0}", sent_time, half_rtt, this.clock_est.Item3);
+				logging.Debug("new minimum rtt {0:0.000}: hrtt={1:0.000000} freq={2:0}", sent_time, half_rtt, this.clock_est.mcu_freq);
 			}
 			// Filter out samples that are extreme outliers
-			var exp_clock = (sent_time - time_avg) * clock_est.Item3 + clock_avg;
+			var exp_clock = (sent_time - time_avg) * clock_est.mcu_freq + clock_avg;
 			var clock_diff2 = Math.Pow(clock - exp_clock, 2);
 			if (clock_diff2 > 25.0 * prediction_variance && clock_diff2 > Math.Pow(0.0005 * mcu_freq, 2))
 			{
 				if (clock > exp_clock && sent_time < last_prediction_time + 10.0)
 				{
 					logging.Debug("Ignoring clock sample {0:0.000}: freq={1:0} diff={2:0} stddev={3:0.000}",
-						sent_time, this.clock_est.Item3, clock - exp_clock, Math.Sqrt(this.prediction_variance));
+						sent_time, this.clock_est.mcu_freq, clock - exp_clock, Math.Sqrt(this.prediction_variance));
 					return;
 				}
 				logging.Info("Resetting prediction variance {0:0.000}: freq={1:0} diff={2:0} stddev={3:0.000}",
-					sent_time, this.clock_est.Item3, clock - exp_clock, Math.Sqrt(this.prediction_variance));
+					sent_time, this.clock_est.mcu_freq, clock - exp_clock, Math.Sqrt(this.prediction_variance));
 				prediction_variance = Math.Pow(0.001 * mcu_freq, 2);
 			}
 			else
@@ -177,11 +178,8 @@ namespace KlipperSharp
 		// system time conversions
 		public int get_clock(double eventtime)
 		{
-			var _tup_1 = this.clock_est;
-			var sample_time = _tup_1.Item1;
-			var clock = _tup_1.Item2;
-			var freq = _tup_1.Item3;
-			return (int)(clock + (eventtime - sample_time) * freq);
+			var clock_est = this.clock_est;
+			return (int)(clock_est.clock_avg + (eventtime - clock_est.time_avg) * clock_est.mcu_freq);
 		}
 
 		public double estimated_print_time(double eventtime)
@@ -191,15 +189,15 @@ namespace KlipperSharp
 
 
 		// misc commands
-		public long clock32_to_clock64(int clock32)
+		public ulong clock32_to_clock64(uint clock32)
 		{
 			var last_clock = this.last_clock;
-			var clock_diff = ((int)last_clock - clock32) & -1;
-			if ((clock_diff & -2147483648) != 0)
+			var clock_diff = (last_clock - clock32) & 0xffffffffUL;
+			if ((clock_diff & 0x80000000UL) != 0)
 			{
-				return (long)last_clock + 4294967296L - clock_diff;
+				return last_clock + 0x100000000UL - clock_diff;
 			}
-			return (long)last_clock - clock_diff;
+			return last_clock - clock_diff;
 		}
 
 		public bool is_active()
@@ -209,20 +207,16 @@ namespace KlipperSharp
 
 		public virtual string dump_debug()
 		{
-			var _tup_1 = this.clock_est;
-			var sample_time = _tup_1.Item1;
-			var clock = _tup_1.Item2;
-			var freq = _tup_1.Item3;
-			return $"clocksync state: mcu_freq={this.mcu_freq} last_clock={this.last_clock} clock_est=({sample_time} {clock} {freq}) min_half_rtt={this.min_half_rtt} min_rtt_time={this.min_rtt_time} time_avg={this.time_avg}({this.time_variance}) clock_avg={this.clock_avg}({this.clock_covariance}) pred_variance={this.prediction_variance}";
+			var clock_est = this.clock_est;
+			var sample_time = clock_est.time_avg;
+			var clock = clock_est.clock_avg;
+			var freq = clock_est.mcu_freq;
+			return $"clocksync state: mcu_freq={this.mcu_freq:0} last_clock={this.last_clock:0} clock_est=({sample_time:0.000} {clock:0} {freq:0.000}) min_half_rtt={this.min_half_rtt:0.000000} min_rtt_time={this.min_rtt_time:0.000} time_avg={this.time_avg:0.000}({this.time_variance:0.000}) clock_avg={this.clock_avg:0.000}({this.clock_covariance:0.000}) pred_variance={this.prediction_variance:0.000}";
 		}
 
 		public virtual string stats(double eventtime)
 		{
-			var _tup_1 = this.clock_est;
-			var sample_time = _tup_1.Item1;
-			var clock = _tup_1.Item2;
-			var freq = _tup_1.Item3;
-			return $"freq={freq}";
+			return $"freq={this.clock_est.mcu_freq}";
 		}
 
 		public virtual (double, double) calibrate_clock(double print_time, double eventtime)
@@ -236,7 +230,7 @@ namespace KlipperSharp
 	public class SecondarySync : ClockSync
 	{
 		private ClockSync main_sync;
-		private (double, double) clock_adj;
+		private (double adjusted_offset, double adjusted_freq) clock_adj;
 		private double last_sync_time;
 
 		public SecondarySync(SelectReactor reactor, ClockSync main_sync)
@@ -267,61 +261,43 @@ namespace KlipperSharp
 		// clock frequency conversions
 		public override int print_time_to_clock(double print_time)
 		{
-			var _tup_1 = this.clock_adj;
-			var adjusted_offset = _tup_1.Item1;
-			var adjusted_freq = _tup_1.Item2;
-			return Convert.ToInt32((print_time - adjusted_offset) * adjusted_freq);
+			return (int)((print_time - this.clock_adj.adjusted_offset) * this.clock_adj.adjusted_freq);
 		}
 
 		public override double clock_to_print_time(double clock)
 		{
-			var _tup_1 = this.clock_adj;
-			var adjusted_offset = _tup_1.Item1;
-			var adjusted_freq = _tup_1.Item2;
-			return clock / adjusted_freq + adjusted_offset;
+			return clock / this.clock_adj.adjusted_freq + this.clock_adj.adjusted_offset;
 		}
 
 		public override double get_adjusted_freq()
 		{
-			var _tup_1 = this.clock_adj;
-			var adjusted_offset = _tup_1.Item1;
-			var adjusted_freq = _tup_1.Item2;
-			return adjusted_freq;
+			return this.clock_adj.adjusted_freq;
 		}
 
 		// misc commands
 		public override string dump_debug()
 		{
-			var _tup_1 = this.clock_adj;
-			var adjusted_offset = _tup_1.Item1;
-			var adjusted_freq = _tup_1.Item2;
-			return $"{base.dump_debug()} clock_adj=({adjusted_offset} {adjusted_freq})";
+			return $"{base.dump_debug()} clock_adj=({this.clock_adj.adjusted_offset} {this.clock_adj.adjusted_freq})";
 		}
 
 		public override string stats(double eventtime)
 		{
-			var _tup_1 = this.clock_adj;
-			var adjusted_offset = _tup_1.Item1;
-			var adjusted_freq = _tup_1.Item2;
-			return $"{base.stats(eventtime)} adj={adjusted_freq}";
+			return $"{base.stats(eventtime)} adj={this.clock_adj.Item2}";
 		}
 
 		public override (double, double) calibrate_clock(double print_time, double eventtime)
 		{
 			// Calculate: est_print_time = main_sync.estimatated_print_time()
-			var _tup_1 = this.main_sync.clock_est;
-			var ser_time = _tup_1.Item1;
-			var ser_clock = _tup_1.Item2;
-			var ser_freq = _tup_1.Item3;
+			var clock_est = this.main_sync.clock_est;
 			var main_mcu_freq = this.main_sync.mcu_freq;
-			var est_main_clock = (eventtime - ser_time) * ser_freq + ser_clock;
+			var est_main_clock = (eventtime - clock_est.time_avg) * clock_est.mcu_freq + clock_est.clock_avg;
 			var est_print_time = est_main_clock / main_mcu_freq;
 			// Determine sync1_print_time and sync2_print_time
 			var sync1_print_time = Math.Max(print_time, est_print_time);
 			var sync2_print_time = Math.Max(Math.Max(sync1_print_time + 4.0, this.last_sync_time), print_time + 2.5 * (print_time - est_print_time));
 			// Calc sync2_sys_time (inverse of main_sync.estimatated_print_time)
 			var sync2_main_clock = sync2_print_time * main_mcu_freq;
-			var sync2_sys_time = ser_time + (sync2_main_clock - ser_clock) / ser_freq;
+			var sync2_sys_time = clock_est.time_avg + (sync2_main_clock - clock_est.clock_avg) / clock_est.mcu_freq;
 			// Adjust freq so estimated print_time will match at sync2_print_time
 			var sync1_clock = this.print_time_to_clock(sync1_print_time);
 			var sync2_clock = this.get_clock(sync2_sys_time);

@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace KlipperSharp.MicroController
 {
@@ -326,7 +327,7 @@ or in response to an internal error in the host software."}
 				// Not configured - send config and issue get_config again
 				this._send_config(0);
 				config_parameters = this._send_get_config();
-				logging.Debug($"Config received crc32 {(uint)config_parameters.Get<int>("crc")}");
+				logging.Debug($"Config received crc32 {config_parameters.Get<uint>("crc")}");
 				if (!config_parameters.Get<bool>("is_config") && !this.is_fileoutput())
 				{
 					throw new Exception($"Unable to configure MCU '{this._name}'");
@@ -414,8 +415,7 @@ or in response to an internal error in the host software."}
 
 		public int create_oid()
 		{
-			this._oid_count += 1;
-			return this._oid_count - 1;
+			return Interlocked.Increment(ref this._oid_count) - 1;
 		}
 
 		public void register_config_callback(Action cb)
@@ -438,7 +438,7 @@ or in response to an internal error in the host software."}
 		public double get_query_slot(int oid)
 		{
 			var slot = this.seconds_to_clock(oid * 0.01);
-			var t = Convert.ToInt32(this.estimated_print_time(this.monotonic()) + 1.5);
+			var t = (int)(this.estimated_print_time(this.monotonic()) + 1.5);
 			return this.print_time_to_clock(t) + slot;
 		}
 
@@ -447,9 +447,9 @@ or in response to an internal error in the host software."}
 			this._stepqueues.Add(stepqueue);
 		}
 
-		public int seconds_to_clock(double time)
+		public uint seconds_to_clock(double time)
 		{
-			return Convert.ToInt32(time * this._mcu_freq);
+			return (uint)(time * this._mcu_freq);
 		}
 
 		public double get_max_stepper_error()
@@ -515,7 +515,7 @@ or in response to an internal error in the host software."}
 			return this._clocksync.get_adjusted_freq();
 		}
 
-		public long clock32_to_clock64(int clock32)
+		public ulong clock32_to_clock64(uint clock32)
 		{
 			return this._clocksync.clock32_to_clock64(clock32);
 		}
