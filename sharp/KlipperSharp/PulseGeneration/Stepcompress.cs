@@ -37,15 +37,9 @@ namespace KlipperSharp.PulseGeneration
 		 * Step compression
 		 ****************************************************************/
 
-		static int idiv_up(int n, int d)
-		{
-			return (n >= 0) ? DIV_ROUND_UP(n, d) : (n / d);
-		}
+		static int idiv_up(int n, int d) => (n >= 0) ? DIV_ROUND_UP(n, d) : (n / d);
 
-		static int idiv_down(int n, int d)
-		{
-			return (n >= 0) ? (n / d) : (n - d + 1) / d;
-		}
+		static int idiv_down(int n, int d) => (n >= 0) ? (n / d) : (n - d + 1) / d;
 
 		static int DIV_ROUND_UP(int n, int d) => (n + d - 1) / d;
 

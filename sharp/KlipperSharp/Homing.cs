@@ -148,11 +148,11 @@ namespace KlipperSharp
 			{
 				this.toolhead.set_position(movepos);
 			}
-			foreach (var item in endstops)
+			foreach (var (endstop, name) in endstops)
 			{
 				try
 				{
-					item.endstop.home_finalize();
+					endstop.home_finalize();
 				}
 				catch (EndstopException e)
 				{
