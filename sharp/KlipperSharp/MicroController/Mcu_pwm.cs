@@ -57,7 +57,7 @@ namespace KlipperSharp.MicroController
 		{
 			if (is_static && start_value != shutdown_value)
 			{
-				throw new Exception("Static pin can not have shutdown value");
+				throw new PinsException("Static pin can not have shutdown value");
 			}
 			if (_invert)
 			{
@@ -90,7 +90,7 @@ namespace KlipperSharp.MicroController
 				if (!(this._start_value == 0.0 || this._start_value == 1.0)
 					&& !(this._shutdown_value == 0.0 || this._shutdown_value == 1.0))
 				{
-					throw new Exception("start and shutdown values must be 0.0 or 1.0 on soft pwm");
+					throw new PinsException("start and shutdown values must be 0.0 or 1.0 on soft pwm");
 				}
 				this._pwm_max = this._mcu.get_constant_float("SOFT_PWM_MAX");
 				if (this._is_static)

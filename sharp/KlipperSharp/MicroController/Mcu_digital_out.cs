@@ -51,7 +51,7 @@ namespace KlipperSharp.MicroController
 		{
 			if (is_static && start_value != shutdown_value)
 			{
-				throw new Exception("Static pin can not have shutdown value");
+				throw new PinsException("Static pin can not have shutdown value");
 			}
 			_start_value = !start_value ^ _invert;
 			_shutdown_value = !shutdown_value ^ _invert;

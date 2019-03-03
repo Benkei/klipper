@@ -56,7 +56,7 @@ namespace KlipperSharp.MicroController
 		{
 			if (stepper.get_mcu() != _mcu)
 			{
-				throw new Exception("Endstop and stepper must be on the same mcu");
+				throw new PinsException("Endstop and stepper must be on the same mcu");
 			}
 			if (_steppers.Contains(stepper))
 			{
@@ -169,7 +169,7 @@ namespace KlipperSharp.MicroController
 			}
 			if (_mcu.is_shutdown())
 			{
-				throw new Exception("MCU is shutdown");
+				throw new McuException("MCU is shutdown");
 			}
 			var est_print_time = _mcu.estimated_print_time(eventtime);
 			if (est_print_time >= _next_query_print_time)

@@ -57,7 +57,7 @@ namespace KlipperSharp.MicroController
 		{
 			if (pin_parameters.chip != this._mcu)
 			{
-				throw new Exception("Stepper dir pin must be on same mcu as step pin");
+				throw new PinsException("Stepper dir pin must be on same mcu as step pin");
 			}
 			this._dir_pin = pin_parameters.pin;
 			this._invert_dir = pin_parameters.invert;
@@ -181,7 +181,7 @@ namespace KlipperSharp.MicroController
 			//var ret = this._ffi_lib.stepcompress_set_homing(this._stepqueue, homing_clock);
 			if (ret)
 			{
-				throw new Exception("Internal error in stepcompress");
+				throw new McuException("Internal error in stepcompress");
 			}
 		}
 
@@ -191,20 +191,20 @@ namespace KlipperSharp.MicroController
 			//var ret = this._ffi_lib.stepcompress_set_homing(this._stepqueue, 0);
 			if (ret)
 			{
-				throw new Exception("Internal error in stepcompress");
+				throw new McuException("Internal error in stepcompress");
 			}
 			ret = _stepqueue.reset(0) > 0;
 			//ret = this._ffi_lib.stepcompress_reset(this._stepqueue, 0);
 			if (ret)
 			{
-				throw new Exception("Internal error in stepcompress");
+				throw new McuException("Internal error in stepcompress");
 			}
 			uint* data = stackalloc uint[] { (uint)this._reset_cmd_id, (uint)this._oid, 0 };
 			ret = _stepqueue.queue_msg(new ReadOnlySpan<uint>(data, 3)) > 0;
 			//ret = this._ffi_lib.stepcompress_queue_msg(this._stepqueue, data, 3);
 			if (ret)
 			{
-				throw new Exception("Internal error in stepcompress");
+				throw new McuException("Internal error in stepcompress");
 			}
 			if (!did_trigger || this._mcu.is_fileoutput())
 			{
@@ -229,7 +229,7 @@ namespace KlipperSharp.MicroController
 			var ret = _stepper_kinematics.itersolve_gen_steps(ref cmove);
 			if (ret)
 			{
-				throw new Exception("Internal error in stepcompress");
+				throw new McuException("Internal error in stepcompress");
 			}
 		}
 	}

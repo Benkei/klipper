@@ -16,6 +16,18 @@ namespace KlipperSharp.MicroController
 		Rpi_usb
 	}
 
+
+	[Serializable]
+	public class McuException : Exception
+	{
+		public McuException() { }
+		public McuException(string message) : base(message) { }
+		public McuException(string message, Exception inner) : base(message, inner) { }
+		protected McuException(
+		 System.Runtime.Serialization.SerializationInfo info,
+		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+	}
+
 	public class Mcu : IPinSetup
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
@@ -161,7 +173,7 @@ or in response to an internal error in the host software."}
 				return;
 			this._is_shutdown = true;
 			var msg = this._shutdown_msg = (string)parameters["#msg"];
-			logging.Info("MCU '{0}' {1}: {2} {3} {4}", this._name, parameters["#name"], this._shutdown_msg, this._clocksync.dump_debug(), this._serial.dump_debug());
+			logging.Info("MCU '{0}' {1}: '{2}' {3} {4}", this._name, parameters["#name"], this._shutdown_msg, this._clocksync.dump_debug(), this._serial.dump_debug());
 			var prefix = $"MCU '{this._name}' shutdown: ";
 			if ((string)parameters["#name"] == "is_shutdown")
 			{
@@ -182,7 +194,7 @@ or in response to an internal error in the host software."}
 			logging.Info("Attempting automated MCU '{0}' restart: {1}", this._name, reason);
 			this._printer.request_exit("firmware_restart");
 			this._reactor.pause(this._reactor.monotonic() + 2.0);
-			throw new Exception($"Attempt MCU '{this._name}' restart failed");
+			throw new McuException($"Attempt MCU '{this._name}' restart failed");
 		}
 
 		void _connect_file(bool pace = false)
@@ -281,7 +293,7 @@ or in response to an internal error in the host software."}
 			else if (config_crc != prev_crc)
 			{
 				this._check_restart("CRC mismatch");
-				throw new Exception($"MCU '{this._name}' CRC does not match config");
+				throw new McuException($"MCU '{this._name}' CRC does not match config");
 			}
 			// Transmit init messages
 			foreach (var c in this._init_cmds)
@@ -305,11 +317,11 @@ or in response to an internal error in the host software."}
 			var config_parameters = get_config_cmd.send_with_response(null, "config");
 			if (this._is_shutdown)
 			{
-				throw new Exception($"MCU '{this._name}' error during config: {this._shutdown_msg}");
+				throw new McuException($"MCU '{this._name}' error during config: {this._shutdown_msg}");
 			}
 			if (config_parameters.Get<bool>("is_shutdown"))
 			{
-				throw new Exception($"Can not update MCU '{this._name}' config as it is shutdown");
+				throw new McuException($"Can not update MCU '{this._name}' config as it is shutdown");
 			}
 			return config_parameters;
 		}
@@ -330,7 +342,7 @@ or in response to an internal error in the host software."}
 				logging.Debug($"Config received crc32 {config_parameters.Get<uint>("crc")}");
 				if (!config_parameters.Get<bool>("is_config") && !this.is_fileoutput())
 				{
-					throw new Exception($"Unable to configure MCU '{this._name}'");
+					throw new McuException($"Unable to configure MCU '{this._name}'");
 				}
 			}
 			else
@@ -338,7 +350,7 @@ or in response to an internal error in the host software."}
 				var start_reason = (string)this._printer.get_start_args().Get("start_reason");
 				if (start_reason == "firmware_restart")
 				{
-					throw new Exception($"Failed automated reset of MCU '{this._name}'");
+					throw new McuException($"Failed automated reset of MCU '{this._name}'");
 				}
 				// Already configured - send init commands
 				this._send_config(config_parameters.Get<uint>("crc"));
@@ -409,7 +421,7 @@ or in response to an internal error in the host software."}
 				case "pwm": return (T)(object)new Mcu_pwm(this, pin_params);
 				case "adc": return (T)(object)new Mcu_adc(this, pin_params);
 				default:
-					throw new Exception($"pin type {pin_type} not supported on mcu");
+					throw new PinsException($"pin type {pin_type} not supported on mcu");
 			}
 		}
 
@@ -638,7 +650,7 @@ or in response to an internal error in the host software."}
 			var ret = this._steppersync.flush((ulong)clock);
 			if (ret != 0)
 			{
-				throw new Exception($"Internal error in MCU '{this._name}' stepcompress");
+				throw new McuException($"Internal error in MCU '{this._name}' stepcompress");
 			}
 		}
 
