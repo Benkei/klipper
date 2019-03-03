@@ -311,7 +311,7 @@ Printer is shutdown
 		{
 			var systime = DateTime.UtcNow;
 			var monotime = reactor.monotonic();
-			logging.Info("Start printer at {0} ({1})", systime, monotime);
+			logging.Info("Start printer at {0} ({1:0.000})", systime, monotime);
 			// Enter main reactor loop
 			try
 			{

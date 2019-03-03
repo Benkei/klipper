@@ -122,7 +122,8 @@ namespace KlipperSharp
 			{
 				min_half_rtt = half_rtt;
 				min_rtt_time = sent_time;
-				logging.Debug("new minimum rtt {0:0.000}: hrtt={1:0.000000} freq={2:0}", sent_time, half_rtt, this.clock_est.mcu_freq);
+				logging.Debug("new minimum rtt {0:0.000}: hrtt={1:0.000000} freq={2:0}",
+					sent_time, half_rtt, this.clock_est.mcu_freq);
 			}
 			// Filter out samples that are extreme outliers
 			var exp_clock = (sent_time - time_avg) * clock_est.mcu_freq + clock_avg;
@@ -156,7 +157,8 @@ namespace KlipperSharp
 			var pred_stddev = Math.Sqrt(prediction_variance);
 			serial.set_clock_est(new_freq, time_avg + TRANSMIT_EXTRA, (ulong)(clock_avg - 3.0 * pred_stddev));
 			clock_est = (time_avg + min_half_rtt, clock_avg, new_freq);
-			logging.Debug("regr {0:0.000}: freq={1:0.000} d={2:0}({3:0.000})", sent_time, new_freq, clock - exp_clock, pred_stddev);
+			logging.Debug("regr {0:0.000}: freq={1:0.000} d={2:0}({3:0.000})",
+				sent_time, new_freq, clock - exp_clock, pred_stddev);
 			// clock frequency conversions
 		}
 
