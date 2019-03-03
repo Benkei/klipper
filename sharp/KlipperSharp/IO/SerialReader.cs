@@ -10,6 +10,17 @@ using System.Collections.Concurrent;
 
 namespace KlipperSharp
 {
+	[Serializable]
+	public class SerialException : Exception
+	{
+		public SerialException() { }
+		public SerialException(string message) : base(message) { }
+		public SerialException(string message, Exception inner) : base(message, inner) { }
+		protected SerialException(
+		 System.Runtime.Serialization.SerializationInfo info,
+		 System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+	}
+
 	public class SerialReader
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
@@ -290,32 +301,34 @@ namespace KlipperSharp
 
 
 		// Dumping debug lists
-		public byte[] dump_debug()
+		public string dump_debug()
 		{
-			//object cmds;
-			//object msg;
-			//var @out = new List<object>();
-			//@out.append(String.Format("Dumping serial stats: %s", this.stats(this.reactor.monotonic())));
+			//throw new NotImplementedException();
+			return null;
+
+			//string cmds;
+			//string msg;
+			//var @out = new List<string>();
+			//@out.Add(String.Format("Dumping serial stats: %s", this.stats(this.reactor.monotonic())));
 			//var sdata = this.ffi_main.@new("struct pull_queue_message[1024]");
 			//var rdata = this.ffi_main.@new("struct pull_queue_message[1024]");
 			//var scount = this.ffi_lib.serialqueue_extract_old(this.serialqueue, 1, sdata, sdata.Count);
 			//var rcount = this.ffi_lib.serialqueue_extract_old(this.serialqueue, 0, rdata, rdata.Count);
-			//@out.append(String.Format("Dumping send queue %d messages", scount));
+			//@out.Add(String.Format("Dumping send queue %d messages", scount));
 			//foreach (var i in range(scount))
 			//{
 			//	msg = sdata[i];
 			//	cmds = this.msgparser.dump(msg.msg[0::msg.len]);
-			//	@out.append(String.Format("Sent %d %f %f %d: %s", i, msg.receive_time, msg.sent_time, msg.len, ", ".join(cmds)));
+			//	@out.Add(String.Format("Sent %d %f %f %d: %s", i, msg.receive_time, msg.sent_time, msg.len, ", ".join(cmds)));
 			//}
-			//@out.append(String.Format("Dumping receive queue %d messages", rcount));
+			//@out.Add(String.Format("Dumping receive queue %d messages", rcount));
 			//foreach (var i in range(rcount))
 			//{
 			//	msg = rdata[i];
 			//	cmds = this.msgparser.dump(msg.msg[0::msg.len]);
-			//	@out.append(String.Format("Receive: %d %f %f %d: %s", i, msg.receive_time, msg.sent_time, msg.len, ", ".join(cmds)));
+			//	@out.Add(String.Format("Receive: %d %f %f %d: %s", i, msg.receive_time, msg.sent_time, msg.len, ", ".join(cmds)));
 			//}
 			//return "\n".join(@out);
-			return null;
 		}
 
 
@@ -441,12 +454,13 @@ namespace KlipperSharp
 		{
 			if (!this.serial.wait(name, oid, (int)TIMEOUT_TIME * 1000))
 			{
-				throw new Exception($"Timeout on wait for '{name}' response");
+				throw new SerialException($"Timeout on wait for '{name}' response");
 			}
 			unregister();
 			return response;
 		}
 	}
+
 
 	public class SerialBootStrap
 	{

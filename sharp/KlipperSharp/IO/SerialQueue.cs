@@ -194,9 +194,64 @@ namespace KlipperSharp
 			};
 		}
 
-		internal string GetStats()
+		// Return a string buffer containing statistics for the serial port
+		public string GetStats()
+		{
+			//struct serialqueue stats;
+			//pthread_mutex_lock(&sq->lock);
+			//memcpy(&stats, sq, sizeof(stats));
+			//pthread_mutex_unlock(&sq->lock);
+
+			//snprintf(buf, len, "bytes_write=%u bytes_read=%u"
+			//         " bytes_retransmit=%u bytes_invalid=%u"
+			//         " send_seq=%u receive_seq=%u retransmit_seq=%u"
+			//         " srtt=%.3f rttvar=%.3f rto=%.3f"
+			//         " ready_bytes=%u stalled_bytes=%u"
+			//         , stats.bytes_write, stats.bytes_read
+			//         , stats.bytes_retransmit, stats.bytes_invalid
+			//         , (int)stats.send_seq, (int)stats.receive_seq
+			//         , (int)stats.retransmit_seq
+			//         , stats.srtt, stats.rttvar, stats.rto
+			//         , stats.ready_bytes, stats.stalled_bytes);
+			throw new NotImplementedException();
+		}
+
+		// Extract old messages stored in the debug queues
+		public int serialqueue_extract_old(bool sentq, List<RawMessage> q, int max)
 		{
 			throw new NotImplementedException();
+			//int count = sentq ? DEBUG_QUEUE_SENT : DEBUG_QUEUE_RECEIVE;
+			//list_head* rootp = sentq ? &sq->old_sent : &sq->old_receive;
+			//list_head replacement, current;
+			//list_init(&replacement);
+			//debug_queue_alloc(&replacement, count);
+			//list_init(&current);
+
+			//// Atomically replace existing debug list with new zero'd list
+			//pthread_mutex_lock(&sq->lock) ;
+			//list_join_tail(rootp, &current);
+			//list_init(rootp);
+			//list_join_tail(&replacement, rootp);
+			//pthread_mutex_unlock(&sq->lock) ;
+
+			//// Walk the debug list
+			//int pos = 0;
+			//while (!list_empty(&current))
+			//{
+			//	queue_message* qm = list_first_entry(&current, queue_message, node);
+			//	if (qm->len && pos < max)
+			//	{
+			//		pull_queue_message* pqm = q++;
+			//		pos++;
+			//		memcpy(pqm->msg, qm->msg, qm->len);
+			//		pqm->len = qm->len;
+			//		pqm->sent_time = qm->sent_time;
+			//		pqm->receive_time = qm->receive_time;
+			//	}
+			//	list_del(&qm->node);
+			//	message_free(qm);
+			//}
+			//return pos;
 		}
 
 		public void Start()
@@ -390,22 +445,15 @@ namespace KlipperSharp
 						Command_event(eventtime);
 					}
 
-					double diff = retransmitTimer - eventtime;
-					double diff2 = commandTimer - eventtime;
-					diff = diff < diff2 ? diff : diff2;
+					Thread.Yield();
 
-					if (diff < 0.001f)
-						Thread.SpinWait(10);
-					else if (diff < 0.003f)
-						Thread.SpinWait(100);
-					else
-						Thread.Sleep(1);
+					//double diff = retransmitTimer - eventtime;
+					//double diff2 = commandTimer - eventtime;
+					//diff = diff < diff2 ? diff : diff2;
 
-					//if (diff <= 0.001f)
-					//	continue;
-					//else if (diff < 0.005f || send_queue.Count > 0)
+					//if (diff < 0.001f || send_queue.Count > 0)
 					//	Thread.SpinWait(10);
-					//else if (diff < 0.015f)
+					//else if (diff < 0.003f)
 					//	Thread.SpinWait(100);
 					//else
 					//	Thread.Sleep(1);
