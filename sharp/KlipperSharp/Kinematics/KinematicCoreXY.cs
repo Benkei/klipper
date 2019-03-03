@@ -11,7 +11,7 @@ using System.Text;
 
 namespace KlipperSharp.Kinematics
 {
-	public class CoreXYKinematic : BaseKinematic
+	public class KinematicCoreXY : KinematicBase
 	{
 		private PrinterRail[] rails;
 		private double max_z_velocity;
@@ -19,7 +19,7 @@ namespace KlipperSharp.Kinematics
 		private bool need_motor_enable;
 		private Vector2d[] limits;
 
-		public CoreXYKinematic(ToolHead toolhead, ConfigWrapper config)
+		public KinematicCoreXY(ToolHead toolhead, ConfigWrapper config)
 		{
 			// Setup axis rails
 			this.rails = new PrinterRail[] {

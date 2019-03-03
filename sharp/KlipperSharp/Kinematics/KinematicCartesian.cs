@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace KlipperSharp.Kinematics
 {
-	public class CartesianKinemactic : BaseKinematic
+	public class KinematicCartesian : KinematicBase
 	{
 		public const string cmd_SET_DUAL_CARRIAGE_help = "Set which carriage is active";
 		private Machine printer;
@@ -17,7 +17,7 @@ namespace KlipperSharp.Kinematics
 		private int dual_carriage_axis;
 		private List<PrinterRail> dual_carriage_rails;
 
-		public CartesianKinemactic(ToolHead toolhead, ConfigWrapper config)
+		public KinematicCartesian(ToolHead toolhead, ConfigWrapper config)
 		{
 			this.printer = config.get_printer();
 			// Setup axis rails

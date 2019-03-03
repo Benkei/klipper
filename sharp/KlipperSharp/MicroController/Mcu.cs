@@ -173,7 +173,9 @@ or in response to an internal error in the host software."}
 				return;
 			this._is_shutdown = true;
 			var msg = this._shutdown_msg = (string)parameters["#msg"];
-			logging.Info("MCU '{0}' {1}: '{2}' {3} {4}", this._name, parameters["#name"], this._shutdown_msg, this._clocksync.dump_debug(), this._serial.dump_debug());
+			logging.Info("MCU '{0}' {1}: '{2}' {3} {4}",
+				this._name, parameters["#name"], this._shutdown_msg,
+				this._clocksync.dump_debug(), this._serial.dump_debug());
 			var prefix = $"MCU '{this._name}' shutdown: ";
 			if ((string)parameters["#name"] == "is_shutdown")
 			{

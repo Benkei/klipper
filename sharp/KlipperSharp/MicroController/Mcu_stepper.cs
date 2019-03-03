@@ -1,4 +1,5 @@
-﻿using KlipperSharp.PulseGeneration;
+﻿using KlipperSharp.Kinematics;
+using KlipperSharp.PulseGeneration;
 using System;
 using System.Collections.Generic;
 using System.Text;

@@ -1,4 +1,5 @@
 ﻿using KlipperSharp.Extra;
+using KlipperSharp.Kinematics;
 using NLog;
 using System;
 using System.Buffers;
@@ -49,7 +50,7 @@ namespace KlipperSharp.MachineCodes
 		public void cmd_Tn(Dictionary<string, object> parameters)
 		{
 			// Select Tool
-			var extruders = PrinterExtruder.get_printer_extruders(this.printer);
+			var extruders = Extruder.get_printer_extruders(this.printer);
 			var index = this.get_int("T", parameters, minval: 0, maxval: extruders.Count - 1);
 			var e = extruders[index];
 			if (object.ReferenceEquals(this.extruder, e))

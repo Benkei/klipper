@@ -4,7 +4,7 @@ using System.Text;
 
 namespace KlipperSharp.Kinematics
 {
-	public class NoneKinematic : BaseKinematic
+	public class KinematicNone : KinematicBase
 	{
 		public override List<PrinterStepper> get_steppers(string flags = "")
 		{

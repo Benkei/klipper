@@ -5,24 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace KlipperSharp
+namespace KlipperSharp.Kinematics
 {
-	public abstract class BaseExtruder
-	{
-		public abstract double set_active(double print_time, bool is_active);
-
-		public abstract void motor_off(double move_time);
-
-		public abstract void check_move(Move move);
-
-		public abstract double calc_junction(Move prev_move, Move move);
-
-		public abstract int lookahead(List<Move> moves, int flush_count, bool lazy);
-
-		public abstract void move(double print_time, Move move);
-	}
-
-	public class PrinterExtruder : BaseExtruder
+	public class Extruder : ExtruderBase
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
@@ -47,7 +32,7 @@ namespace KlipperSharp
 		private move cmove;
 		private Heater heater;
 
-		public PrinterExtruder(ConfigWrapper config, object extruder_num)
+		public Extruder(ConfigWrapper config, object extruder_num)
 		{
 			this.printer = config.get_printer();
 			this.name = config.get_name();
@@ -296,7 +281,7 @@ namespace KlipperSharp
 
 		public void cmd_default_SET_PRESSURE_ADVANCE(Dictionary<string, object> parameters)
 		{
-			var extruder = this.printer.lookup_object<ToolHead>("toolhead").get_extruder() as PrinterExtruder;
+			var extruder = this.printer.lookup_object<ToolHead>("toolhead").get_extruder() as Extruder;
 			extruder.cmd_SET_PRESSURE_ADVANCE(parameters);
 		}
 
@@ -314,12 +299,12 @@ namespace KlipperSharp
 		}
 
 
-		public static List<PrinterExtruder> get_printer_extruders(Machine printer)
+		public static List<Extruder> get_printer_extruders(Machine printer)
 		{
-			var @out = new List<PrinterExtruder>();
+			var @out = new List<Extruder>();
 			for (int i = 0; i < 99; i++)
 			{
-				var extruder = printer.lookup_object<PrinterExtruder>($"extruder{i}", null);
+				var extruder = printer.lookup_object<Extruder>($"extruder{i}", null);
 				if (extruder == null)
 				{
 					break;
@@ -340,49 +325,14 @@ namespace KlipperSharp
 				{
 					if (i != 0 && config.has_section("extruder"))
 					{
-						var pe = new PrinterExtruder(config.getsection("extruder"), 0);
+						var pe = new Extruder(config.getsection("extruder"), 0);
 						printer.add_object("extruder0", pe);
 						continue;
 					}
 					break;
 				}
-				printer.add_object(section, new PrinterExtruder(config.getsection(section), i));
+				printer.add_object(section, new Extruder(config.getsection(section), i));
 			}
-		}
-	}
-
-	// Dummy extruder class used when a printer has no extruder at all
-	public class DummyExtruder : BaseExtruder
-	{
-
-		public override double set_active(double print_time, bool is_active)
-		{
-			return 0.0;
-		}
-
-		public override void motor_off(double move_time)
-		{
-		}
-
-		public override void check_move(Move move)
-		{
-			//throw homing.EndstopMoveError(move.end_pos, "Extrude when no extruder present");
-			throw new Exception("Extrude when no extruder present");
-		}
-
-		public override double calc_junction(Move prev_move, Move move)
-		{
-			return move.max_cruise_v2;
-		}
-
-		public override int lookahead(List<Move> moves, int flush_count, bool lazy)
-		{
-			return flush_count;
-		}
-
-		public override void move(double print_time, Move move)
-		{
-			throw new NotImplementedException();
 		}
 	}
 

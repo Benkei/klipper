@@ -5,7 +5,7 @@ using System.Text;
 
 namespace KlipperSharp.Kinematics
 {
-	public class PolarKinematic : BaseKinematic
+	public class KinematicPolar : KinematicBase
 	{
 		private PrinterRail[] rails;
 		private List<PrinterStepper> steppers = new List<PrinterStepper>();
@@ -15,7 +15,7 @@ namespace KlipperSharp.Kinematics
 		private Vector2d limit_z;
 		private double limit_xy2;
 
-		public PolarKinematic(ToolHead toolhead, ConfigWrapper config)
+		public KinematicPolar(ToolHead toolhead, ConfigWrapper config)
 		{
 			// Setup axis steppers
 			var stepper_bed = new PrinterStepper(config.getsection("stepper_bed"));

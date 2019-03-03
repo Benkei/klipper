@@ -1,4 +1,5 @@
-﻿using System;
+﻿using KlipperSharp.Kinematics;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -30,7 +31,7 @@ namespace KlipperSharp
 			this.junction_flush = flush_time;
 		}
 
-		public void set_extruder(BaseExtruder extruder)
+		public void set_extruder(ExtruderBase extruder)
 		{
 			this.extruder_lookahead = extruder.lookahead;
 		}

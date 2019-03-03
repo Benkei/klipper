@@ -1,4 +1,5 @@
 ﻿using KlipperSharp.Extra;
+using KlipperSharp.Kinematics;
 using KlipperSharp.MachineCodes;
 using KlipperSharp.MicroController;
 using NLog;
@@ -245,7 +246,7 @@ Printer is shutdown
 		public void add_printer_objects_toolhead(ConfigWrapper config)
 		{
 			config.get_printer().add_object("toolhead", new ToolHead(config));
-			PrinterExtruder.add_printer_objects(config);
+			Extruder.add_printer_objects(config);
 		}
 
 

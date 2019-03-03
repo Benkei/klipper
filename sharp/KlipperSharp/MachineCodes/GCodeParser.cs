@@ -1,4 +1,5 @@
 ﻿using KlipperSharp.Extra;
+using KlipperSharp.Kinematics;
 using NLog;
 using System;
 using System.Buffers;
@@ -191,7 +192,7 @@ namespace KlipperSharp.MachineCodes
 		private static Dictionary<string, int> axis2pos = new Dictionary<string, int> { { "X", 0 }, { "Y", 1 }, { "Z", 2 }, { "E", 3 } };
 
 		private Fan fan;
-		private PrinterExtruder extruder;
+		private Extruder extruder;
 		private bool absoluteextrude;
 		private ReactorFileHandler fd_handle;
 
@@ -380,7 +381,7 @@ namespace KlipperSharp.MachineCodes
 				this.move_with_transform = this.toolhead.move;
 				this.position_with_transform = this.toolhead.get_position;
 			}
-			var extruders = PrinterExtruder.get_printer_extruders(this.printer);
+			var extruders = Extruder.get_printer_extruders(this.printer);
 			if (extruders.Count != 0)
 			{
 				this.extruder = extruders[0];

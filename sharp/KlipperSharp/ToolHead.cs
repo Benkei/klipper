@@ -41,9 +41,9 @@ namespace KlipperSharp
 		private bool sync_print_time;
 		private double idle_flush_print_time;
 		private ReactorTimer flush_timer;
-		public BaseExtruder extruder;
+		public ExtruderBase extruder;
 		public move cmove;
-		public BaseKinematic kin;
+		public KinematicBase kin;
 
 		public ToolHead(ConfigWrapper config)
 		{
@@ -83,7 +83,7 @@ namespace KlipperSharp
 			// Setup iterative solver
 			this.cmove = new move();
 			// Create kinematics class
-			this.extruder = new DummyExtruder();
+			this.extruder = new ExtruderDummy();
 			this.move_queue.set_extruder(this.extruder);
 			var kin_name = config.getEnum<KinematicType>("kinematics");
 			try
@@ -294,7 +294,7 @@ namespace KlipperSharp
 			this.dwell(STALL_TIME);
 			var last_move_time = this.get_last_move_time();
 			this.kin.motor_off(last_move_time);
-			foreach (var ext in PrinterExtruder.get_printer_extruders(this.printer))
+			foreach (var ext in Extruder.get_printer_extruders(this.printer))
 			{
 				ext.motor_off(last_move_time);
 			}
@@ -316,7 +316,7 @@ namespace KlipperSharp
 			}
 		}
 
-		public void set_extruder(BaseExtruder extruder)
+		public void set_extruder(ExtruderBase extruder)
 		{
 			var last_move_time = this.get_last_move_time();
 			this.extruder.set_active(last_move_time, false);
@@ -326,7 +326,7 @@ namespace KlipperSharp
 			this.commanded_pos.W = extrude_pos;
 		}
 
-		public BaseExtruder get_extruder()
+		public ExtruderBase get_extruder()
 		{
 			return this.extruder;
 		}
@@ -379,7 +379,7 @@ namespace KlipperSharp
 			this.reset_print_time();
 		}
 
-		public BaseKinematic get_kinematics()
+		public KinematicBase get_kinematics()
 		{
 			return this.kin;
 		}

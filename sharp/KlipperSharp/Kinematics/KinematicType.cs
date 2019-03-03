@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace KlipperSharp
+namespace KlipperSharp.Kinematics
 {
 	public enum KinematicType
 	{

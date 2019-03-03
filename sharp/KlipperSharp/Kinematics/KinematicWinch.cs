@@ -4,13 +4,13 @@ using System.Text;
 
 namespace KlipperSharp.Kinematics
 {
-	class WinchKinematic : BaseKinematic
+	public class KinematicWinch : KinematicBase
 	{
 		private List<PrinterStepper> steppers;
 		private List<Vector3d> anchors;
 		private bool need_motor_enable;
 
-		public WinchKinematic(ToolHead toolhead, ConfigWrapper config)
+		public KinematicWinch(ToolHead toolhead, ConfigWrapper config)
 		{
 			// Setup steppers at each anchor
 			this.steppers = new List<PrinterStepper>();

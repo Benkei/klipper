@@ -12,7 +12,7 @@ using System.Text;
 
 namespace KlipperSharp.Kinematics
 {
-	public class DeltaKinematic : BaseKinematic
+	public class KinematicDelta : KinematicBase
 	{
 		private static readonly Logger logging = LogManager.GetCurrentClassLogger();
 
@@ -39,7 +39,7 @@ namespace KlipperSharp.Kinematics
 		private double max_xy2;
 		private bool need_home;
 
-		public DeltaKinematic(ToolHead toolhead, ConfigWrapper config)
+		public KinematicDelta(ToolHead toolhead, ConfigWrapper config)
 		{
 			// Setup tower rails
 			var stepper_config_a = config.getsection("stepper_a");
