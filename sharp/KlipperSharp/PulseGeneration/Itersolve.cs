@@ -133,11 +133,11 @@ namespace KlipperSharp.PulseGeneration
 		{
 			stepcompress sc = sk.sc;
 			double half_step = 0.5 * sk.step_dist;
-			double mcu_freq = Stepcompress.stepcompress_get_mcu_freq(ref sc);
+			double mcu_freq = sc.get_mcu_freq();
 			timepos last = new timepos(0.0, sk.commanded_pos), low = last, high = last;
 			double seek_time_delta = 0.000100;
-			bool sdir = Stepcompress.stepcompress_get_step_dir(ref sc);
-			queue_append qa = Stepcompress.queue_append_start(ref sc, m.print_time, 0.5);
+			bool sdir = sc.get_step_dir();
+			queue_append qa = sc.queue_append_start(m.print_time, 0.5);
 			bool ret;
 			while (true)
 			{
@@ -171,7 +171,7 @@ namespace KlipperSharp.PulseGeneration
 						high.position = sk.calc_position(ref m, high.time);
 						continue;
 					}
-					ret = Stepcompress.queue_append_set_next_step_dir(ref qa, next_sdir);
+					ret = qa.append_set_next_step_dir(next_sdir);
 					if (ret)
 						return ret;
 					sdir = next_sdir;
@@ -180,7 +180,7 @@ namespace KlipperSharp.PulseGeneration
 				double target = last.position + (sdir ? half_step : -half_step);
 				timepos next = itersolve_find_step(ref sk, ref m, ref low, ref high, target);
 				// Add step at given time
-				ret = Stepcompress.queue_append(ref qa, next.time * mcu_freq);
+				ret = qa.append(next.time * mcu_freq);
 				if (ret)
 					return ret;
 				seek_time_delta = next.time - last.time;
@@ -199,7 +199,7 @@ namespace KlipperSharp.PulseGeneration
 					continue;
 				}
 			}
-			Stepcompress.queue_append_finish(ref qa);
+			qa.queue_append_finish();
 			sk.commanded_pos = last.position;
 			return false;
 		}

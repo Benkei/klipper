@@ -22,143 +22,143 @@ namespace KlipperSharp.PulseGeneration
 {
 	public unsafe class Stepcompress
 	{
-		const bool CHECK_LINES = true;
-		const int QUEUE_START_SIZE = 1024;
-		const int ERROR_RET = -1;
+		public const bool CHECK_LINES = true;
+		public const int QUEUE_START_SIZE = 1024;
+		public const int ERROR_RET = -1;
 
 		// The maximum add delta between two valid quadratic sequences of the
 		// form "add*count*(count-1)/2 + interval*count" is "(6 + 4*sqrt(2)) *
 		// maxerror / (count*count)".  The "6 + 4*sqrt(2)" is 11.65685, but
 		// using 11 works well in practice.
-		const int QUADRATIC_DEV = 11;
+		public const int QUADRATIC_DEV = 11;
 
 
 		/****************************************************************
 		 * Step compression
 		 ****************************************************************/
 
-		static int idiv_up(int n, int d) => (n >= 0) ? DIV_ROUND_UP(n, d) : (n / d);
+		public static int idiv_up(int n, int d) => (n >= 0) ? DIV_ROUND_UP(n, d) : (n / d);
 
-		static int idiv_down(int n, int d) => (n >= 0) ? (n / d) : (n - d + 1) / d;
+		public static int idiv_down(int n, int d) => (n >= 0) ? (n / d) : (n - d + 1) / d;
 
-		static int DIV_ROUND_UP(int n, int d) => (n + d - 1) / d;
+		public static int DIV_ROUND_UP(int n, int d) => (n + d - 1) / d;
 
 		// Given a requested step time, return the minimum and maximum
 		// acceptable times
-		static points minmax_point(ref stepcompress sc, uint* pos)
-		{
-			uint lsc = (uint)sc.last_step_clock, point = *pos - lsc;
-			uint prevpoint = pos > sc.queue_pos ? *(pos - 1) - lsc : 0;
-			uint max_error = (point - prevpoint) / 2;
-			if (max_error > sc.max_error)
-				max_error = sc.max_error;
-			return new points { minp = (int)(point - max_error), maxp = (int)point };
-		}
+		//static points minmax_point(ref stepcompress sc, uint* pos)
+		//{
+		//	uint lsc = (uint)sc.last_step_clock, point = *pos - lsc;
+		//	uint prevpoint = pos > sc.queue_pos ? *(pos - 1) - lsc : 0;
+		//	uint max_error = (point - prevpoint) / 2;
+		//	if (max_error > sc.max_error)
+		//		max_error = sc.max_error;
+		//	return new points { minp = (int)(point - max_error), maxp = (int)point };
+		//}
 
 		// Find a 'step_move' that covers a series of step times
-		static step_move compress_bisect_add(ref stepcompress sc)
-		{
-			uint* qlast = sc.queue_next;
-			if (qlast > sc.queue_pos + 65535)
-				qlast = sc.queue_pos + 65535;
-			points point = minmax_point(ref sc, sc.queue_pos);
-			int outer_mininterval = point.minp, outer_maxinterval = point.maxp;
-			int add = 0, minadd = -0x8000, maxadd = 0x7fff;
-			int bestinterval = 0, bestcount = 1, bestadd = 1, bestreach = int.MinValue;
-			int zerointerval = 0, zerocount = 0;
+		//static step_move compress_bisect_add(ref stepcompress sc)
+		//{
+		//	uint* qlast = sc.queue_next;
+		//	if (qlast > sc.queue_pos + 65535)
+		//		qlast = sc.queue_pos + 65535;
+		//	points point = minmax_point(ref sc, sc.queue_pos);
+		//	int outer_mininterval = point.minp, outer_maxinterval = point.maxp;
+		//	int add = 0, minadd = -0x8000, maxadd = 0x7fff;
+		//	int bestinterval = 0, bestcount = 1, bestadd = 1, bestreach = int.MinValue;
+		//	int zerointerval = 0, zerocount = 0;
 
-			int count, addfactor, nextaddfactor, c;
-			while (true)
-			{
-				// Find longest valid sequence with the given 'add'
-				points nextpoint;
-				int nextmininterval = outer_mininterval;
-				int nextmaxinterval = outer_maxinterval, interval = nextmaxinterval;
-				int nextcount = 1;
-				for (; ; )
-				{
-					nextcount++;
-					if (&sc.queue_pos[nextcount - 1] >= qlast)
-					{
-						count = nextcount - 1;
-						return new step_move((uint)interval, (ushort)count, (short)add);
-					}
-					nextpoint = minmax_point(ref sc, sc.queue_pos + nextcount - 1);
-					nextaddfactor = nextcount * (nextcount - 1) / 2;
-					c = add * nextaddfactor;
-					if (nextmininterval * nextcount < nextpoint.minp - c)
-						nextmininterval = DIV_ROUND_UP(nextpoint.minp - c, nextcount);
-					if (nextmaxinterval * nextcount > nextpoint.maxp - c)
-						nextmaxinterval = (nextpoint.maxp - c) / nextcount;
-					if (nextmininterval > nextmaxinterval)
-						break;
-					interval = nextmaxinterval;
-				}
+		//	int count, addfactor, nextaddfactor, c;
+		//	while (true)
+		//	{
+		//		// Find longest valid sequence with the given 'add'
+		//		points nextpoint;
+		//		int nextmininterval = outer_mininterval;
+		//		int nextmaxinterval = outer_maxinterval, interval = nextmaxinterval;
+		//		int nextcount = 1;
+		//		for (; ; )
+		//		{
+		//			nextcount++;
+		//			if (&sc.queue_pos[nextcount - 1] >= qlast)
+		//			{
+		//				count = nextcount - 1;
+		//				return new step_move((uint)interval, (ushort)count, (short)add);
+		//			}
+		//			nextpoint = minmax_point(ref sc, sc.queue_pos + nextcount - 1);
+		//			nextaddfactor = nextcount * (nextcount - 1) / 2;
+		//			c = add * nextaddfactor;
+		//			if (nextmininterval * nextcount < nextpoint.minp - c)
+		//				nextmininterval = DIV_ROUND_UP(nextpoint.minp - c, nextcount);
+		//			if (nextmaxinterval * nextcount > nextpoint.maxp - c)
+		//				nextmaxinterval = (nextpoint.maxp - c) / nextcount;
+		//			if (nextmininterval > nextmaxinterval)
+		//				break;
+		//			interval = nextmaxinterval;
+		//		}
 
-				// Check if this is the best sequence found so far
-				count = nextcount - 1;
-				addfactor = count * (count - 1) / 2;
-				int reach = add * addfactor + interval * count;
-				if (reach > bestreach
-					 || (reach == bestreach && interval > bestinterval))
-				{
-					bestinterval = interval;
-					bestcount = count;
-					bestadd = add;
-					bestreach = reach;
-					if (add == 0)
-					{
-						zerointerval = interval;
-						zerocount = count;
-					}
-					if (count > 0x200)
-						// No 'add' will improve sequence; avoid integer overflow
-						break;
-				}
+		//		// Check if this is the best sequence found so far
+		//		count = nextcount - 1;
+		//		addfactor = count * (count - 1) / 2;
+		//		int reach = add * addfactor + interval * count;
+		//		if (reach > bestreach
+		//			 || (reach == bestreach && interval > bestinterval))
+		//		{
+		//			bestinterval = interval;
+		//			bestcount = count;
+		//			bestadd = add;
+		//			bestreach = reach;
+		//			if (add == 0)
+		//			{
+		//				zerointerval = interval;
+		//				zerocount = count;
+		//			}
+		//			if (count > 0x200)
+		//				// No 'add' will improve sequence; avoid integer overflow
+		//				break;
+		//		}
 
-				// Check if a greater or lesser add could extend the sequence
-				nextaddfactor = nextcount * (nextcount - 1) / 2;
-				int nextreach = add * nextaddfactor + interval * nextcount;
-				if (nextreach < nextpoint.minp)
-				{
-					minadd = add + 1;
-					outer_maxinterval = nextmaxinterval;
-				}
-				else
-				{
-					maxadd = add - 1;
-					outer_mininterval = nextmininterval;
-				}
+		//		// Check if a greater or lesser add could extend the sequence
+		//		nextaddfactor = nextcount * (nextcount - 1) / 2;
+		//		int nextreach = add * nextaddfactor + interval * nextcount;
+		//		if (nextreach < nextpoint.minp)
+		//		{
+		//			minadd = add + 1;
+		//			outer_maxinterval = nextmaxinterval;
+		//		}
+		//		else
+		//		{
+		//			maxadd = add - 1;
+		//			outer_mininterval = nextmininterval;
+		//		}
 
-				// The maximum valid deviation between two quadratic sequences
-				// can be calculated and used to further limit the add range.
-				if (count > 1)
-				{
-					int errdelta = (int)sc.max_error * QUADRATIC_DEV / (count * count);
-					if (minadd < add - errdelta)
-						minadd = add - errdelta;
-					if (maxadd > add + errdelta)
-						maxadd = add + errdelta;
-				}
+		//		// The maximum valid deviation between two quadratic sequences
+		//		// can be calculated and used to further limit the add range.
+		//		if (count > 1)
+		//		{
+		//			int errdelta = (int)sc.max_error * QUADRATIC_DEV / (count * count);
+		//			if (minadd < add - errdelta)
+		//				minadd = add - errdelta;
+		//			if (maxadd > add + errdelta)
+		//				maxadd = add + errdelta;
+		//		}
 
-				// See if next point would further limit the add range
-				c = outer_maxinterval * nextcount;
-				if (minadd * nextaddfactor < nextpoint.minp - c)
-					minadd = idiv_up(nextpoint.minp - c, nextaddfactor);
-				c = outer_mininterval * nextcount;
-				if (maxadd * nextaddfactor > nextpoint.maxp - c)
-					maxadd = idiv_down(nextpoint.maxp - c, nextaddfactor);
+		//		// See if next point would further limit the add range
+		//		c = outer_maxinterval * nextcount;
+		//		if (minadd * nextaddfactor < nextpoint.minp - c)
+		//			minadd = idiv_up(nextpoint.minp - c, nextaddfactor);
+		//		c = outer_mininterval * nextcount;
+		//		if (maxadd * nextaddfactor > nextpoint.maxp - c)
+		//			maxadd = idiv_down(nextpoint.maxp - c, nextaddfactor);
 
-				// Bisect valid add range and try again with new 'add'
-				if (minadd > maxadd)
-					break;
-				add = maxadd - (maxadd - minadd) / 4;
-			}
-			if (zerocount + zerocount / 16 >= bestcount)
-				// Prefer add=0 if it's similar to the best found sequence
-				return new step_move((uint)zerointerval, (ushort)zerocount, 0);
-			return new step_move((uint)bestinterval, (ushort)bestcount, (short)bestadd);
-		}
+		//		// Bisect valid add range and try again with new 'add'
+		//		if (minadd > maxadd)
+		//			break;
+		//		add = maxadd - (maxadd - minadd) / 4;
+		//	}
+		//	if (zerocount + zerocount / 16 >= bestcount)
+		//		// Prefer add=0 if it's similar to the best found sequence
+		//		return new step_move((uint)zerointerval, (ushort)zerocount, 0);
+		//	return new step_move((uint)bestinterval, (ushort)bestcount, (short)bestadd);
+		//}
 
 
 		/****************************************************************
@@ -166,192 +166,192 @@ namespace KlipperSharp.PulseGeneration
 		 ****************************************************************/
 
 		// Verify that a given 'step_move' matches the actual step times
-		static int check_line(ref stepcompress sc, ref step_move move)
-		{
-			if (!CHECK_LINES) return 0;
-			if (move.count == 0 || (move.interval == 0 && move.add == 0 && move.count > 1) || move.interval >= 0x80000000)
-			{
-				//errorf("stepcompress o=%d i=%d c=%d a=%d: Invalid sequence"
-				//		 , sc->oid, move.interval, move.count, move.add);
-				return ERROR_RET;
-			}
-			uint interval = move.interval, p = 0;
-			ushort i;
-			for (i = 0; i < move.count; i++)
-			{
-				points point = minmax_point(ref sc, sc.queue_pos + i);
-				p += interval;
-				if (p < point.minp || p > point.maxp)
-				{
-					//errorf("stepcompress o=%d i=%d c=%d a=%d: Point %d: %d not in %d:%d"
-					//		 , sc.oid, move.interval, move.count, move.add
-					//		 , i + 1, p, point.minp, point.maxp);
-					return ERROR_RET;
-				}
-				if (interval >= 0x80000000)
-				{
-					//errorf("stepcompress o=%d i=%d c=%d a=%d:"+
-					//		 " Point %d: interval overflow %d"
-					//		 , sc.oid, move.interval, move.count, move.add
-					//		 , i + 1, interval);
-					return ERROR_RET;
-				}
-				interval += (ushort)move.add;
-			}
-			return 0;
-		}
+		//static int check_line(ref stepcompress sc, ref step_move move)
+		//{
+		//	if (!CHECK_LINES) return 0;
+		//	if (move.count == 0 || (move.interval == 0 && move.add == 0 && move.count > 1) || move.interval >= 0x80000000)
+		//	{
+		//		//errorf("stepcompress o=%d i=%d c=%d a=%d: Invalid sequence"
+		//		//		 , sc->oid, move.interval, move.count, move.add);
+		//		return ERROR_RET;
+		//	}
+		//	uint interval = move.interval, p = 0;
+		//	ushort i;
+		//	for (i = 0; i < move.count; i++)
+		//	{
+		//		points point = minmax_point(ref sc, sc.queue_pos + i);
+		//		p += interval;
+		//		if (p < point.minp || p > point.maxp)
+		//		{
+		//			//errorf("stepcompress o=%d i=%d c=%d a=%d: Point %d: %d not in %d:%d"
+		//			//		 , sc.oid, move.interval, move.count, move.add
+		//			//		 , i + 1, p, point.minp, point.maxp);
+		//			return ERROR_RET;
+		//		}
+		//		if (interval >= 0x80000000)
+		//		{
+		//			//errorf("stepcompress o=%d i=%d c=%d a=%d:"+
+		//			//		 " Point %d: interval overflow %d"
+		//			//		 , sc.oid, move.interval, move.count, move.add
+		//			//		 , i + 1, interval);
+		//			return ERROR_RET;
+		//		}
+		//		interval += (ushort)move.add;
+		//	}
+		//	return 0;
+		//}
 
 		/****************************************************************
 		 * Step compress interface
 		 ****************************************************************/
 
 		// Allocate a new 'stepcompress' object
-		public static stepcompress stepcompress_alloc(uint oid)
-		{
-			stepcompress sc = new stepcompress(oid);
-			sc.msg_queue = new Queue<SerialQueue.RawMessage>();
-			return sc;
-		}
+		//public static stepcompress stepcompress_alloc(uint oid)
+		//{
+		//	stepcompress sc = new stepcompress(oid);
+		//	sc.msg_queue = new Queue<SerialQueue.RawMessage>();
+		//	return sc;
+		//}
 
 		// Fill message id information
-		public static void stepcompress_fill(ref stepcompress sc, uint max_error
-								, uint invert_sdir, uint queue_step_msgid
-								, uint set_next_step_dir_msgid)
-		{
-			sc.max_error = max_error;
-			sc.invert_sdir = invert_sdir == 0 ? 1 : 0;
-			sc.queue_step_msgid = queue_step_msgid;
-			sc.set_next_step_dir_msgid = set_next_step_dir_msgid;
-		}
+		//public static void stepcompress_fill(ref stepcompress sc, uint max_error
+		//						, uint invert_sdir, uint queue_step_msgid
+		//						, uint set_next_step_dir_msgid)
+		//{
+		//	sc.max_error = max_error;
+		//	sc.invert_sdir = invert_sdir == 0 ? 1 : 0;
+		//	sc.queue_step_msgid = queue_step_msgid;
+		//	sc.set_next_step_dir_msgid = set_next_step_dir_msgid;
+		//}
 
 		// Free memory associated with a 'stepcompress' object
-		void stepcompress_free(ref stepcompress sc)
-		{
-			//if (!sc)
-			//	return;
-			free(sc.queue);
-			//message_queue_free(&sc->msg_queue);
-			//free(sc);
-		}
+		//void stepcompress_free(ref stepcompress sc)
+		//{
+		//	//if (!sc)
+		//	//	return;
+		//	free(sc.queue);
+		//	//message_queue_free(&sc->msg_queue);
+		//	//free(sc);
+		//}
 
 		// Convert previously scheduled steps into commands for the mcu
-		public static int stepcompress_flush(ref stepcompress sc, ulong move_clock)
-		{
-			if (sc.queue_pos >= sc.queue_next)
-				return 0;
-			while (sc.last_step_clock < move_clock)
-			{
-				step_move move = compress_bisect_add(ref sc);
-				int ret = check_line(ref sc, ref move);
-				if (ret != 0)
-					return ret;
+		//public static int stepcompress_flush(ref stepcompress sc, ulong move_clock)
+		//{
+		//	if (sc.queue_pos >= sc.queue_next)
+		//		return 0;
+		//	while (sc.last_step_clock < move_clock)
+		//	{
+		//		step_move move = compress_bisect_add(ref sc);
+		//		int ret = check_line(ref sc, ref move);
+		//		if (ret != 0)
+		//			return ret;
 
-				uint* msg = stackalloc uint[] { sc.queue_step_msgid, sc.oid, move.interval, move.count, (uint)move.add };
-				var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 5));
-				qm.min_clock = qm.req_clock = sc.last_step_clock;
-				int addfactor = move.count * (move.count - 1) / 2;
-				ulong ticks = (ulong)(move.add * addfactor + move.interval * move.count);
-				sc.last_step_clock += ticks;
-				if (sc.homing_clock != 0)
-					// When homing, all steps should be sent prior to homing_clock
-					qm.min_clock = qm.req_clock = sc.homing_clock;
-				sc.msg_queue.Enqueue(qm);
+		//		uint* msg = stackalloc uint[] { sc.queue_step_msgid, sc.oid, move.interval, move.count, (uint)move.add };
+		//		var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 5));
+		//		qm.min_clock = qm.req_clock = sc.last_step_clock;
+		//		int addfactor = move.count * (move.count - 1) / 2;
+		//		ulong ticks = (ulong)(move.add * addfactor + move.interval * move.count);
+		//		sc.last_step_clock += ticks;
+		//		if (sc.homing_clock != 0)
+		//			// When homing, all steps should be sent prior to homing_clock
+		//			qm.min_clock = qm.req_clock = sc.homing_clock;
+		//		sc.msg_queue.Enqueue(qm);
 
-				if (sc.queue_pos + move.count >= sc.queue_next)
-				{
-					sc.queue_pos = sc.queue_next = sc.queue;
-					break;
-				}
-				sc.queue_pos += move.count;
-			}
-			return 0;
-		}
+		//		if (sc.queue_pos + move.count >= sc.queue_next)
+		//		{
+		//			sc.queue_pos = sc.queue_next = sc.queue;
+		//			break;
+		//		}
+		//		sc.queue_pos += move.count;
+		//	}
+		//	return 0;
+		//}
 
 		// Generate a queue_step for a step far in the future from the last step
-		static int stepcompress_flush_far(ref stepcompress sc, ulong abs_step_clock)
-		{
-			uint* msg = stackalloc uint[] { sc.queue_step_msgid, sc.oid, (uint)(abs_step_clock - sc.last_step_clock), 1, 0 };
-			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 5));
-			qm.min_clock = sc.last_step_clock;
-			sc.last_step_clock = qm.req_clock = abs_step_clock;
-			if (sc.homing_clock != 0)
-				// When homing, all steps should be sent prior to homing_clock
-				qm.min_clock = qm.req_clock = sc.homing_clock;
-			sc.msg_queue.Enqueue(qm);
-			return 0;
-		}
+		//static int stepcompress_flush_far(ref stepcompress sc, ulong abs_step_clock)
+		//{
+		//	uint* msg = stackalloc uint[] { sc.queue_step_msgid, sc.oid, (uint)(abs_step_clock - sc.last_step_clock), 1, 0 };
+		//	var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 5));
+		//	qm.min_clock = sc.last_step_clock;
+		//	sc.last_step_clock = qm.req_clock = abs_step_clock;
+		//	if (sc.homing_clock != 0)
+		//		// When homing, all steps should be sent prior to homing_clock
+		//		qm.min_clock = qm.req_clock = sc.homing_clock;
+		//	sc.msg_queue.Enqueue(qm);
+		//	return 0;
+		//}
 
 		// Send the set_next_step_dir command
-		static int set_next_step_dir(ref stepcompress sc, int sdir)
-		{
-			if (sc.sdir == sdir)
-				return 0;
-			sc.sdir = sdir;
-			int ret = stepcompress_flush(ref sc, ulong.MaxValue);
-			if (ret != 0)
-				return ret;
-			uint* msg = stackalloc uint[] { sc.set_next_step_dir_msgid, sc.oid, (uint)sdir ^ (uint)sc.invert_sdir };
-			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 3));
-			qm.req_clock = sc.homing_clock != 0 ? 0 : sc.last_step_clock;
-			sc.msg_queue.Enqueue(qm);
-			return 0;
-		}
+		//static int set_next_step_dir(ref stepcompress sc, int sdir)
+		//{
+		//	if (sc.sdir == sdir)
+		//		return 0;
+		//	sc.sdir = sdir;
+		//	int ret = stepcompress_flush(ref sc, ulong.MaxValue);
+		//	if (ret != 0)
+		//		return ret;
+		//	uint* msg = stackalloc uint[] { sc.set_next_step_dir_msgid, sc.oid, (uint)sdir ^ (uint)sc.invert_sdir };
+		//	var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 3));
+		//	qm.req_clock = sc.homing_clock != 0 ? 0 : sc.last_step_clock;
+		//	sc.msg_queue.Enqueue(qm);
+		//	return 0;
+		//}
 
 		// Reset the internal state of the stepcompress object
-		public static int stepcompress_reset(ref stepcompress sc, ulong last_step_clock)
-		{
-			int ret = stepcompress_flush(ref sc, ulong.MaxValue);
-			if (ret != 0)
-				return ret;
-			sc.last_step_clock = last_step_clock;
-			sc.sdir = -1;
-			return 0;
-		}
+		//public static int stepcompress_reset(ref stepcompress sc, ulong last_step_clock)
+		//{
+		//	int ret = stepcompress_flush(ref sc, ulong.MaxValue);
+		//	if (ret != 0)
+		//		return ret;
+		//	sc.last_step_clock = last_step_clock;
+		//	sc.sdir = -1;
+		//	return 0;
+		//}
 
 		// Indicate the stepper is in homing mode (or done homing if zero)
-		public static int stepcompress_set_homing(ref stepcompress sc, ulong homing_clock)
-		{
-			int ret = stepcompress_flush(ref sc, ulong.MaxValue);
-			if (ret != 0)
-				return ret;
-			sc.homing_clock = homing_clock;
-			return 0;
-		}
+		//public static int stepcompress_set_homing(ref stepcompress sc, ulong homing_clock)
+		//{
+		//	int ret = stepcompress_flush(ref sc, ulong.MaxValue);
+		//	if (ret != 0)
+		//		return ret;
+		//	sc.homing_clock = homing_clock;
+		//	return 0;
+		//}
 
 		// Queue an mcu command to go out in order with stepper commands
-		public static int stepcompress_queue_msg(ref stepcompress sc, ReadOnlySpan<uint> data)
-		{
-			int ret = stepcompress_flush(ref sc, ulong.MaxValue);
-			if (ret != 0)
-				return ret;
+		//public static int stepcompress_queue_msg(ref stepcompress sc, ReadOnlySpan<uint> data)
+		//{
+		//	int ret = stepcompress_flush(ref sc, ulong.MaxValue);
+		//	if (ret != 0)
+		//		return ret;
 
-			var qm = SerialQueue.RawMessage.CreateAndEncode(data);
-			qm.req_clock = sc.homing_clock != 0 ? 0 : sc.last_step_clock;
-			sc.msg_queue.Enqueue(qm);
-			return 0;
-		}
+		//	var qm = SerialQueue.RawMessage.CreateAndEncode(data);
+		//	qm.req_clock = sc.homing_clock != 0 ? 0 : sc.last_step_clock;
+		//	sc.msg_queue.Enqueue(qm);
+		//	return 0;
+		//}
 
 		// Set the conversion rate of 'print_time' to mcu clock
-		public static void stepcompress_set_time(ref stepcompress sc, double time_offset, double mcu_freq)
-		{
-			sc.mcu_time_offset = time_offset;
-			sc.mcu_freq = mcu_freq;
-		}
+		//public static void stepcompress_set_time(ref stepcompress sc, double time_offset, double mcu_freq)
+		//{
+		//	sc.mcu_time_offset = time_offset;
+		//	sc.mcu_freq = mcu_freq;
+		//}
 
-		public static double stepcompress_get_mcu_freq(ref stepcompress sc)
-		{
-			return sc.mcu_freq;
-		}
+		//public static double stepcompress_get_mcu_freq(ref stepcompress sc)
+		//{
+		//	return sc.mcu_freq;
+		//}
 
-		uint stepcompress_get_oid(ref stepcompress sc)
-		{
-			return sc.oid;
-		}
+		//uint stepcompress_get_oid(ref stepcompress sc)
+		//{
+		//	return sc.oid;
+		//}
 
-		public static bool stepcompress_get_step_dir(ref stepcompress sc)
-		{
-			return sc.sdir > 0;
-		}
+		//public static bool stepcompress_get_step_dir(ref stepcompress sc)
+		//{
+		//	return sc.sdir > 0;
+		//}
 
 
 		/****************************************************************
@@ -359,87 +359,87 @@ namespace KlipperSharp.PulseGeneration
 		 ****************************************************************/
 
 		// Maximium clock delta between messages in the queue
-		const long CLOCK_DIFF_MAX = (3 << 28);
+		public const long CLOCK_DIFF_MAX = (3 << 28);
 
 		// Create a cursor for inserting clock times into the queue
-		public static queue_append queue_append_start(ref stepcompress sc, double print_time, double adjust)
-		{
-			double print_clock = (print_time - sc.mcu_time_offset) * sc.mcu_freq;
-			return new queue_append()
-			{
-				sc = sc,
-				qnext = sc.queue_next,
-				qend = sc.queue_end,
-				last_step_clock_32 = (uint)sc.last_step_clock,
-				clock_offset = (print_clock - (double)sc.last_step_clock) + adjust
-			};
-		}
+		//public static queue_append queue_append_start(ref stepcompress sc, double print_time, double adjust)
+		//{
+		//	double print_clock = (print_time - sc.mcu_time_offset) * sc.mcu_freq;
+		//	return new queue_append()
+		//	{
+		//		sc = sc,
+		//		qnext = sc.queue_next,
+		//		qend = sc.queue_end,
+		//		last_step_clock_32 = (uint)sc.last_step_clock,
+		//		clock_offset = (print_clock - (double)sc.last_step_clock) + adjust
+		//	};
+		//}
 
 		// Finalize a cursor created with queue_append_start()
-		public static void queue_append_finish(ref queue_append qa)
-		{
-			qa.sc.queue_next = qa.qnext;
-		}
+		//public static void queue_append_finish(ref queue_append qa)
+		//{
+		//	qa.sc.queue_next = qa.qnext;
+		//}
 
 		// Slow path for queue_append()
-		static int queue_append_slow(ref stepcompress sc, double rel_sc)
-		{
-			ulong abs_step_clock = (ulong)(rel_sc + sc.last_step_clock);
-			if (abs_step_clock >= sc.last_step_clock + CLOCK_DIFF_MAX)
-			{
-				// Avoid integer overflow on steps far in the future
-				int ret = stepcompress_flush(ref sc, abs_step_clock - CLOCK_DIFF_MAX + 1);
-				if (ret != 0)
-					return ret;
+		//static int queue_append_slow(ref stepcompress sc, double rel_sc)
+		//{
+		//	ulong abs_step_clock = (ulong)(rel_sc + sc.last_step_clock);
+		//	if (abs_step_clock >= sc.last_step_clock + CLOCK_DIFF_MAX)
+		//	{
+		//		// Avoid integer overflow on steps far in the future
+		//		int ret = stepcompress_flush(ref sc, abs_step_clock - CLOCK_DIFF_MAX + 1);
+		//		if (ret != 0)
+		//			return ret;
 
-				if (abs_step_clock >= sc.last_step_clock + CLOCK_DIFF_MAX)
-					return stepcompress_flush_far(ref sc, abs_step_clock);
-			}
+		//		if (abs_step_clock >= sc.last_step_clock + CLOCK_DIFF_MAX)
+		//			return stepcompress_flush_far(ref sc, abs_step_clock);
+		//	}
 
-			if (sc.queue_next - sc.queue_pos > 65535 + 2000)
-			{
-				// No point in keeping more than 64K steps in memory
-				uint flush = *(sc.queue_next - 65535) - (uint)sc.last_step_clock;
-				int ret = stepcompress_flush(ref sc, sc.last_step_clock + flush);
-				if (ret != 0)
-					return ret;
-			}
+		//	if (sc.queue_next - sc.queue_pos > 65535 + 2000)
+		//	{
+		//		// No point in keeping more than 64K steps in memory
+		//		uint flush = *(sc.queue_next - 65535) - (uint)sc.last_step_clock;
+		//		int ret = stepcompress_flush(ref sc, sc.last_step_clock + flush);
+		//		if (ret != 0)
+		//			return ret;
+		//	}
 
-			if (sc.queue_next >= sc.queue_end)
-			{
-				// Make room in the queue
-				long in_use = sc.queue_next - sc.queue_pos;
-				if (sc.queue_pos > sc.queue)
-				{
-					// Shuffle the internal queue to avoid having to allocate more ram
-					memmove(sc.queue, sc.queue_pos, in_use * sizeof(uint));
-				}
-				else
-				{
-					// Expand the internal queue of step times
-					long alloc = sc.queue_end - sc.queue;
-					if (alloc == 0)
-						alloc = QUEUE_START_SIZE;
-					while (in_use >= alloc)
-						alloc *= 2;
-					sc.queue = (uint*)realloc(sc.queue, alloc * sizeof(uint));
-					sc.queue_end = sc.queue + alloc;
-				}
-				sc.queue_pos = sc.queue;
-				sc.queue_next = sc.queue + in_use;
-			}
+		//	if (sc.queue_next >= sc.queue_end)
+		//	{
+		//		// Make room in the queue
+		//		long in_use = sc.queue_next - sc.queue_pos;
+		//		if (sc.queue_pos > sc.queue)
+		//		{
+		//			// Shuffle the internal queue to avoid having to allocate more ram
+		//			memmove(sc.queue, sc.queue_pos, in_use * sizeof(uint));
+		//		}
+		//		else
+		//		{
+		//			// Expand the internal queue of step times
+		//			long alloc = sc.queue_end - sc.queue;
+		//			if (alloc == 0)
+		//				alloc = QUEUE_START_SIZE;
+		//			while (in_use >= alloc)
+		//				alloc *= 2;
+		//			sc.queue = (uint*)realloc(sc.queue, alloc * sizeof(uint));
+		//			sc.queue_end = sc.queue + alloc;
+		//		}
+		//		sc.queue_pos = sc.queue;
+		//		sc.queue_next = sc.queue + in_use;
+		//	}
 
-			*sc.queue_next++ = (uint)abs_step_clock;
-			return 0;
-		}
+		//	*sc.queue_next++ = (uint)abs_step_clock;
+		//	return 0;
+		//}
 
-		static void* memmove(void* destination, void* source, long num)
+		public static void* memmove(void* destination, void* source, long num)
 		{
 			Buffer.MemoryCopy(source, destination, num, num);
 			return destination;
 		}
 
-		static void* realloc(void* ptr, long size)
+		public static void* realloc(void* ptr, long size)
 		{
 			if ((IntPtr)ptr == IntPtr.Zero)
 				ptr = (void*)System.Runtime.InteropServices.Marshal.AllocHGlobal((IntPtr)size);
@@ -448,49 +448,49 @@ namespace KlipperSharp.PulseGeneration
 			return ptr;
 		}
 
-		static void free(void* ptr)
+		public static void free(void* ptr)
 		{
 			System.Runtime.InteropServices.Marshal.FreeHGlobal((IntPtr)ptr);
 		}
 
 
 		// Add a clock time to the queue (flushing the queue if needed)
-		public static bool queue_append(ref queue_append qa, double step_clock)
-		{
-			double rel_sc = step_clock + qa.clock_offset;
-			if (!(qa.qnext >= qa.qend || rel_sc >= (double)CLOCK_DIFF_MAX))
-			{
-				*qa.qnext++ = qa.last_step_clock_32 + (uint)rel_sc;
-				return false;
-			}
-			// Call queue_append_slow() to handle queue expansion and integer overflow
-			stepcompress sc = qa.sc;
-			ulong old_last_step_clock = sc.last_step_clock;
-			sc.queue_next = qa.qnext;
-			int ret = queue_append_slow(ref sc, rel_sc);
-			if (ret != 0)
-				return ret > 0;
-			qa.qnext = sc.queue_next;
-			qa.qend = sc.queue_end;
-			qa.last_step_clock_32 = (uint)sc.last_step_clock;
-			qa.clock_offset -= sc.last_step_clock - old_last_step_clock;
-			return false;
-		}
+		//public static bool queue_append(ref queue_append qa, double step_clock)
+		//{
+		//	double rel_sc = step_clock + qa.clock_offset;
+		//	if (!(qa.qnext >= qa.qend || rel_sc >= (double)CLOCK_DIFF_MAX))
+		//	{
+		//		*qa.qnext++ = qa.last_step_clock_32 + (uint)rel_sc;
+		//		return false;
+		//	}
+		//	// Call queue_append_slow() to handle queue expansion and integer overflow
+		//	stepcompress sc = qa.sc;
+		//	ulong old_last_step_clock = sc.last_step_clock;
+		//	sc.queue_next = qa.qnext;
+		//	int ret = queue_append_slow(ref sc, rel_sc);
+		//	if (ret != 0)
+		//		return ret > 0;
+		//	qa.qnext = sc.queue_next;
+		//	qa.qend = sc.queue_end;
+		//	qa.last_step_clock_32 = (uint)sc.last_step_clock;
+		//	qa.clock_offset -= sc.last_step_clock - old_last_step_clock;
+		//	return false;
+		//}
 
-		public static bool queue_append_set_next_step_dir(ref queue_append qa, bool sdir)
-		{
-			stepcompress sc = qa.sc;
-			ulong old_last_step_clock = sc.last_step_clock;
-			sc.queue_next = qa.qnext;
-			int ret = set_next_step_dir(ref sc, sdir ? 1 : 0);
-			if (ret != 0)
-				return ret > 0;
-			qa.qnext = sc.queue_next;
-			qa.qend = sc.queue_end;
-			qa.last_step_clock_32 = (uint)sc.last_step_clock;
-			qa.clock_offset -= sc.last_step_clock - old_last_step_clock;
-			return false;
-		}
+		//public static bool queue_append_set_next_step_dir(ref queue_append qa, bool sdir)
+		//{
+		//	stepcompress sc = qa.sc;
+		//	ulong old_last_step_clock = sc.last_step_clock;
+		//	sc.queue_next = qa.qnext;
+		//	int ret = set_next_step_dir(ref sc, sdir ? 1 : 0);
+		//	if (ret != 0)
+		//		return ret > 0;
+		//	qa.qnext = sc.queue_next;
+		//	qa.qend = sc.queue_end;
+		//	qa.last_step_clock_32 = (uint)sc.last_step_clock;
+		//	qa.clock_offset -= sc.last_step_clock - old_last_step_clock;
+		//	return false;
+		//}
 
 		/****************************************************************
 		 * Step compress synchronization
@@ -634,15 +634,59 @@ namespace KlipperSharp.PulseGeneration
 		public int minp, maxp;
 	}
 
-	public unsafe struct queue_append
+	public unsafe ref struct queue_append
 	{
 		public stepcompress sc;
 		public uint* qnext, qend;
 		public uint last_step_clock_32;
 		public double clock_offset;
+
+		// Add a clock time to the queue (flushing the queue if needed)
+		public bool append(double step_clock)
+		{
+			double rel_sc = step_clock + clock_offset;
+			if (!(qnext >= qend || rel_sc >= (double)Stepcompress.CLOCK_DIFF_MAX))
+			{
+				*qnext++ = last_step_clock_32 + (uint)rel_sc;
+				return false;
+			}
+			// Call queue_append_slow() to handle queue expansion and integer overflow
+			stepcompress sc = this.sc;
+			ulong old_last_step_clock = sc.last_step_clock;
+			sc.queue_next = qnext;
+			int ret = sc.queue_append_slow(rel_sc);
+			if (ret != 0)
+				return ret > 0;
+			qnext = sc.queue_next;
+			qend = sc.queue_end;
+			last_step_clock_32 = (uint)sc.last_step_clock;
+			clock_offset -= sc.last_step_clock - old_last_step_clock;
+			return false;
+		}
+
+		public bool append_set_next_step_dir(bool sdir)
+		{
+			stepcompress sc = this.sc;
+			ulong old_last_step_clock = sc.last_step_clock;
+			sc.queue_next = qnext;
+			int ret = sc.set_next_step_dir(sdir ? 1 : 0);
+			if (ret != 0)
+				return ret > 0;
+			qnext = sc.queue_next;
+			qend = sc.queue_end;
+			last_step_clock_32 = (uint)sc.last_step_clock;
+			clock_offset -= sc.last_step_clock - old_last_step_clock;
+			return false;
+		}
+
+		// Finalize a cursor created with queue_append_start()
+		public void queue_append_finish()
+		{
+			sc.queue_next = qnext;
+		}
 	}
 
-	public unsafe class stepcompress
+	public unsafe class stepcompress : IDisposable
 	{
 		// Buffer management
 		public uint* queue, queue_end, queue_pos, queue_next;
@@ -654,11 +698,369 @@ namespace KlipperSharp.PulseGeneration
 		public Queue<SerialQueue.RawMessage> msg_queue;
 		public uint queue_step_msgid, set_next_step_dir_msgid, oid;
 		public int sdir, invert_sdir;
+
 		public stepcompress(uint oid)
 		{
 			this.oid = oid;
 			sdir = -1;
+			msg_queue = new Queue<SerialQueue.RawMessage>();
 		}
+
+		// Free memory associated with a 'stepcompress' object
+		public void Dispose()
+		{
+			Stepcompress.free(queue);
+		}
+
+		// Fill message id information
+		public void fill(uint max_error
+							  , bool invert_sdir, uint queue_step_msgid
+							  , uint set_next_step_dir_msgid)
+		{
+			this.max_error = max_error;
+			this.invert_sdir = invert_sdir == false ? 1 : 0;
+			this.queue_step_msgid = queue_step_msgid;
+			this.set_next_step_dir_msgid = set_next_step_dir_msgid;
+		}
+
+
+		// Given a requested step time, return the minimum and maximum
+		// acceptable times
+		points minmax_point(uint* pos)
+		{
+			uint lsc = (uint)last_step_clock, point = *pos - lsc;
+			uint prevpoint = pos > queue_pos ? *(pos - 1) - lsc : 0;
+			uint max_error = (point - prevpoint) / 2;
+			if (max_error > this.max_error)
+				max_error = this.max_error;
+			return new points { minp = (int)(point - max_error), maxp = (int)point };
+		}
+
+		// Find a 'step_move' that covers a series of step times
+		step_move compress_bisect_add()
+		{
+			uint* qlast = queue_next;
+			if (qlast > queue_pos + 65535)
+				qlast = queue_pos + 65535;
+			points point = minmax_point(queue_pos);
+			int outer_mininterval = point.minp, outer_maxinterval = point.maxp;
+			int add = 0, minadd = -0x8000, maxadd = 0x7fff;
+			int bestinterval = 0, bestcount = 1, bestadd = 1, bestreach = int.MinValue;
+			int zerointerval = 0, zerocount = 0;
+
+			int count, addfactor, nextaddfactor, c;
+			while (true)
+			{
+				// Find longest valid sequence with the given 'add'
+				points nextpoint;
+				int nextmininterval = outer_mininterval;
+				int nextmaxinterval = outer_maxinterval, interval = nextmaxinterval;
+				int nextcount = 1;
+				for (; ; )
+				{
+					nextcount++;
+					if (&queue_pos[nextcount - 1] >= qlast)
+					{
+						count = nextcount - 1;
+						return new step_move((uint)interval, (ushort)count, (short)add);
+					}
+					nextpoint = minmax_point(queue_pos + nextcount - 1);
+					nextaddfactor = nextcount * (nextcount - 1) / 2;
+					c = add * nextaddfactor;
+					if (nextmininterval * nextcount < nextpoint.minp - c)
+						nextmininterval = Stepcompress.DIV_ROUND_UP(nextpoint.minp - c, nextcount);
+					if (nextmaxinterval * nextcount > nextpoint.maxp - c)
+						nextmaxinterval = (nextpoint.maxp - c) / nextcount;
+					if (nextmininterval > nextmaxinterval)
+						break;
+					interval = nextmaxinterval;
+				}
+
+				// Check if this is the best sequence found so far
+				count = nextcount - 1;
+				addfactor = count * (count - 1) / 2;
+				int reach = add * addfactor + interval * count;
+				if (reach > bestreach
+					 || (reach == bestreach && interval > bestinterval))
+				{
+					bestinterval = interval;
+					bestcount = count;
+					bestadd = add;
+					bestreach = reach;
+					if (add == 0)
+					{
+						zerointerval = interval;
+						zerocount = count;
+					}
+					if (count > 0x200)
+						// No 'add' will improve sequence; avoid integer overflow
+						break;
+				}
+
+				// Check if a greater or lesser add could extend the sequence
+				nextaddfactor = nextcount * (nextcount - 1) / 2;
+				int nextreach = add * nextaddfactor + interval * nextcount;
+				if (nextreach < nextpoint.minp)
+				{
+					minadd = add + 1;
+					outer_maxinterval = nextmaxinterval;
+				}
+				else
+				{
+					maxadd = add - 1;
+					outer_mininterval = nextmininterval;
+				}
+
+				// The maximum valid deviation between two quadratic sequences
+				// can be calculated and used to further limit the add range.
+				if (count > 1)
+				{
+					int errdelta = (int)max_error * Stepcompress.QUADRATIC_DEV / (count * count);
+					if (minadd < add - errdelta)
+						minadd = add - errdelta;
+					if (maxadd > add + errdelta)
+						maxadd = add + errdelta;
+				}
+
+				// See if next point would further limit the add range
+				c = outer_maxinterval * nextcount;
+				if (minadd * nextaddfactor < nextpoint.minp - c)
+					minadd = Stepcompress.idiv_up(nextpoint.minp - c, nextaddfactor);
+				c = outer_mininterval * nextcount;
+				if (maxadd * nextaddfactor > nextpoint.maxp - c)
+					maxadd = Stepcompress.idiv_down(nextpoint.maxp - c, nextaddfactor);
+
+				// Bisect valid add range and try again with new 'add'
+				if (minadd > maxadd)
+					break;
+				add = maxadd - (maxadd - minadd) / 4;
+			}
+			if (zerocount + zerocount / 16 >= bestcount)
+				// Prefer add=0 if it's similar to the best found sequence
+				return new step_move((uint)zerointerval, (ushort)zerocount, 0);
+			return new step_move((uint)bestinterval, (ushort)bestcount, (short)bestadd);
+		}
+
+		// Verify that a given 'step_move' matches the actual step times
+		int check_line(ref step_move move)
+		{
+			if (!Stepcompress.CHECK_LINES) return 0;
+			if (move.count == 0 || (move.interval == 0 && move.add == 0 && move.count > 1) || move.interval >= 0x80000000)
+			{
+				//errorf("stepcompress o=%d i=%d c=%d a=%d: Invalid sequence"
+				//		 , sc->oid, move.interval, move.count, move.add);
+				return Stepcompress.ERROR_RET;
+			}
+			uint interval = move.interval, p = 0;
+			ushort i;
+			for (i = 0; i < move.count; i++)
+			{
+				points point = minmax_point(queue_pos + i);
+				p += interval;
+				if (p < point.minp || p > point.maxp)
+				{
+					//errorf("stepcompress o=%d i=%d c=%d a=%d: Point %d: %d not in %d:%d"
+					//		 , sc.oid, move.interval, move.count, move.add
+					//		 , i + 1, p, point.minp, point.maxp);
+					return Stepcompress.ERROR_RET;
+				}
+				if (interval >= 0x80000000)
+				{
+					//errorf("stepcompress o=%d i=%d c=%d a=%d:"+
+					//		 " Point %d: interval overflow %d"
+					//		 , sc.oid, move.interval, move.count, move.add
+					//		 , i + 1, interval);
+					return Stepcompress.ERROR_RET;
+				}
+				interval += (ushort)move.add;
+			}
+			return 0;
+		}
+
+
+		// Convert previously scheduled steps into commands for the mcu
+		public int flush(ulong move_clock)
+		{
+			if (queue_pos >= queue_next)
+				return 0;
+			uint* msg = stackalloc uint[5];
+			var span = new ReadOnlySpan<uint>(msg, 5);
+			while (last_step_clock < move_clock)
+			{
+				step_move move = compress_bisect_add();
+				int ret = check_line(ref move);
+				if (ret != 0)
+					return ret;
+
+				msg[0] = queue_step_msgid;
+				msg[1] = oid;
+				msg[2] = move.interval;
+				msg[3] = move.count;
+				msg[4] = (uint)move.add;
+				var qm = SerialQueue.RawMessage.CreateAndEncode(span);
+				qm.min_clock = qm.req_clock = last_step_clock;
+				int addfactor = move.count * (move.count - 1) / 2;
+				ulong ticks = (ulong)(move.add * addfactor + move.interval * move.count);
+				last_step_clock += ticks;
+				if (homing_clock != 0)
+					// When homing, all steps should be sent prior to homing_clock
+					qm.min_clock = qm.req_clock = homing_clock;
+				msg_queue.Enqueue(qm);
+
+				if (queue_pos + move.count >= queue_next)
+				{
+					queue_pos = queue_next = queue;
+					break;
+				}
+				queue_pos += move.count;
+			}
+			return 0;
+		}
+
+		// Generate a queue_step for a step far in the future from the last step
+		int flush_far(ulong abs_step_clock)
+		{
+			uint* msg = stackalloc uint[] { queue_step_msgid, oid, (uint)(abs_step_clock - last_step_clock), 1, 0 };
+			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 5));
+			qm.min_clock = last_step_clock;
+			last_step_clock = qm.req_clock = abs_step_clock;
+			if (homing_clock != 0)
+				// When homing, all steps should be sent prior to homing_clock
+				qm.min_clock = qm.req_clock = homing_clock;
+			msg_queue.Enqueue(qm);
+			return 0;
+		}
+		// Send the set_next_step_dir command
+		public int set_next_step_dir(int sdir)
+		{
+			if (this.sdir == sdir)
+				return 0;
+			this.sdir = sdir;
+			int ret = flush(ulong.MaxValue);
+			if (ret != 0)
+				return ret;
+			uint* msg = stackalloc uint[] { set_next_step_dir_msgid, oid, (uint)sdir ^ (uint)invert_sdir };
+			var qm = SerialQueue.RawMessage.CreateAndEncode(new ReadOnlySpan<uint>(msg, 3));
+			qm.req_clock = homing_clock != 0 ? 0 : last_step_clock;
+			msg_queue.Enqueue(qm);
+			return 0;
+		}
+		// Reset the internal state of the stepcompress object
+		public int reset(ulong last_step_clock)
+		{
+			int ret = flush(ulong.MaxValue);
+			if (ret != 0)
+				return ret;
+			this.last_step_clock = last_step_clock;
+			sdir = -1;
+			return 0;
+		}
+		// Indicate the stepper is in homing mode (or done homing if zero)
+		public int set_homing(ulong homing_clock)
+		{
+			int ret = flush(ulong.MaxValue);
+			if (ret != 0)
+				return ret;
+			this.homing_clock = homing_clock;
+			return 0;
+		}
+		// Queue an mcu command to go out in order with stepper commands
+		public int queue_msg(ReadOnlySpan<uint> data)
+		{
+			int ret = flush(ulong.MaxValue);
+			if (ret != 0)
+				return ret;
+			var qm = SerialQueue.RawMessage.CreateAndEncode(data);
+			qm.req_clock = homing_clock != 0 ? 0 : last_step_clock;
+			msg_queue.Enqueue(qm);
+			return 0;
+		}
+		// Set the conversion rate of 'print_time' to mcu clock
+		public void set_time(double time_offset, double mcu_freq)
+		{
+			this.mcu_time_offset = time_offset;
+			this.mcu_freq = mcu_freq;
+		}
+		public double get_mcu_freq()
+		{
+			return mcu_freq;
+		}
+		public uint get_oid()
+		{
+			return oid;
+		}
+		public bool get_step_dir()
+		{
+			return sdir > 0;
+		}
+
+
+		// Create a cursor for inserting clock times into the queue
+		public queue_append queue_append_start(double print_time, double adjust)
+		{
+			double print_clock = (print_time - mcu_time_offset) * mcu_freq;
+			return new queue_append()
+			{
+				sc = this,
+				qnext = queue_next,
+				qend = queue_end,
+				last_step_clock_32 = (uint)last_step_clock,
+				clock_offset = print_clock - (double)last_step_clock + adjust
+			};
+		}
+		// Slow path for queue_append()
+		public int queue_append_slow(double rel_sc)
+		{
+			ulong abs_step_clock = (ulong)(rel_sc + last_step_clock);
+			if (abs_step_clock >= last_step_clock + Stepcompress.CLOCK_DIFF_MAX)
+			{
+				// Avoid integer overflow on steps far in the future
+				int ret = flush(abs_step_clock - Stepcompress.CLOCK_DIFF_MAX + 1);
+				if (ret != 0)
+					return ret;
+
+				if (abs_step_clock >= last_step_clock + Stepcompress.CLOCK_DIFF_MAX)
+					return flush_far(abs_step_clock);
+			}
+
+			if (queue_next - queue_pos > 65535 + 2000)
+			{
+				// No point in keeping more than 64K steps in memory
+				uint flush = *(queue_next - 65535) - (uint)last_step_clock;
+				int ret = this.flush(last_step_clock + flush);
+				if (ret != 0)
+					return ret;
+			}
+
+			if (queue_next >= queue_end)
+			{
+				// Make room in the queue
+				long in_use = queue_next - queue_pos;
+				if (queue_pos > queue)
+				{
+					// Shuffle the internal queue to avoid having to allocate more ram
+					Stepcompress.memmove(queue, queue_pos, in_use * sizeof(uint));
+				}
+				else
+				{
+					// Expand the internal queue of step times
+					long alloc = queue_end - queue;
+					if (alloc == 0)
+						alloc = Stepcompress.QUEUE_START_SIZE;
+					while (in_use >= alloc)
+						alloc *= 2;
+					queue = (uint*)Stepcompress.realloc(queue, alloc * sizeof(uint));
+					queue_end = queue + alloc;
+				}
+				queue_pos = queue;
+				queue_next = queue + in_use;
+			}
+
+			*queue_next++ = (uint)abs_step_clock;
+			return 0;
+		}
+
+
 	}
 
 	public struct step_move
@@ -720,7 +1122,7 @@ namespace KlipperSharp.PulseGeneration
 			for (i = 0; i < sc_list.Count; i++)
 			{
 				stepcompress sc = sc_list[i];
-				Stepcompress.stepcompress_set_time(ref sc, time_offset, mcu_freq);
+				sc.set_time(time_offset, mcu_freq);
 			}
 		}
 
@@ -761,7 +1163,7 @@ namespace KlipperSharp.PulseGeneration
 			for (i = 0; i < sc_list.Count; i++)
 			{
 				var sc = sc_list[i];
-				int ret = Stepcompress.stepcompress_flush(ref sc, move_clock);
+				int ret = sc.flush(move_clock);
 				if (ret != 0)
 					return ret;
 			}

@@ -41,7 +41,7 @@ namespace KlipperSharp.MicroController
 			//var ffi_main = _tup_1.Item1;
 			//this._ffi_lib = _tup_1.Item2;
 			//this._stepqueue = ffi_main.gc(this._ffi_lib.stepcompress_alloc(this._oid), this._ffi_lib.stepcompress_free);
-			this._stepqueue = Stepcompress.stepcompress_alloc((uint)this._oid);
+			this._stepqueue = new stepcompress((uint)this._oid);
 			this._mcu.register_stepqueue(this._stepqueue);
 			this._stepper_kinematics = null;
 			this.set_ignore_move(false);
@@ -98,8 +98,7 @@ namespace KlipperSharp.MicroController
 			var dir_cmd_id = this._mcu.lookup_command_id("set_next_step_dir oid=%c dir=%c");
 			this._reset_cmd_id = this._mcu.lookup_command_id("reset_step_clock oid=%c clock=%u");
 			this._get_position_cmd = this._mcu.lookup_command("stepper_get_position oid=%c");
-			Stepcompress.stepcompress_fill(ref this._stepqueue, (uint)this._mcu.seconds_to_clock(max_error),
-				this._invert_dir ? 1u : 0u, (uint)step_cmd_id, (uint)dir_cmd_id);
+			this._stepqueue.fill((uint)this._mcu.seconds_to_clock(max_error), this._invert_dir, (uint)step_cmd_id, (uint)dir_cmd_id);
 		}
 
 		public int get_oid()
@@ -176,7 +175,7 @@ namespace KlipperSharp.MicroController
 
 		public void note_homing_start(ulong homing_clock)
 		{
-			var ret = Stepcompress.stepcompress_set_homing(ref this._stepqueue, homing_clock) > 0;
+			var ret = _stepqueue.set_homing(homing_clock) > 0;
 			//var ret = this._ffi_lib.stepcompress_set_homing(this._stepqueue, homing_clock);
 			if (ret)
 			{
@@ -186,20 +185,20 @@ namespace KlipperSharp.MicroController
 
 		public unsafe void note_homing_end(bool did_trigger = false)
 		{
-			var ret = Stepcompress.stepcompress_set_homing(ref this._stepqueue, 0) > 0;
+			var ret = _stepqueue.set_homing(0) > 0;
 			//var ret = this._ffi_lib.stepcompress_set_homing(this._stepqueue, 0);
 			if (ret)
 			{
 				throw new Exception("Internal error in stepcompress");
 			}
-			ret = Stepcompress.stepcompress_reset(ref this._stepqueue, 0) > 0;
+			ret = _stepqueue.reset(0) > 0;
 			//ret = this._ffi_lib.stepcompress_reset(this._stepqueue, 0);
 			if (ret)
 			{
 				throw new Exception("Internal error in stepcompress");
 			}
 			uint* data = stackalloc uint[] { (uint)this._reset_cmd_id, (uint)this._oid, 0 };
-			ret = Stepcompress.stepcompress_queue_msg(ref this._stepqueue, new ReadOnlySpan<uint>(data, 3)) > 0;
+			ret = _stepqueue.queue_msg(new ReadOnlySpan<uint>(data, 3)) > 0;
 			//ret = this._ffi_lib.stepcompress_queue_msg(this._stepqueue, data, 3);
 			if (ret)
 			{
