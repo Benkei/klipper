@@ -20,7 +20,7 @@ namespace KlipperSharp.MicroController
 		private bool _start_value;
 		private bool _is_static;
 		private double _max_duration;
-		private int _last_clock;
+		private uint _last_clock;
 		private SerialCommand _set_cmd;
 		private bool _shutdown_value;
 

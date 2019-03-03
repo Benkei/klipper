@@ -235,7 +235,7 @@ namespace KlipperSharp.PulseGeneration
 		}
 
 		// Convert previously scheduled steps into commands for the mcu
-		static int stepcompress_flush(ref stepcompress sc, ulong move_clock)
+		public static int stepcompress_flush(ref stepcompress sc, ulong move_clock)
 		{
 			if (sc.queue_pos >= sc.queue_next)
 				return 0;
@@ -332,7 +332,7 @@ namespace KlipperSharp.PulseGeneration
 		}
 
 		// Set the conversion rate of 'print_time' to mcu clock
-		static void stepcompress_set_time(ref stepcompress sc, double time_offset, double mcu_freq)
+		public static void stepcompress_set_time(ref stepcompress sc, double time_offset, double mcu_freq)
 		{
 			sc.mcu_time_offset = time_offset;
 			sc.mcu_freq = mcu_freq;
@@ -497,132 +497,132 @@ namespace KlipperSharp.PulseGeneration
 		 ****************************************************************/
 
 		// Allocate a new 'steppersync' object
-		public static steppersync steppersync_alloc(SerialQueue sq, List<stepcompress> sc_list, int sc_num, int move_num)
-		{
-			steppersync ss = new steppersync();
-			ss.sq = sq;
-			ss.cq = new command_queue();
+		//public static steppersync steppersync_alloc(SerialQueue sq, List<stepcompress> sc_list, int sc_num, int move_num)
+		//{
+		//	steppersync ss = new steppersync();
+		//	ss.sq = sq;
+		//	ss.cq = new command_queue();
 
-			ss.sc_list = sc_list;
-			ss.sc_num = sc_num;
+		//	ss.sc_list = sc_list;
+		//	ss.sc_num = sc_num;
 
-			ss.move_clocks = new ulong[move_num];
-			ss.num_move_clocks = move_num;
+		//	ss.move_clocks = new ulong[move_num];
+		//	ss.num_move_clocks = move_num;
 
-			return ss;
-		}
+		//	return ss;
+		//}
 
 		// Free memory associated with a 'steppersync' object
-		public static void steppersync_free(steppersync ss)
-		{
-			//if (!ss)
-			//	return;
-			//free(ss.sc_list);
-			//free(ss.move_clocks);
-			//serialqueue_free_commandqueue(ss.cq);
-			//free(ss);
-		}
+		//public static void steppersync_free(steppersync ss)
+		//{
+		//	//if (!ss)
+		//	//	return;
+		//	//free(ss.sc_list);
+		//	//free(ss.move_clocks);
+		//	//serialqueue_free_commandqueue(ss.cq);
+		//	//free(ss);
+		//}
 
 		// Set the conversion rate of 'print_time' to mcu clock
-		public static void steppersync_set_time(steppersync ss, double time_offset, double mcu_freq)
-		{
-			int i;
-			for (i = 0; i < ss.sc_num; i++)
-			{
-				stepcompress sc = ss.sc_list[i];
-				stepcompress_set_time(ref sc, time_offset, mcu_freq);
-			}
-		}
+		//public static void steppersync_set_time(steppersync ss, double time_offset, double mcu_freq)
+		//{
+		//	int i;
+		//	for (i = 0; i < ss.sc_num; i++)
+		//	{
+		//		stepcompress sc = ss.sc_list[i];
+		//		stepcompress_set_time(ref sc, time_offset, mcu_freq);
+		//	}
+		//}
 
 		// Implement a binary heap algorithm to track when the next available
 		// 'struct move' in the mcu will be available
-		static void heap_replace(steppersync ss, ulong req_clock)
-		{
-			ulong[] mc = ss.move_clocks;
-			int nmc = ss.num_move_clocks, pos = 0;
-			while (true)
-			{
-				int child1_pos = 2 * pos + 1, child2_pos = 2 * pos + 2;
-				ulong child2_clock = child2_pos < nmc ? mc[child2_pos] : ulong.MaxValue;
-				ulong child1_clock = child1_pos < nmc ? mc[child1_pos] : ulong.MaxValue;
-				if (req_clock <= child1_clock && req_clock <= child2_clock)
-				{
-					mc[pos] = req_clock;
-					break;
-				}
-				if (child1_clock < child2_clock)
-				{
-					mc[pos] = child1_clock;
-					pos = child1_pos;
-				}
-				else
-				{
-					mc[pos] = child2_clock;
-					pos = child2_pos;
-				}
-			}
-		}
+		//static void heap_replace(steppersync ss, ulong req_clock)
+		//{
+		//	ulong[] mc = ss.move_clocks;
+		//	int nmc = ss.num_move_clocks, pos = 0;
+		//	while (true)
+		//	{
+		//		int child1_pos = 2 * pos + 1, child2_pos = 2 * pos + 2;
+		//		ulong child2_clock = child2_pos < nmc ? mc[child2_pos] : ulong.MaxValue;
+		//		ulong child1_clock = child1_pos < nmc ? mc[child1_pos] : ulong.MaxValue;
+		//		if (req_clock <= child1_clock && req_clock <= child2_clock)
+		//		{
+		//			mc[pos] = req_clock;
+		//			break;
+		//		}
+		//		if (child1_clock < child2_clock)
+		//		{
+		//			mc[pos] = child1_clock;
+		//			pos = child1_pos;
+		//		}
+		//		else
+		//		{
+		//			mc[pos] = child2_clock;
+		//			pos = child2_pos;
+		//		}
+		//	}
+		//}
 
 		// Find and transmit any scheduled steps prior to the given 'move_clock'
-		public static int steppersync_flush(steppersync ss, ulong move_clock)
-		{
-			// Flush each stepcompress to the specified move_clock
-			int i;
-			for (i = 0; i < ss.sc_num; i++)
-			{
-				var sc = ss.sc_list[i];
-				int ret = stepcompress_flush(ref sc, move_clock);
-				if (ret != 0)
-					return ret;
-			}
+		//public static int steppersync_flush(steppersync ss, ulong move_clock)
+		//{
+		//	// Flush each stepcompress to the specified move_clock
+		//	int i;
+		//	for (i = 0; i < ss.sc_num; i++)
+		//	{
+		//		var sc = ss.sc_list[i];
+		//		int ret = stepcompress_flush(ref sc, move_clock);
+		//		if (ret != 0)
+		//			return ret;
+		//	}
 
-			// Order commands by the reqclock of each pending command
-			List<SerialQueue.RawMessage> msgs = new List<SerialQueue.RawMessage>();
-			while (true)
-			{
-				// Find message with lowest reqclock
-				ulong req_clock = SerialQueue.MAX_CLOCK;
-				var qm = new SerialQueue.RawMessage();
-				var scFound = default(stepcompress);
-				bool found = false;
-				for (i = 0; i < ss.sc_num; i++)
-				{
-					stepcompress sc = ss.sc_list[i];
-					if (sc.msg_queue.Count != 0)
-					{
-						var m = sc.msg_queue.Peek();
-						if (m.req_clock < req_clock)
-						{
-							found = true;
-							scFound = sc;
-							qm = m;
-							req_clock = m.req_clock;
-						}
-					}
-				}
-				if (!found || (qm.min_clock != 0 && req_clock > move_clock))
-					break;
+		//	// Order commands by the reqclock of each pending command
+		//	List<SerialQueue.RawMessage> msgs = new List<SerialQueue.RawMessage>();
+		//	while (true)
+		//	{
+		//		// Find message with lowest reqclock
+		//		ulong req_clock = SerialQueue.MAX_CLOCK;
+		//		var qm = new SerialQueue.RawMessage();
+		//		var scFound = default(stepcompress);
+		//		bool found = false;
+		//		for (i = 0; i < ss.sc_num; i++)
+		//		{
+		//			stepcompress sc = ss.sc_list[i];
+		//			if (sc.msg_queue.Count != 0)
+		//			{
+		//				var m = sc.msg_queue.Peek();
+		//				if (m.req_clock < req_clock)
+		//				{
+		//					found = true;
+		//					scFound = sc;
+		//					qm = m;
+		//					req_clock = m.req_clock;
+		//				}
+		//			}
+		//		}
+		//		if (!found || (qm.min_clock != 0 && req_clock > move_clock))
+		//			break;
 
-				ulong next_avail = ss.move_clocks[0];
-				if (qm.min_clock != 0)
-					// The qm.min_clock field is overloaded to indicate that
-					// the command uses the 'move queue' and to store the time
-					// that move queue item becomes available.
-					heap_replace(ss, qm.min_clock);
-				// Reset the min_clock to its normal meaning (minimum transmit time)
-				qm.min_clock = next_avail;
+		//		ulong next_avail = ss.move_clocks[0];
+		//		if (qm.min_clock != 0)
+		//			// The qm.min_clock field is overloaded to indicate that
+		//			// the command uses the 'move queue' and to store the time
+		//			// that move queue item becomes available.
+		//			heap_replace(ss, qm.min_clock);
+		//		// Reset the min_clock to its normal meaning (minimum transmit time)
+		//		qm.min_clock = next_avail;
 
-				qm = scFound.msg_queue.Dequeue();
-				// Batch this command
-				msgs.Add(qm);
-			}
+		//		qm = scFound.msg_queue.Dequeue();
+		//		// Batch this command
+		//		msgs.Add(qm);
+		//	}
 
-			// Transmit commands
-			if (msgs.Count != 0)
-				ss.sq.send_batch(ss.cq, msgs.ToArray());
+		//	// Transmit commands
+		//	if (msgs.Count != 0)
+		//		ss.sq.send_batch(ss.cq, msgs.ToArray());
 
-			return 0;
-		}
+		//	return 0;
+		//}
 
 
 
@@ -681,7 +681,7 @@ namespace KlipperSharp.PulseGeneration
 	// mcu step queue is ordered between steppers so that no stepper
 	// starves the other steppers of space in the mcu step queue.
 
-	public unsafe class steppersync
+	public unsafe class steppersync : IDisposable
 	{
 		// Serial port
 		public SerialQueue sq;
@@ -692,6 +692,128 @@ namespace KlipperSharp.PulseGeneration
 		// Storage for list of pending move clocks
 		public ulong[] move_clocks;
 		public int num_move_clocks;
+
+		public steppersync(SerialQueue sq, List<stepcompress> sc_list, int move_num)
+		{
+			this.sq = sq;
+			cq = new command_queue();
+
+			this.sc_list = sc_list;
+			this.sc_num = sc_list.Count;
+
+			move_clocks = new ulong[move_num];
+			num_move_clocks = move_num;
+		}
+
+		// Free memory associated with a 'steppersync' object
+		public void Dispose()
+		{
+			//free(sc_list);
+			//free(move_clocks);
+			//serialqueue_free_commandqueue(cq);
+		}
+
+		// Set the conversion rate of 'print_time' to mcu clock
+		public void set_time(double time_offset, double mcu_freq)
+		{
+			int i;
+			for (i = 0; i < sc_list.Count; i++)
+			{
+				stepcompress sc = sc_list[i];
+				Stepcompress.stepcompress_set_time(ref sc, time_offset, mcu_freq);
+			}
+		}
+
+		// Implement a binary heap algorithm to track when the next available
+		// 'struct move' in the mcu will be available
+		void heap_replace(ulong req_clock)
+		{
+			ulong[] mc = move_clocks;
+			int nmc = num_move_clocks, pos = 0;
+			while (true)
+			{
+				int child1_pos = 2 * pos + 1, child2_pos = 2 * pos + 2;
+				ulong child2_clock = child2_pos < nmc ? mc[child2_pos] : ulong.MaxValue;
+				ulong child1_clock = child1_pos < nmc ? mc[child1_pos] : ulong.MaxValue;
+				if (req_clock <= child1_clock && req_clock <= child2_clock)
+				{
+					mc[pos] = req_clock;
+					break;
+				}
+				if (child1_clock < child2_clock)
+				{
+					mc[pos] = child1_clock;
+					pos = child1_pos;
+				}
+				else
+				{
+					mc[pos] = child2_clock;
+					pos = child2_pos;
+				}
+			}
+		}
+
+		// Find and transmit any scheduled steps prior to the given 'move_clock'
+		public int flush(ulong move_clock)
+		{
+			// Flush each stepcompress to the specified move_clock
+			int i;
+			for (i = 0; i < sc_list.Count; i++)
+			{
+				var sc = sc_list[i];
+				int ret = Stepcompress.stepcompress_flush(ref sc, move_clock);
+				if (ret != 0)
+					return ret;
+			}
+
+			// Order commands by the reqclock of each pending command
+			List<SerialQueue.RawMessage> msgs = new List<SerialQueue.RawMessage>();
+			while (true)
+			{
+				// Find message with lowest reqclock
+				ulong req_clock = SerialQueue.MAX_CLOCK;
+				var qm = new SerialQueue.RawMessage();
+				var scFound = default(stepcompress);
+				bool found = false;
+				for (i = 0; i < sc_list.Count; i++)
+				{
+					stepcompress sc = sc_list[i];
+					if (sc.msg_queue.Count != 0)
+					{
+						var m = sc.msg_queue.Peek();
+						if (m.req_clock < req_clock)
+						{
+							found = true;
+							scFound = sc;
+							qm = m;
+							req_clock = m.req_clock;
+						}
+					}
+				}
+				if (!found || (qm.min_clock != 0 && req_clock > move_clock))
+					break;
+
+				ulong next_avail = move_clocks[0];
+				if (qm.min_clock != 0)
+					// The qm.min_clock field is overloaded to indicate that
+					// the command uses the 'move queue' and to store the time
+					// that move queue item becomes available.
+					heap_replace(qm.min_clock);
+				// Reset the min_clock to its normal meaning (minimum transmit time)
+				qm.min_clock = next_avail;
+
+				qm = scFound.msg_queue.Dequeue();
+				// Batch this command
+				msgs.Add(qm);
+			}
+
+			// Transmit commands
+			if (msgs.Count != 0)
+				sq.send_batch(cq, msgs.ToArray());
+
+			return 0;
+		}
+
 	}
 
 }

@@ -160,9 +160,9 @@ namespace KlipperSharp
 			// clock frequency conversions
 		}
 
-		public virtual int print_time_to_clock(double print_time)
+		public virtual uint print_time_to_clock(double print_time)
 		{
-			return (int)(print_time * this.mcu_freq);
+			return (uint)(print_time * this.mcu_freq);
 		}
 
 		public virtual double clock_to_print_time(double clock)
@@ -259,9 +259,9 @@ namespace KlipperSharp
 		}
 
 		// clock frequency conversions
-		public override int print_time_to_clock(double print_time)
+		public override uint print_time_to_clock(double print_time)
 		{
-			return (int)((print_time - this.clock_adj.adjusted_offset) * this.clock_adj.adjusted_freq);
+			return (uint)((print_time - this.clock_adj.adjusted_offset) * this.clock_adj.adjusted_freq);
 		}
 
 		public override double clock_to_print_time(double clock)

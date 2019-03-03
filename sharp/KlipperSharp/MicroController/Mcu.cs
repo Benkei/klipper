@@ -345,8 +345,8 @@ or in response to an internal error in the host software."}
 			}
 			// Setup steppersync with the move_count returned by get_config
 			this._move_count = config_parameters.Get<int>("move_count");
-			this._steppersync = Stepcompress.steppersync_alloc(this._serial.serialqueue, this._stepqueues, this._stepqueues.Count, this._move_count);
-			Stepcompress.steppersync_set_time(this._steppersync, 0.0, this._mcu_freq);
+			this._steppersync = new steppersync(this._serial.serialqueue, this._stepqueues, this._move_count);
+			this._steppersync.set_time(0.0, this._mcu_freq);
 		}
 
 		void _connect()
@@ -495,7 +495,7 @@ or in response to an internal error in the host software."}
 			return this._serial.msgparser.get_constant_float(name);
 		}
 
-		public int print_time_to_clock(double print_time)
+		public uint print_time_to_clock(double print_time)
 		{
 			return this._clocksync.print_time_to_clock(print_time);
 		}
@@ -533,11 +533,11 @@ or in response to an internal error in the host software."}
 		// Restarts
 		void _disconnect()
 		{
-			this._serial.disconnect();
-			if (this._steppersync != null)
+			_serial.disconnect();
+			if (_steppersync != null)
 			{
-				Stepcompress.steppersync_free(this._steppersync);
-				this._steppersync = null;
+				_steppersync.Dispose();
+				_steppersync = null;
 			}
 		}
 
@@ -635,7 +635,7 @@ or in response to an internal error in the host software."}
 			{
 				return;
 			}
-			var ret = Stepcompress.steppersync_flush(this._steppersync, (ulong)clock);
+			var ret = this._steppersync.flush((ulong)clock);
 			if (ret != 0)
 			{
 				throw new Exception($"Internal error in MCU '{this._name}' stepcompress");
@@ -648,10 +648,8 @@ or in response to an internal error in the host software."}
 			{
 				return;
 			}
-			var _tup_1 = this._clocksync.calibrate_clock(print_time, eventtime);
-			var offset = _tup_1.Item1;
-			var freq = _tup_1.Item2;
-			Stepcompress.steppersync_set_time(this._steppersync, offset, freq);
+			var (offset, freq) = this._clocksync.calibrate_clock(print_time, eventtime);
+			this._steppersync.set_time(offset, freq);
 			if (this._clocksync.is_active() || this.is_fileoutput() || this._is_timeout)
 			{
 				return;
