@@ -43,7 +43,6 @@ namespace KlipperSharp
 		private ReactorTimer flush_timer;
 		public BaseExtruder extruder;
 		public move cmove;
-		public move_fill_callback move_fill;
 		public BaseKinematic kin;
 
 		public ToolHead(ConfigWrapper config)
@@ -82,8 +81,7 @@ namespace KlipperSharp
 			this.printer.try_load_module(config, "idle_timeout");
 			this.printer.try_load_module(config, "statistics");
 			// Setup iterative solver
-			this.cmove = Itersolve.move_alloc();
-			this.move_fill = Itersolve.move_fill;
+			this.cmove = new move();
 			// Create kinematics class
 			this.extruder = new DummyExtruder();
 			this.move_queue.set_extruder(this.extruder);

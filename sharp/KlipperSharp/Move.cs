@@ -153,7 +153,7 @@ namespace KlipperSharp
 			var next_move_time = this.toolhead.get_next_move_time();
 			if (this.is_kinematic_move)
 			{
-				this.toolhead.move_fill(ref this.cmove, next_move_time,
+				this.toolhead.cmove.fill(next_move_time,
 					this.accel_t, this.cruise_t, this.decel_t,
 					this.start_pos.X, this.start_pos.Y, this.start_pos.Z,
 					this.axes_d.X, this.axes_d.Y, this.axes_d.Z,

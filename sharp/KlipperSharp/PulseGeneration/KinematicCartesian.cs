@@ -11,21 +11,21 @@ namespace KlipperSharp.PulseGeneration
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				return Itersolve.move_get_coord(ref m, move_time).X;
+				return m.get_coord(move_time).X;
 			}
 		}
 		class KinematicCartesianY : KinematicBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				return Itersolve.move_get_coord(ref m, move_time).Y;
+				return m.get_coord(move_time).Y;
 			}
 		}
 		class KinematicCartesianZ : KinematicBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				return Itersolve.move_get_coord(ref m, move_time).Z;
+				return m.get_coord(move_time).Z;
 			}
 		}
 

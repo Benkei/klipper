@@ -629,7 +629,7 @@ namespace KlipperSharp.PulseGeneration
 	}
 
 
-	public struct points
+	public ref struct points
 	{
 		public int minp, maxp;
 	}

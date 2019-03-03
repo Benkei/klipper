@@ -19,8 +19,9 @@ namespace KlipperSharp.MicroController
 		private int _reset_cmd_id;
 		private stepcompress _stepqueue;
 		private KinematicBase _stepper_kinematics;
-		private itersolve_gen_steps_callback _itersolve_gen_steps;
+		//private itersolve_gen_steps_callback _itersolve_gen_steps;
 		private SerialCommand _get_position_cmd;
+		private bool ignore_move;
 
 		public delegate bool itersolve_gen_steps_callback(ref KinematicBase sk, ref move m);
 
@@ -113,7 +114,7 @@ namespace KlipperSharp.MicroController
 
 		public double calc_position_from_coord(Vector3d coord)
 		{
-			return Itersolve.itersolve_calc_position_from_coord(ref this._stepper_kinematics, coord.X, coord.Y, coord.Z);
+			return _stepper_kinematics.itersolve_calc_position_from_coord(coord.X, coord.Y, coord.Z);
 			//return this._ffi_lib.itersolve_calc_position_from_coord(this._stepper_kinematics, coord[0], coord[1], coord[2]);
 		}
 
@@ -124,14 +125,14 @@ namespace KlipperSharp.MicroController
 
 		public double get_commanded_position()
 		{
-			return Itersolve.itersolve_get_commanded_pos(ref this._stepper_kinematics);
+			return _stepper_kinematics.itersolve_get_commanded_pos();
 			//return this._ffi_lib.itersolve_get_commanded_pos(this._stepper_kinematics);
 		}
 
 		public void set_commanded_position(double pos)
 		{
 			this._mcu_position_offset += this.get_commanded_position() - pos;
-			Itersolve.itersolve_set_commanded_pos(ref this._stepper_kinematics, pos);
+			_stepper_kinematics.itersolve_set_commanded_pos(pos);
 			//this._ffi_lib.itersolve_set_commanded_pos(this._stepper_kinematics, pos);
 		}
 
@@ -152,25 +153,26 @@ namespace KlipperSharp.MicroController
 			this._stepper_kinematics = sk;
 			if (sk != null)
 			{
-				Itersolve.itersolve_set_stepcompress(ref sk, ref this._stepqueue, this._step_dist);
+				sk.itersolve_set_stepcompress(ref this._stepqueue, this._step_dist);
 				//this._ffi_lib.itersolve_set_stepcompress(sk, this._stepqueue, this._step_dist);
 			}
 			return old_sk;
 		}
 
-		public virtual object set_ignore_move(bool ignore_move)
+		public object set_ignore_move(bool ignore_move)
 		{
-			var was_ignore = this._itersolve_gen_steps != Itersolve.itersolve_gen_steps;
+			this.ignore_move = ignore_move;
 			//var was_ignore = this._itersolve_gen_steps != this._ffi_lib.itersolve_gen_steps;
-			if (ignore_move)
-			{
-				this._itersolve_gen_steps = (ref KinematicBase sk, ref move m) => false;
-			}
-			else
-			{
-				this._itersolve_gen_steps = Itersolve.itersolve_gen_steps;
-			}
-			return was_ignore;
+			//var was_ignore = this._itersolve_gen_steps != Itersolve.itersolve_gen_steps;
+			//if (ignore_move)
+			//{
+			//	this._itersolve_gen_steps = (ref KinematicBase sk, ref move m) => false;
+			//}
+			//else
+			//{
+			//	this._itersolve_gen_steps = Itersolve.itersolve_gen_steps;
+			//}
+			return ignore_move;
 		}
 
 		public void note_homing_start(ulong homing_clock)
@@ -214,13 +216,17 @@ namespace KlipperSharp.MicroController
 			{
 				mcu_pos_dist = -mcu_pos_dist;
 			}
-			Itersolve.itersolve_set_commanded_pos(ref this._stepper_kinematics, mcu_pos_dist - this._mcu_position_offset);
+			_stepper_kinematics.itersolve_set_commanded_pos(mcu_pos_dist - this._mcu_position_offset);
 			//this._ffi_lib.itersolve_set_commanded_pos(this._stepper_kinematics, mcu_pos_dist - this._mcu_position_offset);
 		}
 
 		public void step_itersolve(move cmove)
 		{
-			var ret = this._itersolve_gen_steps(ref this._stepper_kinematics, ref cmove);
+			if (ignore_move)
+			{
+				return;
+			}
+			var ret = _stepper_kinematics.itersolve_gen_steps(ref cmove);
 			if (ret)
 			{
 				throw new Exception("Internal error in stepcompress");

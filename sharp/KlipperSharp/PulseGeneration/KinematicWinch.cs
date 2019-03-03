@@ -12,7 +12,7 @@ namespace KlipperSharp.PulseGeneration
 
 			public override double calc_position(ref move m, double move_time)
 			{
-				Vector3d c = Itersolve.move_get_coord(ref m, move_time);
+				Vector3d c = m.get_coord(move_time);
 				double dx = anchor.X - c.X, dy = anchor.Y - c.Y;
 				double dz = anchor.Z - c.Z;
 				return Math.Sqrt(dx * dx + dy * dy + dz * dz);

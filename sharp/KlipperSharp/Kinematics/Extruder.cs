@@ -87,7 +87,7 @@ namespace KlipperSharp
 			this.need_motor_enable = true;
 			this.extrude_pos = 0.0;
 			// Setup iterative solver
-			this.cmove = Itersolve.move_alloc();
+			this.cmove = new move();
 			this.extruder_move_fill = KinematicStepper.extruder_move_fill;
 			this.stepper.setup_itersolve(KinematicType.extruder, null);
 			// Setup SET_PRESSURE_ADVANCE command
