@@ -10,16 +10,16 @@ namespace KlipperSharp.PulseGeneration
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				coord c = Itersolve.move_get_coord(ref m, move_time);
-				return c.x + c.y;
+				Vector3d c = Itersolve.move_get_coord(ref m, move_time);
+				return c.X + c.Y;
 			}
 		}
 		class KinematicCoreXYMinus : KinematicBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				coord c = Itersolve.move_get_coord(ref m, move_time);
-				return c.x - c.y;
+				Vector3d c = Itersolve.move_get_coord(ref m, move_time);
+				return c.X - c.Y;
 			}
 		}
 

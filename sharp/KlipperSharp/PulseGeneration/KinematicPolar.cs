@@ -10,18 +10,18 @@ namespace KlipperSharp.PulseGeneration
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				coord c = Itersolve.move_get_coord(ref m, move_time);
-				return Math.Sqrt(c.x * c.x + c.y * c.y);
+				Vector3d c = Itersolve.move_get_coord(ref m, move_time);
+				return Math.Sqrt(c.X * c.X + c.Y * c.Y);
 			}
 		}
 		class KinematicPolarA : KinematicBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				coord c = Itersolve.move_get_coord(ref m, move_time);
+				Vector3d c = Itersolve.move_get_coord(ref m, move_time);
 				// XXX - handle x==y==0
 				// XXX - handle angle wrapping
-				return Math.Atan2(c.y, c.x);
+				return Math.Atan2(c.Y, c.X);
 			}
 		}
 

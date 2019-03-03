@@ -8,13 +8,13 @@ namespace KlipperSharp.PulseGeneration
 	{
 		class winch_stepper : KinematicBase
 		{
-			public coord anchor;
+			public Vector3d anchor;
 
 			public override double calc_position(ref move m, double move_time)
 			{
-				coord c = Itersolve.move_get_coord(ref m, move_time);
-				double dx = anchor.x - c.x, dy = anchor.y - c.y;
-				double dz = anchor.z - c.z;
+				Vector3d c = Itersolve.move_get_coord(ref m, move_time);
+				double dx = anchor.X - c.X, dy = anchor.Y - c.Y;
+				double dz = anchor.Z - c.Z;
 				return Math.Sqrt(dx * dx + dy * dy + dz * dz);
 			}
 		}
@@ -22,9 +22,9 @@ namespace KlipperSharp.PulseGeneration
 		public static KinematicBase winch_stepper_alloc(double anchor_x, double anchor_y, double anchor_z)
 		{
 			winch_stepper hs = new winch_stepper();
-			hs.anchor.x = anchor_x;
-			hs.anchor.y = anchor_y;
-			hs.anchor.z = anchor_z;
+			hs.anchor.X = anchor_x;
+			hs.anchor.Y = anchor_y;
+			hs.anchor.Z = anchor_z;
 			return hs;
 		}
 

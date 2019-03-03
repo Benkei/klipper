@@ -10,7 +10,7 @@ namespace KlipperSharp.PulseGeneration
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
-				return m.start_pos.x + Itersolve.move_get_distance(ref m, move_time);
+				return m.start_pos.X + Itersolve.move_get_distance(ref m, move_time);
 			}
 		}
 
@@ -42,7 +42,7 @@ namespace KlipperSharp.PulseGeneration
 			m.decel.c2 = -m.accel.c2;
 
 			// Setup start distance
-			m.start_pos.x = start_pos;
+			m.start_pos.X = start_pos;
 		}
 
 	}
