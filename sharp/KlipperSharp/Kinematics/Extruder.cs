@@ -45,7 +45,6 @@ namespace KlipperSharp
 		private bool need_motor_enable;
 		private double extrude_pos;
 		private move cmove;
-		private Action<move, double, double, double, double, double, double, double, double, double, double> extruder_move_fill;
 		private Heater heater;
 
 		public PrinterExtruder(ConfigWrapper config, object extruder_num)
@@ -88,7 +87,6 @@ namespace KlipperSharp
 			this.extrude_pos = 0.0;
 			// Setup iterative solver
 			this.cmove = new move();
-			this.extruder_move_fill = KinematicStepper.extruder_move_fill;
 			this.stepper.setup_itersolve(KinematicType.extruder, null);
 			// Setup SET_PRESSURE_ADVANCE command
 			var gcode = this.printer.lookup_object<GCodeParser>("gcode");
@@ -291,7 +289,7 @@ namespace KlipperSharp
 				}
 			}
 			// Generate steps
-			this.extruder_move_fill(this.cmove, print_time, accel_t, cruise_t, decel_t, start_pos, start_v, cruise_v, accel, extra_accel_v, extra_decel_v);
+			this.cmove.extruder_fill(print_time, accel_t, cruise_t, decel_t, start_pos, start_v, cruise_v, accel, extra_accel_v, extra_decel_v);
 			this.stepper.step_itersolve(this.cmove);
 			this.extrude_pos = start_pos + axis_d;
 		}

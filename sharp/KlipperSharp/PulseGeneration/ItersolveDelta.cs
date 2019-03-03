@@ -4,9 +4,9 @@ using System.Text;
 
 namespace KlipperSharp.PulseGeneration
 {
-	public class KinematicDelta
+	public class ItersolveDelta
 	{
-		class delta_stepper : KinematicBase
+		class delta_stepper : ItersolveBase
 		{
 			public double arm2, tower_x, tower_y;
 
@@ -18,7 +18,7 @@ namespace KlipperSharp.PulseGeneration
 			}
 		}
 
-		public static KinematicBase delta_stepper_alloc(double arm2, double tower_x, double tower_y)
+		public static ItersolveBase delta_stepper_alloc(double arm2, double tower_x, double tower_y)
 		{
 			delta_stepper ds = new delta_stepper();
 			ds.arm2 = arm2;

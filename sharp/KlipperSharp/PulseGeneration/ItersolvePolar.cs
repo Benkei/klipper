@@ -4,9 +4,9 @@ using System.Text;
 
 namespace KlipperSharp.PulseGeneration
 {
-	public class KinematicPolar
+	public class ItersolvePolar
 	{
-		class KinematicPolarR : KinematicBase
+		class ItersolvePolarR : ItersolveBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
@@ -14,7 +14,7 @@ namespace KlipperSharp.PulseGeneration
 				return Math.Sqrt(c.X * c.X + c.Y * c.Y);
 			}
 		}
-		class KinematicPolarA : KinematicBase
+		class ItersolvePolarA : ItersolveBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
@@ -25,12 +25,12 @@ namespace KlipperSharp.PulseGeneration
 			}
 		}
 
-		public static KinematicBase polar_stepper_alloc(string type)
+		public static ItersolveBase polar_stepper_alloc(string type)
 		{
 			if (type == "r")
-				return new KinematicPolarR();
+				return new ItersolvePolarR();
 			else if (type == "a")
-				return new KinematicPolarA();
+				return new ItersolvePolarA();
 
 			throw new ArgumentOutOfRangeException();
 		}

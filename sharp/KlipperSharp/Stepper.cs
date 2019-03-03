@@ -63,7 +63,7 @@ namespace KlipperSharp
 		public Func<double> get_step_dist;
 		public Action<move> step_itersolve;
 		public Action<KinematicType, object[]> setup_itersolve;
-		private Func<KinematicBase, KinematicBase> set_stepper_kinematics;
+		private Func<ItersolveBase, ItersolveBase> set_stepper_kinematics;
 		private Func<bool, object> set_ignore_move;
 		private Func<Vector3d, double> calc_position_from_coord;
 		public Action<Vector3d> set_position;

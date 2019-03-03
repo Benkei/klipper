@@ -5,7 +5,7 @@ using System.Text;
 
 namespace KlipperSharp.PulseGeneration
 {
-	public abstract class KinematicBase
+	public abstract class ItersolveBase
 	{
 		public double step_dist, commanded_pos;
 		public stepcompress sc;

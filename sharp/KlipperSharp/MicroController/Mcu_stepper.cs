@@ -18,12 +18,12 @@ namespace KlipperSharp.MicroController
 		private double _min_stop_interval;
 		private int _reset_cmd_id;
 		private stepcompress _stepqueue;
-		private KinematicBase _stepper_kinematics;
+		private ItersolveBase _stepper_kinematics;
 		//private itersolve_gen_steps_callback _itersolve_gen_steps;
 		private SerialCommand _get_position_cmd;
 		private bool ignore_move;
 
-		public delegate bool itersolve_gen_steps_callback(ref KinematicBase sk, ref move m);
+		public delegate bool itersolve_gen_steps_callback(ref ItersolveBase sk, ref move m);
 
 		public Mcu_stepper(Mcu mcu, PinParams pin_parameters)
 		{
@@ -75,15 +75,15 @@ namespace KlipperSharp.MicroController
 
 		public void setup_itersolve(KinematicType type, params object[] parameters)
 		{
-			KinematicBase sk;
+			ItersolveBase sk;
 			switch (type)
 			{
-				case KinematicType.cartesian: sk = KinematicCartesian.cartesian_stepper_alloc((string)parameters[0]); break;
-				case KinematicType.corexy: sk = KinematicCoreXY.corexy_stepper_alloc((string)parameters[0]); break;
-				case KinematicType.delta: sk = KinematicDelta.delta_stepper_alloc((double)parameters[0], (double)parameters[1], (double)parameters[2]); break;
-				case KinematicType.extruder: sk = KinematicStepper.extruder_stepper_alloc(); break;
-				case KinematicType.polar: sk = KinematicPolar.polar_stepper_alloc((string)parameters[0]); break;
-				case KinematicType.winch: sk = KinematicWinch.winch_stepper_alloc((double)parameters[0], (double)parameters[1], (double)parameters[2]); break;
+				case KinematicType.cartesian: sk = ItersolveCartesian.cartesian_stepper_alloc((string)parameters[0]); break;
+				case KinematicType.corexy: sk = ItersolveCoreXY.corexy_stepper_alloc((string)parameters[0]); break;
+				case KinematicType.delta: sk = ItersolveDelta.delta_stepper_alloc((double)parameters[0], (double)parameters[1], (double)parameters[2]); break;
+				case KinematicType.extruder: sk = ItersolveStepper.extruder_stepper_alloc(); break;
+				case KinematicType.polar: sk = ItersolvePolar.polar_stepper_alloc((string)parameters[0]); break;
+				case KinematicType.winch: sk = ItersolveWinch.winch_stepper_alloc((double)parameters[0], (double)parameters[1], (double)parameters[2]); break;
 				default: throw new ArgumentOutOfRangeException();
 			}
 			this.set_stepper_kinematics(sk);
@@ -147,7 +147,7 @@ namespace KlipperSharp.MicroController
 			return (int)(mcu_pos - 0.5);
 		}
 
-		public KinematicBase set_stepper_kinematics(KinematicBase sk)
+		public ItersolveBase set_stepper_kinematics(ItersolveBase sk)
 		{
 			var old_sk = this._stepper_kinematics;
 			this._stepper_kinematics = sk;

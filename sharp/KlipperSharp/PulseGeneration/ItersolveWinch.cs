@@ -4,9 +4,9 @@ using System.Text;
 
 namespace KlipperSharp.PulseGeneration
 {
-	public class KinematicWinch
+	public class ItersolveWinch
 	{
-		class winch_stepper : KinematicBase
+		class winch_stepper : ItersolveBase
 		{
 			public Vector3d anchor;
 
@@ -19,7 +19,7 @@ namespace KlipperSharp.PulseGeneration
 			}
 		}
 
-		public static KinematicBase winch_stepper_alloc(double anchor_x, double anchor_y, double anchor_z)
+		public static ItersolveBase winch_stepper_alloc(double anchor_x, double anchor_y, double anchor_z)
 		{
 			winch_stepper hs = new winch_stepper();
 			hs.anchor.X = anchor_x;

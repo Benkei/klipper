@@ -4,9 +4,9 @@ using System.Text;
 
 namespace KlipperSharp.PulseGeneration
 {
-	public class KinematicCoreXY
+	public class ItersolveCoreXY
 	{
-		class KinematicCoreXYPlus : KinematicBase
+		class ItersolveCoreXYPlus : ItersolveBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
@@ -14,7 +14,7 @@ namespace KlipperSharp.PulseGeneration
 				return c.X + c.Y;
 			}
 		}
-		class KinematicCoreXYMinus : KinematicBase
+		class ItersolveCoreXYMinus : ItersolveBase
 		{
 			public override double calc_position(ref move m, double move_time)
 			{
@@ -23,12 +23,12 @@ namespace KlipperSharp.PulseGeneration
 			}
 		}
 
-		public static KinematicBase corexy_stepper_alloc(string type)
+		public static ItersolveBase corexy_stepper_alloc(string type)
 		{
 			if (type == "+")
-				return new KinematicCoreXYPlus();
+				return new ItersolveCoreXYPlus();
 			else if (type == "-")
-				return new KinematicCoreXYMinus();
+				return new ItersolveCoreXYMinus();
 
 			throw new ArgumentOutOfRangeException();
 		}

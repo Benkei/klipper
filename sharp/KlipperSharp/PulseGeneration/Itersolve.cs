@@ -313,6 +313,33 @@ namespace KlipperSharp.PulseGeneration
 			this.axes_r.Z = axes_d_z * inv_move_d;
 		}
 
+
+		// Populate a 'struct move' with an extruder velocity trapezoid
+		public void extruder_fill(double print_time
+								 , double accel_t, double cruise_t, double decel_t
+								 , double start_pos
+								 , double start_v, double cruise_v, double accel
+								 , double extra_accel_v, double extra_decel_v)
+		{
+			// Setup velocity trapezoid
+			this.print_time = print_time;
+			this.move_t = accel_t + cruise_t + decel_t;
+			this.accel_t = accel_t;
+			this.cruise_t = cruise_t;
+			this.cruise_start_d = accel_t * (0.5 * (cruise_v + start_v) + extra_accel_v);
+			this.decel_start_d = this.cruise_start_d + cruise_t * cruise_v;
+
+			// Setup for accel/cruise/decel phases
+			this.cruise_v = cruise_v;
+			this.accel.c1 = start_v + extra_accel_v;
+			this.accel.c2 = 0.5 * accel;
+			this.decel.c1 = cruise_v + extra_decel_v;
+			this.decel.c2 = -this.accel.c2;
+
+			// Setup start distance
+			this.start_pos.X = start_pos;
+		}
+
 		// Return the distance moved given a time in a move
 		public double get_distance(double move_time)
 		{
