@@ -81,7 +81,7 @@ namespace KlipperSharp.PulseGeneration
 					if (&sc.queue_pos[nextcount - 1] >= qlast)
 					{
 						count = nextcount - 1;
-						return new step_move() { interval = (uint)interval, count = (ushort)count, add = (short)add };
+						return new step_move((uint)interval, (ushort)count, (short)add);
 					}
 					nextpoint = minmax_point(ref sc, sc.queue_pos + nextcount - 1);
 					nextaddfactor = nextcount * (nextcount - 1) / 2;
@@ -156,8 +156,8 @@ namespace KlipperSharp.PulseGeneration
 			}
 			if (zerocount + zerocount / 16 >= bestcount)
 				// Prefer add=0 if it's similar to the best found sequence
-				return new step_move() { interval = (uint)zerointerval, count = (ushort)zerocount, add = 0 };
-			return new step_move() { interval = (uint)bestinterval, count = (ushort)bestcount, add = (short)bestadd };
+				return new step_move((uint)zerointerval, (ushort)zerocount, 0);
+			return new step_move((uint)bestinterval, (ushort)bestcount, (short)bestadd);
 		}
 
 
@@ -666,6 +666,12 @@ namespace KlipperSharp.PulseGeneration
 		public uint interval;
 		public ushort count;
 		public short add;
+		public step_move(uint interval, ushort count, short add)
+		{
+			this.interval = interval;
+			this.count = count;
+			this.add = add;
+		}
 	}
 
 	// The steppersync object is used to synchronize the output of mcu
