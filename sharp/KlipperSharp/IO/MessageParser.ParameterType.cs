@@ -90,7 +90,7 @@ namespace KlipperSharp
 		{
 			var l = text[position];
 			byte* block = stackalloc byte[l];
-			text[Range.Create(position + 1, position + 1 + l)].CopyTo(new Span<byte>(block, l));
+			text[new Range(position + 1, position + 1 + l)].CopyTo(new Span<byte>(block, l));
 			var txt = Encoding.ASCII.GetString(block, l);
 			position += l + 1;
 			return txt;
@@ -114,7 +114,7 @@ namespace KlipperSharp
 		{
 			var l = text[position];
 			byte[] block = new byte[l];
-			text[Range.Create(position + 1, position + 1 + l)].CopyTo(new Span<byte>(block));
+			text[new Range(position + 1, position + 1 + l)].CopyTo(new Span<byte>(block));
 			position += l + 1;
 			return block;
 		}
